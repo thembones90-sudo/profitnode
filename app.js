@@ -10,7 +10,35 @@ chip:"chip-amber"},IN_RIG:{chip:"chip-amber-outline"},LISTED:{chip:"chip-blue"},
 chip:"chip-green-outline"},UNTESTED:{chip:"chip-muted"},FAULTY:{chip:"chip-red-outline"},REPAIRED:{chip:"chip-blue"},DEAD:{chip:"chip-red"}};function dealScoreLabel(e){
 return e<=2?{label:"TERRIBLE",chip:"chip-red"}:e<=4?{label:"BAD",chip:"chip-red-outline"}:5===e?{label:"FAIR",chip:"chip-muted"}:6===e?{label:"SOLID",chip:"chip-amber-outline"
 }:7===e?{label:"GOOD",chip:"chip-amber"}:8===e?{label:"EXCELLENT",chip:"chip-green-outline"}:9===e?{label:"HIGHWAY ROBBERY",chip:"chip-green"}:{label:"DIVINE INTERVENTION",
-chip:"chip-green"}}const DEAL_SCORE_WEIGHTS={discount:.3,condition:.2,repairRisk:.15,resalePotential:.15,expectedMargin:.2},CONDITION_QUALITY={WORKING:10,REPAIRED:8,UNTESTED:6,
+  chip:"chip-green"}}const PN_GEAR_TIERS=["SCRAPBLADE","SCRAPWRAITH","REVENANT","GHOUL","ALGHOUL"],PN_RIG_WEIGHTS={gpu:.55,cpu:.30,motherboard:.15},HardwareCatalog={status:"loading",cpus:[],gpus:[],boards:[],error:null};
+function pnNorm(e){return String(e||"").toUpperCase().replace(/[^A-Z0-9]+/g," ").trim()}
+function pnTier(e){return null==e?null:PN_GEAR_TIERS[clamp(e,0,PN_GEAR_TIERS.length-1)]}
+function cpuGearTier(e){const t=pnNorm(e.model||e.label||e),a=parseInt((t.match(/RYZEN\s+[3579](?:\s+PRO)?\s+(\d{4})/)||[])[1]||0,10)
+;if(/5800X3D|5700X3D|5800XT|\b5800X\b|RYZEN 9/.test(t)||/3900|3950|5900|5950/.test(t))return 4
+;if(/3600X|3600XT|5500|5600|5700G|5700X|3700X|3800X/.test(t)||/I7 8700K|I7 9700K|I9 9900/.test(t))return 3
+;if(/1600 AF|2600X|3500|3600|4500|4600G/.test(t)||/I5 (8400|8500|8600|9400|9500|9600)|I7 8700/.test(t))return 2
+;if(/RYZEN 5 (1400|1500X|1600|2400G|2600)/.test(t)||/I7 (6700|7700)|I3 (8100|9100)/.test(t))return 1
+;if(/RYZEN 3 (1200|1300X|2200G)/.test(t)||/CELERON|PENTIUM|I3 (6100|7100)|I5 (6400|6500|7400)/.test(t))return 0
+;if(a>=5000)return 3;if(a>=3000)return 2;if(a>=2000)return 1;return 0}
+function gpuGearTier(e){const t=pnNorm(e.model||e.label||e)
+;if(/RTX (2080 TI|30(?:70|80|90)|40(?:60 TI|70|80|90)|50(?:70|80|90))|RX (6800|6900|6950|7700 XT|7800 XT|7900|90(?:70|80|90))/.test(t))return 4
+;if(/GTX 1080 TI|RTX (2060 SUPER|2070|2070 SUPER|3060|3060 TI)|RX (5700 XT|6600 XT|6650 XT|6700|6700 XT|6750)/.test(t))return 3
+;if(/GTX (1070|1070 TI|1080|1660 SUPER|1660 TI)|RTX 2060|VEGA (56|64)|RX (5600 XT|5700|6600)/.test(t))return 2
+;if(/GTX (1060|1650|1650 SUPER|1660)|RX (480|580(?! 2048SP)|590)/.test(t))return 1
+;if(/GTX 1050|RX (470|570|580 2048SP)/.test(t))return 0
+;const a=Number(e.overall);return a>=45?4:a>=25?3:a>=14?2:a>=8?1:0}
+function motherboardGearTier(e){const t=pnNorm((e.brand||"")+" "+(e.model||e.label||"")+" "+(e.chipset||"")),a=Number(e.overall)||0,r=Number(e.vrm_power)||0
+;if(/CROSSHAIR|TAICHI|AORUS (MASTER|XTREME)|GODLIKE|MAXIMUS|\bACE\b/.test(t)||(/X570|X470|Z390/.test(t)&&a>=82))return 4
+;if(/X470/.test(t)||(/B550|B450|Z270|Z370|Z390/.test(t)&&a>=68))return 3
+;if(/B550|B450|B350|Z170|Z270|Z370|B360|B365/.test(t)&&r>=48)return 2
+;if(/B350|B450|B150|B250|B360|H170|H270|H370/.test(t)||a>=48)return 1
+;return 0}
+function catalogEntriesForSlot(e){return"CPU"===e?HardwareCatalog.cpus:"GPU"===e?HardwareCatalog.gpus:"MOBO"===e?HardwareCatalog.boards:[]}
+function catalogKey(e,t){return e+":"+pnNorm((t.brand||"")+" "+t.model)}
+function catalogTier(e,t){return"CPU"===e?cpuGearTier(t):"GPU"===e?gpuGearTier(t):motherboardGearTier(t)}
+function catalogFind(e,t){const a=pnNorm(t);if(!a)return null;const r=catalogEntriesForSlot(e);return r.find(t=>pnNorm((t.brand||"")+" "+t.model)===a)||r.find(t=>{const r=pnNorm(t.model);return a===r||a.endsWith(" "+r)||a.includes(" "+r+" ")})||null}
+async function loadHardwareCatalog(){try{const[e,t]=await Promise.all([fetch("profitnode_hardware_ratings_v1.json").then(e=>{if(!e.ok)throw Error("CPU/GPU catalog HTTP "+e.status);return e.json()}),fetch("profitnode_motherboard_catalog_v1.json").then(e=>{if(!e.ok)throw Error("motherboard catalog HTTP "+e.status);return e.json()})]);HardwareCatalog.cpus=e.cpus||[],HardwareCatalog.gpus=e.gpus||[],HardwareCatalog.boards=t.boards||[],HardwareCatalog.status="ready",HardwareCatalog.error=null}catch(e){HardwareCatalog.status="error",HardwareCatalog.error=e&&e.message?e.message:String(e)}return HardwareCatalog}
+const DEAL_SCORE_WEIGHTS={discount:.3,condition:.2,repairRisk:.15,resalePotential:.15,expectedMargin:.2},CONDITION_QUALITY={WORKING:10,REPAIRED:8,UNTESTED:6,
 FAULTY:3,DEAD:1},CONDITION_REPAIR_RISK={WORKING:.05,REPAIRED:.15,UNTESTED:.4,FAULTY:.75,DEAD:.95},CATEGORY_RESALE_POTENTIAL={GPU:9,CPU:8,STORAGE:7,MOTHERBOARD:6,RAM:6,COOLING:5,
 PSU:5,CASE:4,OTHER:4};function clamp(e,t,a){return Math.max(t,Math.min(a,e))}const DealScore={auto(e){
 const t=e.purchasePrice||0,a=e.estimatedMarketValue||0,r=a>0?Calc.discountPct(a,t):0,n=t>0?Calc.savings(a,t)/t*100:0,s=clamp(r/5,0,10),l=CONDITION_QUALITY[e.condition]??5,o=CONDITION_REPAIR_RISK[e.condition]??.4,i=clamp(10*(1-o),0,10),c=CATEGORY_RESALE_POTENTIAL[e.category]??5,d=clamp(n/10,0,10),u=s*DEAL_SCORE_WEIGHTS.discount+l*DEAL_SCORE_WEIGHTS.condition+i*DEAL_SCORE_WEIGHTS.repairRisk+c*DEAL_SCORE_WEIGHTS.resalePotential+d*DEAL_SCORE_WEIGHTS.expectedMargin
@@ -107,11 +135,25 @@ function dealDerived(e){return{amountSaved:Calc.savings(e.estimatedMarketValue,e
 function dealScoreResolved(e){const t=DealScore.auto(e);if("MANUAL"===(e.scoreMode||(null!=e.dealScore?"MANUAL":"AUTO"))){const a=null!=e.manualScore?e.manualScore:e.dealScore
 ;if(null!=a)return{score:clamp(Math.round(a),0,10),mode:"MANUAL",auto:t}}return{score:t.score,mode:"AUTO",auto:t}}
 function emptyRigSlots(){return{CPU:null,GPU:null,RAM:null,MOBO:null,PSU:null,CASE:null,COOLER:null,STORAGE:null}}
-function rigSlotResolved(e,t){if(!e)return null;if("INVENTORY"===e.kind){const a=Store.get("inventory",e.inventoryItemId)
-;return a?{label:a.manufacturer+" "+a.model,cost:convert(a.purchasePrice,a.currency,t),category:a.category,condition:a.condition,status:a.status,item:a}:{label:"(deleted inventory item)",cost:0,missing:!0}}
+function rigSlotResolved(e,t,a){if(!e)return null;if("INVENTORY"===e.kind){const r=Store.get("inventory",e.inventoryItemId)
+;if(!r)return{label:"(deleted inventory item)",cost:0,missing:!0};const n=r.manufacturer+" "+r.model,s=a||("MOTHERBOARD"===r.category?"MOBO":r.category),l=catalogFind(s,n)
+;return{label:n,cost:convert(r.purchasePrice,r.currency,t),category:r.category,condition:r.condition,status:r.status,item:r,pn:l?{type:s,data:l,performance:Number(l.overall)||0,tierIndex:catalogTier(s,l),tier:pnTier(catalogTier(s,l))}:null}}
+if("CATALOG"===e.kind){const r=e.catalogType||a,n=catalogFind(r,e.label),s=n?catalogTier(r,n):null;return{label:e.label||"(select catalog part)",cost:convert(e.cost||0,e.currency||t,t),planned:!0,catalog:!0,pn:n?{type:r,data:n,performance:Number(n.overall)||0,tierIndex:s,tier:pnTier(s)}:null}}
 return{label:e.label||"(unnamed part)",cost:convert(e.cost||0,e.currency||t,t),planned:!0}}
-function rigDerived(e){const t=e.currency||"RSD";let a=0;RIG_SLOTS.forEach(r=>{const n=rigSlotResolved(e.slots[r],t);n&&(a+=n.cost||0)})
-;const r=(e.expectedSalePrice||0)-a;return{totalCost:a,profit:r,roi:Calc.roi(r,a),margin:Calc.profitMargin(r,e.expectedSalePrice||0)}}
+function rigPenaltyProfile(e,t){let a=0;const r=[],n=s=>{const l=rigSlotResolved(e.slots[s],t,s);return pnNorm(l&&l.label)},s=n("RAM"),l=n("PSU"),o=n("STORAGE"),i=n("COOLER"),c=rigSlotResolved(e.slots.CPU,t,"CPU"),d=rigSlotResolved(e.slots.GPU,t,"GPU")
+;if(s){const e=parseInt((s.match(/(\d+)\s*GB/)||[])[1]||0,10);e&&e<16&&(a+=5,r.push("RAM below 16 GB limits this gaming-rig class.")),(/SINGLE CHANNEL|1X\s*\d+\s*GB/.test(s))&&(a+=3,r.push("Single-channel RAM reduces practical gaming balance."))}
+if(l&&d&&d.pn){const e=parseInt((l.match(/(\d{3,4})\s*W/)||[])[1]||0,10),t=450+75*d.pn.tierIndex;e&&e<t&&(a+=6,r.push("PSU capacity is below the PN recommendation for this GPU tier ("+t+"W+)."))}
+;o?(/\bHDD\b/.test(o)&&!/SSD|NVME/.test(o))&&(a+=4,r.push("HDD-only storage reduces the practical rig class.")):(a+=6),!i&&c&&c.pn&&c.pn.tierIndex>=3&&(a+=3)
+;return{points:a,warnings:r}}
+function rigHardwareProfile(e){const t=e.currency||"RSD",a=rigSlotResolved(e.slots.CPU,t,"CPU"),r=rigSlotResolved(e.slots.GPU,t,"GPU"),n=rigSlotResolved(e.slots.MOBO,t,"MOBO"),s=a&&a.pn,l=r&&r.pn,o=n&&n.pn,i=rigPenaltyProfile(e,t),c=[]
+;if(s&&l&&Math.abs(s.tierIndex-l.tierIndex)>=2)c.push("Severe CPU/GPU imbalance: "+s.tier+" CPU with "+l.tier+" GPU — the stronger part's capability is being wasted.")
+;if(s&&o&&s.tierIndex-o.tierIndex>=2)c.push("Motherboard tier ("+o.tier+") is well below the CPU tier ("+s.tier+") — check VRM strength, BIOS support, and upgrade headroom.")
+;if(!s||!l||!o)return{complete:!1,cpu:s||null,gpu:l||null,motherboard:o||null,performance:null,tierIndex:null,tier:null,penaltyPoints:i.points,warnings:c.concat(i.warnings)}
+;let d=l.performance*PN_RIG_WEIGHTS.gpu+s.performance*PN_RIG_WEIGHTS.cpu+o.performance*PN_RIG_WEIGHTS.motherboard-i.points,u=l.tierIndex*PN_RIG_WEIGHTS.gpu+s.tierIndex*PN_RIG_WEIGHTS.cpu+o.tierIndex*PN_RIG_WEIGHTS.motherboard
+;Math.abs(s.tierIndex-l.tierIndex)>=2&&(u-=.65);const p=clamp(Math.min(Math.round(u),l.tierIndex+1),0,4)
+;return{complete:!0,cpu:s,gpu:l,motherboard:o,performance:clamp(Math.round(d),0,100),tierIndex:p,tier:pnTier(p),penaltyPoints:i.points,warnings:c.concat(i.warnings)}}
+function rigDerived(e){const t=e.currency||"RSD";let a=0;RIG_SLOTS.forEach(r=>{const n=rigSlotResolved(e.slots[r],t,r);n&&(a+=n.cost||0)})
+;const r=(e.expectedSalePrice||0)-a;return{totalCost:a,profit:r,roi:Calc.roi(r,a),margin:Calc.profitMargin(r,e.expectedSalePrice||0),hardware:rigHardwareProfile(e)}}
 function detectCpuSocket(e){let t=e.match(/RYZEN\s*[3579]?\s*(\d{3,4})/);if(t){const e=parseInt(t[1],10);if(e>=1e3&&e<7e3)return"AM4";if(e>=7e3)return"AM5"}
 if(t=e.match(/I[3579][- ]?(\d{4,5})/),t){const e=t[1],a=5===e.length?parseInt(e.slice(0,2),10):parseInt(e.slice(0,1),10)
 ;if(a>=6&&a<=9)return"LGA1151";if(a>=10&&a<=11)return"LGA1200";if(a>=12)return"LGA1700"}return null}
@@ -121,7 +163,7 @@ function detectMoboSocket(e){if(/AM5|X670|B650|A620/.test(e))return"AM5";if(/AM4
 function detectFormFactor(e){if(/MINI[- ]?ITX|\bITX\b/.test(e))return"ITX";if(/MICRO[- ]?ATX|\bMATX\b|\bM-ATX\b/.test(e))return"MATX"
 ;if(/E-?ATX|EXTENDED\s?ATX/.test(e))return"EATX";if(/\bATX\b/.test(e))return"ATX";return null}
 function cpuLikelyHasIGPU(e){if(/RYZEN/.test(e))return/\dG\b|\bG\b/.test(e);if(/CORE\s?I[3579]|INTEL/.test(e))return!/F\b/.test(e);return null}
-function rigWarnings(e){const t=e.currency||"RSD",a=r=>rigSlotResolved(e.slots[r],t),n=e=>e?String(e.label||"").toUpperCase():"",s=[]
+function rigWarnings(e){const t=e.currency||"RSD",a=r=>rigSlotResolved(e.slots[r],t,r),n=e=>e?String(e.label||"").toUpperCase():"",s=[]
 ;const l=a("CPU"),o=a("GPU"),i=a("RAM"),c=a("MOBO"),d=a("PSU"),u=a("CASE"),p=a("COOLER"),m=a("STORAGE")
 ;if(l&&c){const e=detectCpuSocket(n(l)),t=detectMoboSocket(n(c));e&&t&&e!==t&&s.push("CPU platform ("+e+") doesn't match the motherboard platform ("+t+") — check socket compatibility.")}
 if(i&&c){const e=/DDR5/.test(n(i))?"DDR5":/DDR4/.test(n(i))?"DDR4":/DDR3/.test(n(i))?"DDR3":null,t=/DDR5/.test(n(c))?"DDR5":/DDR4/.test(n(c))?"DDR4":/DDR3/.test(n(c))?"DDR3":null
@@ -134,7 +176,7 @@ if(d){const e=n(d).match(/(\d{3,4})\s*W/),t=e?parseInt(e[1],10):null
 m||s.push("No storage selected.")
 ;!p&&l&&(/-K\b|\bKF?\b/.test(n(l))||/X3D\b|RYZEN\s?[579]\s?\d{3,4}X\b/.test(n(l)))&&s.push("No cooler selected — this CPU likely doesn't ship with a bundled cooler.")
 ;if(!o&&l){const e=cpuLikelyHasIGPU(n(l));!1===e&&s.push("No GPU selected and the CPU likely has no integrated graphics — this rig may have no video output.")}
-return s}
+ return s.concat(rigHardwareProfile(e).warnings)}
 function rigEmptySlotLabel(slotKey){return "— "+RIG_SLOT_LABELS[slotKey].toUpperCase()+" EMPTY —"}
 function soleUnassignedMatch(category){const matches=Store.all("inventory").filter(i=>i.category===category&&!i.assignedRigId&&!i.assignedProjectId&&"SOLD"!==i.status)
 ;return 1===matches.length?matches[0]:null}
@@ -478,6 +520,8 @@ function renderRigCompare(e){const t=RIG_SLOTS.map(t=>{const a=e.map(e=>{const a
 ;const l=(s?"left:50%;":"right:50%;")+"width:"+r.toFixed(2)+"%;background:"+(s?"var(--green)":"var(--red)")
 ;return'<td style="'+rigCompareCellStyle(t)+'"><div class="hbar-track" style="width:100%"><div class="hbar-zero"></div><div class="hbar-fill" style="'+l+'"></div></div></td>'}).join("")+"</tr>"
 ;return'<div class="table-scroll"><table><thead>'+r+"</thead><tbody>"+t
++a("PN Performance",e=>e.hardware.complete?e.hardware.performance+" / 100":"—")
++a("PN Gear Tier",e=>e.hardware.complete?e.hardware.tier:"—")
 +a("Total Cost",(e,t)=>money(e.totalCost,t.currency))
 +a("Est. Market Value",(e,t)=>money(t.estimatedMarketValue,t.currency))
 +a("Expected Sale Price",(e,t)=>money(t.expectedSalePrice,t.currency))
@@ -494,15 +538,17 @@ function renderRigFamilyView(e){const t=Store.all("rigs").filter(t=>t.family===e
 ;return pageHeader(e,t.length+" variant"+(1===t.length?"":"s"),'<button type="button" class="btn" data-rig-back>← ALL RIGS</button><button type="button" class="btn btn-primary" data-new-rig-variant="'+escAttr(e)+'">+ NEW VARIANT</button>')+'<div class="content">'+renderRigNotice()+'<div class="panel"><div class="table-scroll"><table><thead><tr><th></th><th>Variant</th><th>Status</th><th class="num">Slots Filled</th><th class="num">Total Cost</th><th class="num">Expected Profit</th><th class="num">ROI</th><th></th></tr></thead><tbody>'+r+'</tbody></table></div></div><div class="panel" style="margin-top:16px"><div class="panel-head"><h2>Compare Variants</h2></div><div class="panel-body">'+s+"</div></div></div>"}
 function rigSlotOptionsForCategory(e){return Store.all("inventory").filter(t=>t.category===e&&"SOLD"!==t.status).slice().sort((e,t)=>(e.manufacturer+e.model).localeCompare(t.manufacturer+t.model))}
 function renderRigSlotRow(e,t){const a=t.slots[e],r=RIG_SLOT_CATEGORY[e],n=a?a.kind:"EMPTY",s=rigSlotOptionsForCategory(r)
-;const l='<select data-rig-slot-mode="'+e+'"><option value="EMPTY"'+("EMPTY"===n?" selected":"")+'>Empty</option><option value="INVENTORY"'+("INVENTORY"===n?" selected":"")+'>From Inventory</option><option value="PLANNED"'+("PLANNED"===n?" selected":"")+'>Planned Part</option></select>'
+;const c=["CPU","GPU","MOBO"].includes(e),l='<select data-rig-slot-mode="'+e+'"><option value="EMPTY"'+("EMPTY"===n?" selected":"")+'>Empty</option><option value="INVENTORY"'+("INVENTORY"===n?" selected":"")+'>From Inventory</option>'+(c?'<option value="CATALOG"'+("CATALOG"===n?" selected":"")+'>PN Hardware Catalog</option>':"")+'<option value="PLANNED"'+("PLANNED"===n?" selected":"")+'>Planned Part</option></select>'
 ;let o
 ;if("INVENTORY"===n)o='<select data-rig-slot-item="'+e+'"><option value="">— select '+r.toLowerCase()+' —</option>'+s.map(r=>{
 const n=r.assignedRigId&&r.assignedRigId!==t.id,s=r.status&&["IN_BUILD","IN_RIG","LISTED"].includes(r.status)
 ;return'<option value="'+r.id+'"'+(a&&a.inventoryItemId===r.id?" selected":"")+">"+escHtml(r.manufacturer+" "+r.model)+" ("+money(r.purchasePrice,r.currency)+")"+(n?" — IN USE":s?" — "+STATUS_LABEL(r.status):"")+"</option>"
-}).join("")+"</select>";else if("PLANNED"===n)o='<div class="field-row" style="margin-top:8px"><input type="text" placeholder="Part name" data-rig-slot-field="'+e+'.label" value="'+escAttr(a?a.label:"")+'"><input type="number" step="0.01" placeholder="Cost" data-rig-slot-field="'+e+'.cost" value="'+escAttr(a?a.cost:"")+'"></div>'
+}).join("")+"</select>";else if("CATALOG"===n){const d=catalogEntriesForSlot(e),u=catalogFind(e,a&&a.label),p="pn-catalog-"+e
+;o='<div class="field-row" style="margin-top:8px"><input type="text" list="'+p+'" placeholder="Search '+RIG_SLOT_LABELS[e]+' catalog…" data-rig-catalog-item="'+e+'" value="'+escAttr(a?a.label:"")+'"><datalist id="'+p+'">'+d.map(t=>'<option value="'+escAttr(t.brand+" "+t.model)+'"></option>').join("")+'</datalist><input type="number" step="0.01" placeholder="Planned cost" data-rig-slot-field="'+e+'.cost" value="'+escAttr(a?a.cost:"")+'"></div>'+(u?'<div class="hint" style="margin-top:6px">PN Performance Rating <b>'+u.overall+'</b> · Gear Tier <b>'+pnTier(catalogTier(e,u))+'</b>'+("CPU"===e?' · Gaming '+u.gaming+' / Workstation '+u.workstation:"GPU"===e?' · Raster '+u.raster+' / RT '+u.ray_tracing:' · VRM '+u.vrm_power+' / Features '+u.features+' / Headroom '+u.upgrade_headroom)+"</div>":'<div class="hint" style="margin-top:6px">'+("loading"===HardwareCatalog.status?"Loading PN Hardware Foundation v1…":"Search and choose an exact PN catalog entry.")+"</div>")}
+else if("PLANNED"===n)o='<div class="field-row" style="margin-top:8px"><input type="text" placeholder="Part name" data-rig-slot-field="'+e+'.label" value="'+escAttr(a?a.label:"")+'"><input type="number" step="0.01" placeholder="Cost" data-rig-slot-field="'+e+'.cost" value="'+escAttr(a?a.cost:"")+'"></div>'
 ;else{const quick=soleUnassignedMatch(r)
 ;o='<div class="rig-empty-slot">'+escHtml(rigEmptySlotLabel(e))+'</div>'+(quick?'<button type="button" class="btn btn-sm" style="margin-top:6px" data-rig-slot-quickfill="'+e+":"+quick.id+'">+ USE '+escHtml(quick.manufacturer+" "+quick.model)+"</button>":"")}
-;const i=rigSlotResolved(a,t.currency)
+;const i=rigSlotResolved(a,t.currency,e)
 ;const copyBtn=t.id?'<button type="button" class="btn btn-sm btn-ghost" data-rig-copy-slot-to-family="'+e+'" title="Copy this slot to every other variant in this family">→ FAMILY</button>':""
 ;return'<div class="rig-slot-row"><div class="rig-slot-label">'+RIG_SLOT_LABELS[e]+'</div><div class="rig-slot-control">'+l+o+'</div><div class="rig-slot-cost">'+(i?money(i.cost,t.currency):"—")+'</div><div class="rig-slot-actions">'+copyBtn+"</div></div>"}
 function renderRigEditor(){const e=state.rigDraft,t=rigDerived(e),a=rigWarnings(e).concat(rigReserveWarnings(e)),r=!e.id,n="ASSEMBLED"===e.status||"SOLD"===e.status
@@ -511,7 +557,7 @@ function renderRigEditor(){const e=state.rigDraft,t=rigDerived(e),a=rigWarnings(
 ;const partsOutVal=rigPartsOutValue(e),partsOutDelta=partsOutVal-(e.expectedSalePrice||0)
 ;const costMeterPct=e.expectedSalePrice>0?clamp(t.totalCost/e.expectedSalePrice*100,0,100):(t.totalCost>0?100:0),costMeterColor=t.totalCost<=(e.expectedSalePrice||0)?"var(--green)":"var(--red)"
 ;const hasTarget=e.targetMarginPct>0&&e.targetMarginPct<100,suggestedPrice=hasTarget?suggestedSalePrice(t.totalCost,e.targetMarginPct):null
-;const o=[{label:"Total Cost",value:money(t.totalCost,e.currency)+'<div class="score-row-bar" style="margin-top:8px"><div class="score-row-fill" style="width:'+costMeterPct.toFixed(1)+"%;background:"+costMeterColor+'"></div></div>'},{label:"Parts-Out Value",value:money(partsOutVal,e.currency),sub:(partsOutDelta>=0?"+":"")+money(partsOutDelta,e.currency)+" vs. whole-rig sale",tone:partsOutDelta>=0?"pos":"neg"},{label:"Est. Market Value",valueHtml:'<input class="planner-kpi-input" type="number" step="0.01" value="'+escAttr(e.estimatedMarketValue)+'" data-rig-field="estimatedMarketValue">'},{label:"Expected Sale Price",valueHtml:'<input class="planner-kpi-input" type="number" step="0.01" value="'+escAttr(e.expectedSalePrice)+'" data-rig-field="expectedSalePrice">',sub:hasTarget?"Target "+e.targetMarginPct+"% margin → "+money(suggestedPrice,e.currency)+' <button type="button" class="btn btn-sm" data-rig-apply-suggested-price="'+suggestedPrice+'">APPLY</button>':void 0},{label:"Target Margin %",valueHtml:'<input class="planner-kpi-input" type="number" step="0.1" value="'+escAttr(e.targetMarginPct||"")+'" data-rig-field="targetMarginPct" placeholder="e.g. 30">'},{label:"Expected Profit",value:money(t.profit,e.currency),tone:t.profit>=0?"pos":"neg"},{label:"ROI",value:pct(t.roi),tone:t.roi>=0?"pos":"neg"},{label:"Margin",value:pct(t.margin),tone:t.margin>=0?"pos":"neg"}].map(e=>'<div class="kpi"><div class="kpi-label">'+e.label+'</div><div class="kpi-value'+(e.tone?" "+e.tone:"")+'">'+(e.valueHtml||e.value)+"</div>"+(e.sub?'<div class="kpi-sub">'+e.sub+"</div>":"")+"</div>").join("")
+;const o=[{label:"PN Rig Performance",value:t.hardware.complete?t.hardware.performance+" / 100":"—",sub:"Raw weighted rating · GPU 55% / CPU 30% / board 15%"},{label:"PN Gear Tier",value:t.hardware.complete?t.hardware.tier:"—",sub:t.hardware.complete?(t.hardware.penaltyPoints?t.hardware.penaltyPoints+" performance penalty points applied":"Balanced class; Deal Score remains separate"):"Choose catalog-matched CPU, GPU and motherboard"},{label:"Total Cost",value:money(t.totalCost,e.currency)+'<div class="score-row-bar" style="margin-top:8px"><div class="score-row-fill" style="width:'+costMeterPct.toFixed(1)+"%;background:"+costMeterColor+'"></div></div>'},{label:"Parts-Out Value",value:money(partsOutVal,e.currency),sub:(partsOutDelta>=0?"+":"")+money(partsOutDelta,e.currency)+" vs. whole-rig sale",tone:partsOutDelta>=0?"pos":"neg"},{label:"Est. Market Value",valueHtml:'<input class="planner-kpi-input" type="number" step="0.01" value="'+escAttr(e.estimatedMarketValue)+'" data-rig-field="estimatedMarketValue">'},{label:"Expected Sale Price",valueHtml:'<input class="planner-kpi-input" type="number" step="0.01" value="'+escAttr(e.expectedSalePrice)+'" data-rig-field="expectedSalePrice">',sub:hasTarget?"Target "+e.targetMarginPct+"% margin → "+money(suggestedPrice,e.currency)+' <button type="button" class="btn btn-sm" data-rig-apply-suggested-price="'+suggestedPrice+'">APPLY</button>':void 0},{label:"Target Margin %",valueHtml:'<input class="planner-kpi-input" type="number" step="0.1" value="'+escAttr(e.targetMarginPct||"")+'" data-rig-field="targetMarginPct" placeholder="e.g. 30">'},{label:"Expected Profit",value:money(t.profit,e.currency),tone:t.profit>=0?"pos":"neg"},{label:"ROI",value:pct(t.roi),tone:t.roi>=0?"pos":"neg"},{label:"Margin",value:pct(t.margin),tone:t.margin>=0?"pos":"neg"}].map(e=>'<div class="kpi"><div class="kpi-label">'+e.label+'</div><div class="kpi-value'+(e.tone?" "+e.tone:"")+'">'+(e.valueHtml||e.value)+"</div>"+(e.sub?'<div class="kpi-sub">'+e.sub+"</div>":"")+"</div>").join("")
 ;const i=[]
 ;i.push('<button type="button" class="btn" data-rig-back-editor>← BACK</button>')
 ;i.push('<button type="button" class="btn btn-primary" data-rig-save>SAVE</button>')
@@ -532,7 +578,7 @@ const e=displayCurrency(),t=ROUTES.map(e=>'<button class="navlink'+(state.route=
 }function render(){document.getElementById("root").innerHTML=renderShell(),wireChartInteraction()}function setDeepOn(e,t,a){const r=t.split(".");let n=e
 ;for(let e=0;e<r.length-1;e++)n=n[r[e]];n[r[r.length-1]]=a}function setDeep(e,t){setDeepOn(state.filters,e,t)}function performDelete(e,t){
 "project"===e?Actions.removeProject(t):"inventory"===e?Actions.removeInventory(t):"deal"===e?Actions.removeDeal(t):"sale"===e?Actions.removeSale(t):"repair"===e?Actions.removeRepair(t):"plan"===e?Actions.removePlan(t):"rig"===e&&Actions.removeRig(t),
-"plan"===e?(state.plannerDraft=null,render()):"rig"===e?(state.rigDraft=null,state.rigNotice=null,render()):closeModal()}document.addEventListener("DOMContentLoaded",()=>{render();const e=document.getElementById("root")
+"plan"===e?(state.plannerDraft=null,render()):"rig"===e?(state.rigDraft=null,state.rigNotice=null,render()):closeModal()}document.addEventListener("DOMContentLoaded",()=>{render(),loadHardwareCatalog().then(render);const e=document.getElementById("root")
 ;e.addEventListener("click",e=>{const nr=e.target.closest("[data-new-rig]");if(nr)return state.rigDraft=newRigDraft(null),void render()
 ;const nrv=e.target.closest("[data-new-rig-variant]");if(nrv)return state.rigDraft=newRigDraft(nrv.dataset.newRigVariant),void render()
 ;const orf=e.target.closest("[data-open-rig-family]");if(orf)return state.rigFamilyView=orf.dataset.openRigFamily,state.rigCompareIds=[],state.rigNotice=null,void render()
@@ -577,7 +623,7 @@ label:"Misc cost",category:null,cost:0,currency:state.plannerDraft.currency}),vo
 ;if(e.target.closest("[data-import-cancel]"))return state.importPreview=null,state.importArmed=!1,void render()
 ;e.target.closest("[data-import-confirm]")&&(state.importArmed?applyImport():(state.importArmed=!0,render()))}),e.addEventListener("change",e=>{
 const rsm=e.target.closest("select[data-rig-slot-mode]");if(rsm&&state.rigDraft){const k=rsm.dataset.rigSlotMode,m=rsm.value
-;return state.rigDraft.slots[k]="EMPTY"===m?null:"INVENTORY"===m?{kind:"INVENTORY",inventoryItemId:""}:{kind:"PLANNED",label:"",cost:0,currency:state.rigDraft.currency},void render()}
+;return state.rigDraft.slots[k]="EMPTY"===m?null:"INVENTORY"===m?{kind:"INVENTORY",inventoryItemId:""}:"CATALOG"===m?{kind:"CATALOG",catalogType:k,label:"",cost:0,currency:state.rigDraft.currency}:{kind:"PLANNED",label:"",cost:0,currency:state.rigDraft.currency},void render()}
 const rsi=e.target.closest("select[data-rig-slot-item]");if(rsi&&state.rigDraft)return state.rigDraft.slots[rsi.dataset.rigSlotItem]={kind:"INVENTORY",inventoryItemId:rsi.value},void render()
 ;const rfl=e.target.closest("select[data-rig-field]");if(rfl&&state.rigDraft)return state.rigDraft[rfl.dataset.rigField]=rfl.value,void render()
 ;const rcp=e.target.closest("[data-rig-compare]");if(rcp){const id=rcp.dataset.rigCompare,idx=state.rigCompareIds.indexOf(id)
@@ -590,7 +636,8 @@ e.addEventListener("input",e=>{const t=e.target.closest("input[data-filter]");if
 const rf=e.target.closest("input[data-rig-field], textarea[data-rig-field]");if(rf&&state.rigDraft){let v=rf.value;"number"===rf.type&&(v=""===v?0:parseFloat(v))
 ;state.rigDraft[rf.dataset.rigField]=v,render();const fld=rf.dataset.rigField,ag=document.querySelector('[data-rig-field="'+fld+'"]')
 ;if(ag&&(ag.focus(),ag.setSelectionRange))try{ag.setSelectionRange(String(ag.value).length,String(ag.value).length)}catch(e){}return}
-const rsf=e.target.closest("input[data-rig-slot-field]");if(rsf&&state.rigDraft){const[k,f]=rsf.dataset.rigSlotField.split("."),cur=state.rigDraft.currency
+ const rci=e.target.closest("input[data-rig-catalog-item]");if(rci&&state.rigDraft){const k=rci.dataset.rigCatalogItem,cur=state.rigDraft.currency,slot=state.rigDraft.slots[k]||{kind:"CATALOG",catalogType:k,cost:0,currency:cur};slot.label=rci.value,slot.catalogType=k;const match=catalogFind(k,rci.value);slot.catalogKey=match?catalogKey(k,match):null,state.rigDraft.slots[k]=slot,render();const ag=document.querySelector('[data-rig-catalog-item="'+k+'"]');return void(ag&&(ag.focus(),ag.setSelectionRange(ag.value.length,ag.value.length)))}
+ const rsf=e.target.closest("input[data-rig-slot-field]");if(rsf&&state.rigDraft){const[k,f]=rsf.dataset.rigSlotField.split("."),cur=state.rigDraft.currency
 ;let v=rsf.value;"cost"===f&&(v=""===v?0:parseFloat(v));const slot=state.rigDraft.slots[k]||{kind:"PLANNED",label:"",cost:0,currency:cur}
 ;slot[f]=v,state.rigDraft.slots[k]=slot,render();const ag=document.querySelector('[data-rig-slot-field="'+rsf.dataset.rigSlotField+'"]')
 ;if(ag&&(ag.focus(),ag.setSelectionRange))try{ag.setSelectionRange(String(ag.value).length,String(ag.value).length)}catch(e){}return}

@@ -1,0 +1,2992 @@
+{
+  "methodology": {
+    "cpu": {
+      "gaming_anchor": "Ryzen 7 5800X3D = 100",
+      "workstation_anchor": "Ryzen 9 5950X = 100",
+      "overall_formula": "round(0.65*gaming + 0.35*workstation)"
+    },
+    "gpu": {
+      "raster_anchor": "RTX 5090 = 100",
+      "rt_anchor": "RTX 5090 = 100; 0 = no hardware RT",
+      "overall_formula": "non-RT: raster; RT-capable: round(0.90*raster + 0.10*ray_tracing)"
+    },
+    "purpose": "PN internal relative performance scoring for rig balance, sorting and decision support; not exact benchmark percentages."
+  },
+  "cpus": [
+    {
+      "brand": "AMD",
+      "model": "Ryzen 3 1200",
+      "gaming": 28,
+      "workstation": 15,
+      "overall": 23,
+      "platform": "AM4",
+      "generation": "Ryzen 1000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 3 PRO 1200",
+      "gaming": 28,
+      "workstation": 15,
+      "overall": 23,
+      "platform": "AM4",
+      "generation": "Ryzen 1000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 3 1300X",
+      "gaming": 31,
+      "workstation": 16,
+      "overall": 26,
+      "platform": "AM4",
+      "generation": "Ryzen 1000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 3 PRO 1300",
+      "gaming": 30,
+      "workstation": 16,
+      "overall": 25,
+      "platform": "AM4",
+      "generation": "Ryzen 1000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 1400",
+      "gaming": 30,
+      "workstation": 23,
+      "overall": 28,
+      "platform": "AM4",
+      "generation": "Ryzen 1000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 1500X",
+      "gaming": 33,
+      "workstation": 25,
+      "overall": 30,
+      "platform": "AM4",
+      "generation": "Ryzen 1000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 PRO 1500",
+      "gaming": 32,
+      "workstation": 25,
+      "overall": 30,
+      "platform": "AM4",
+      "generation": "Ryzen 1000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 1600",
+      "gaming": 34,
+      "workstation": 31,
+      "overall": 33,
+      "platform": "AM4",
+      "generation": "Ryzen 1000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 PRO 1600",
+      "gaming": 34,
+      "workstation": 31,
+      "overall": 33,
+      "platform": "AM4",
+      "generation": "Ryzen 1000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 1600X",
+      "gaming": 36,
+      "workstation": 32,
+      "overall": 35,
+      "platform": "AM4",
+      "generation": "Ryzen 1000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 7 1700",
+      "gaming": 36,
+      "workstation": 40,
+      "overall": 37,
+      "platform": "AM4",
+      "generation": "Ryzen 1000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 7 PRO 1700",
+      "gaming": 36,
+      "workstation": 40,
+      "overall": 37,
+      "platform": "AM4",
+      "generation": "Ryzen 1000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 7 1700X",
+      "gaming": 38,
+      "workstation": 41,
+      "overall": 39,
+      "platform": "AM4",
+      "generation": "Ryzen 1000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 7 PRO 1700X",
+      "gaming": 38,
+      "workstation": 41,
+      "overall": 39,
+      "platform": "AM4",
+      "generation": "Ryzen 1000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 7 1800X",
+      "gaming": 40,
+      "workstation": 42,
+      "overall": 41,
+      "platform": "AM4",
+      "generation": "Ryzen 1000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 3 1200 AF",
+      "gaming": 33,
+      "workstation": 18,
+      "overall": 28,
+      "platform": "AM4",
+      "generation": "Ryzen 2000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 1600 AF",
+      "gaming": 42,
+      "workstation": 36,
+      "overall": 40,
+      "platform": "AM4",
+      "generation": "Ryzen 2000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 3 2200G",
+      "gaming": 34,
+      "workstation": 18,
+      "overall": 28,
+      "platform": "AM4",
+      "generation": "Ryzen 2000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 3 2200GE",
+      "gaming": 32,
+      "workstation": 17,
+      "overall": 27,
+      "platform": "AM4",
+      "generation": "Ryzen 2000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 3 PRO 2200G",
+      "gaming": 34,
+      "workstation": 18,
+      "overall": 28,
+      "platform": "AM4",
+      "generation": "Ryzen 2000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 3 PRO 2200GE",
+      "gaming": 32,
+      "workstation": 17,
+      "overall": 27,
+      "platform": "AM4",
+      "generation": "Ryzen 2000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 3 2300X",
+      "gaming": 39,
+      "workstation": 20,
+      "overall": 32,
+      "platform": "AM4",
+      "generation": "Ryzen 2000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 2400G",
+      "gaming": 39,
+      "workstation": 27,
+      "overall": 35,
+      "platform": "AM4",
+      "generation": "Ryzen 2000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 2400GE",
+      "gaming": 37,
+      "workstation": 26,
+      "overall": 33,
+      "platform": "AM4",
+      "generation": "Ryzen 2000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 PRO 2400G",
+      "gaming": 39,
+      "workstation": 27,
+      "overall": 35,
+      "platform": "AM4",
+      "generation": "Ryzen 2000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 PRO 2400GE",
+      "gaming": 37,
+      "workstation": 26,
+      "overall": 33,
+      "platform": "AM4",
+      "generation": "Ryzen 2000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 2500X",
+      "gaming": 43,
+      "workstation": 31,
+      "overall": 39,
+      "platform": "AM4",
+      "generation": "Ryzen 2000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 2600",
+      "gaming": 43,
+      "workstation": 36,
+      "overall": 41,
+      "platform": "AM4",
+      "generation": "Ryzen 2000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 2600E",
+      "gaming": 40,
+      "workstation": 34,
+      "overall": 38,
+      "platform": "AM4",
+      "generation": "Ryzen 2000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 2600X",
+      "gaming": 46,
+      "workstation": 38,
+      "overall": 43,
+      "platform": "AM4",
+      "generation": "Ryzen 2000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 PRO 2600",
+      "gaming": 43,
+      "workstation": 36,
+      "overall": 41,
+      "platform": "AM4",
+      "generation": "Ryzen 2000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 7 2700",
+      "gaming": 46,
+      "workstation": 46,
+      "overall": 46,
+      "platform": "AM4",
+      "generation": "Ryzen 2000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 7 2700E",
+      "gaming": 43,
+      "workstation": 43,
+      "overall": 43,
+      "platform": "AM4",
+      "generation": "Ryzen 2000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 7 2700X",
+      "gaming": 49,
+      "workstation": 49,
+      "overall": 49,
+      "platform": "AM4",
+      "generation": "Ryzen 2000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 7 PRO 2700",
+      "gaming": 46,
+      "workstation": 46,
+      "overall": 46,
+      "platform": "AM4",
+      "generation": "Ryzen 2000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 7 PRO 2700X",
+      "gaming": 49,
+      "workstation": 49,
+      "overall": 49,
+      "platform": "AM4",
+      "generation": "Ryzen 2000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 3 3100",
+      "gaming": 49,
+      "workstation": 29,
+      "overall": 42,
+      "platform": "AM4",
+      "generation": "Ryzen 3000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 3 3200G",
+      "gaming": 38,
+      "workstation": 19,
+      "overall": 31,
+      "platform": "AM4",
+      "generation": "Ryzen 3000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 3 3200GE",
+      "gaming": 36,
+      "workstation": 18,
+      "overall": 30,
+      "platform": "AM4",
+      "generation": "Ryzen 3000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 3 PRO 3200G",
+      "gaming": 38,
+      "workstation": 19,
+      "overall": 31,
+      "platform": "AM4",
+      "generation": "Ryzen 3000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 3 PRO 3200GE",
+      "gaming": 36,
+      "workstation": 18,
+      "overall": 30,
+      "platform": "AM4",
+      "generation": "Ryzen 3000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 3 3300X",
+      "gaming": 56,
+      "workstation": 32,
+      "overall": 48,
+      "platform": "AM4",
+      "generation": "Ryzen 3000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 PRO 3350G",
+      "gaming": 43,
+      "workstation": 28,
+      "overall": 38,
+      "platform": "AM4",
+      "generation": "Ryzen 3000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 PRO 3350GE",
+      "gaming": 41,
+      "workstation": 27,
+      "overall": 36,
+      "platform": "AM4",
+      "generation": "Ryzen 3000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 3400G",
+      "gaming": 43,
+      "workstation": 29,
+      "overall": 38,
+      "platform": "AM4",
+      "generation": "Ryzen 3000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 3400GE",
+      "gaming": 41,
+      "workstation": 28,
+      "overall": 36,
+      "platform": "AM4",
+      "generation": "Ryzen 3000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 PRO 3400G",
+      "gaming": 43,
+      "workstation": 29,
+      "overall": 38,
+      "platform": "AM4",
+      "generation": "Ryzen 3000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 PRO 3400GE",
+      "gaming": 41,
+      "workstation": 28,
+      "overall": 36,
+      "platform": "AM4",
+      "generation": "Ryzen 3000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 3500",
+      "gaming": 53,
+      "workstation": 36,
+      "overall": 47,
+      "platform": "AM4",
+      "generation": "Ryzen 3000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 3500X",
+      "gaming": 55,
+      "workstation": 37,
+      "overall": 49,
+      "platform": "AM4",
+      "generation": "Ryzen 3000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 3600",
+      "gaming": 58,
+      "workstation": 49,
+      "overall": 55,
+      "platform": "AM4",
+      "generation": "Ryzen 3000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 PRO 3600",
+      "gaming": 58,
+      "workstation": 49,
+      "overall": 55,
+      "platform": "AM4",
+      "generation": "Ryzen 3000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 3600X",
+      "gaming": 61,
+      "workstation": 51,
+      "overall": 58,
+      "platform": "AM4",
+      "generation": "Ryzen 3000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 3600XT",
+      "gaming": 63,
+      "workstation": 52,
+      "overall": 59,
+      "platform": "AM4",
+      "generation": "Ryzen 3000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 7 3700X",
+      "gaming": 63,
+      "workstation": 64,
+      "overall": 63,
+      "platform": "AM4",
+      "generation": "Ryzen 3000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 7 PRO 3700",
+      "gaming": 62,
+      "workstation": 63,
+      "overall": 62,
+      "platform": "AM4",
+      "generation": "Ryzen 3000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 7 3800X",
+      "gaming": 65,
+      "workstation": 67,
+      "overall": 66,
+      "platform": "AM4",
+      "generation": "Ryzen 3000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 7 3800XT",
+      "gaming": 67,
+      "workstation": 68,
+      "overall": 67,
+      "platform": "AM4",
+      "generation": "Ryzen 3000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 9 3900",
+      "gaming": 66,
+      "workstation": 81,
+      "overall": 71,
+      "platform": "AM4",
+      "generation": "Ryzen 3000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 9 PRO 3900",
+      "gaming": 66,
+      "workstation": 81,
+      "overall": 71,
+      "platform": "AM4",
+      "generation": "Ryzen 3000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 9 3900X",
+      "gaming": 68,
+      "workstation": 84,
+      "overall": 74,
+      "platform": "AM4",
+      "generation": "Ryzen 3000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 9 3900XT",
+      "gaming": 69,
+      "workstation": 85,
+      "overall": 75,
+      "platform": "AM4",
+      "generation": "Ryzen 3000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 9 3950X",
+      "gaming": 70,
+      "workstation": 94,
+      "overall": 78,
+      "platform": "AM4",
+      "generation": "Ryzen 3000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 3 4100",
+      "gaming": 49,
+      "workstation": 31,
+      "overall": 43,
+      "platform": "AM4",
+      "generation": "Ryzen 4000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 3 4300G",
+      "gaming": 53,
+      "workstation": 32,
+      "overall": 46,
+      "platform": "AM4",
+      "generation": "Ryzen 4000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 3 4300GE",
+      "gaming": 50,
+      "workstation": 30,
+      "overall": 43,
+      "platform": "AM4",
+      "generation": "Ryzen 4000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 3 PRO 4350G",
+      "gaming": 54,
+      "workstation": 33,
+      "overall": 47,
+      "platform": "AM4",
+      "generation": "Ryzen 4000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 3 PRO 4350GE",
+      "gaming": 51,
+      "workstation": 31,
+      "overall": 44,
+      "platform": "AM4",
+      "generation": "Ryzen 4000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 4500",
+      "gaming": 54,
+      "workstation": 43,
+      "overall": 50,
+      "platform": "AM4",
+      "generation": "Ryzen 4000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 4600G",
+      "gaming": 59,
+      "workstation": 48,
+      "overall": 55,
+      "platform": "AM4",
+      "generation": "Ryzen 4000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 4600GE",
+      "gaming": 56,
+      "workstation": 45,
+      "overall": 52,
+      "platform": "AM4",
+      "generation": "Ryzen 4000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 PRO 4650G",
+      "gaming": 60,
+      "workstation": 49,
+      "overall": 56,
+      "platform": "AM4",
+      "generation": "Ryzen 4000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 PRO 4650GE",
+      "gaming": 57,
+      "workstation": 46,
+      "overall": 53,
+      "platform": "AM4",
+      "generation": "Ryzen 4000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 7 4700G",
+      "gaming": 64,
+      "workstation": 61,
+      "overall": 63,
+      "platform": "AM4",
+      "generation": "Ryzen 4000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 7 4700GE",
+      "gaming": 61,
+      "workstation": 58,
+      "overall": 60,
+      "platform": "AM4",
+      "generation": "Ryzen 4000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 7 PRO 4750G",
+      "gaming": 65,
+      "workstation": 62,
+      "overall": 64,
+      "platform": "AM4",
+      "generation": "Ryzen 4000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 7 PRO 4750GE",
+      "gaming": 62,
+      "workstation": 59,
+      "overall": 61,
+      "platform": "AM4",
+      "generation": "Ryzen 4000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 3 5100",
+      "gaming": 57,
+      "workstation": 34,
+      "overall": 49,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 3 5300G",
+      "gaming": 61,
+      "workstation": 35,
+      "overall": 52,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 3 5300GE",
+      "gaming": 58,
+      "workstation": 33,
+      "overall": 49,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 3 PRO 5350G",
+      "gaming": 62,
+      "workstation": 36,
+      "overall": 53,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 3 PRO 5350GE",
+      "gaming": 59,
+      "workstation": 34,
+      "overall": 50,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 5500",
+      "gaming": 66,
+      "workstation": 50,
+      "overall": 60,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 5500GT",
+      "gaming": 68,
+      "workstation": 51,
+      "overall": 62,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 5500X3D",
+      "gaming": 84,
+      "workstation": 53,
+      "overall": 73,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 5600",
+      "gaming": 75,
+      "workstation": 57,
+      "overall": 69,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 5600F",
+      "gaming": 74,
+      "workstation": 56,
+      "overall": 68,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 5600G",
+      "gaming": 70,
+      "workstation": 53,
+      "overall": 64,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 5600GE",
+      "gaming": 67,
+      "workstation": 50,
+      "overall": 61,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 5600GT",
+      "gaming": 71,
+      "workstation": 54,
+      "overall": 65,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 5600T",
+      "gaming": 77,
+      "workstation": 58,
+      "overall": 70,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 5600X",
+      "gaming": 78,
+      "workstation": 59,
+      "overall": 71,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 5600X3D",
+      "gaming": 91,
+      "workstation": 58,
+      "overall": 79,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 5600XT",
+      "gaming": 80,
+      "workstation": 60,
+      "overall": 73,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 PRO 5650G",
+      "gaming": 70,
+      "workstation": 54,
+      "overall": 64,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 5 PRO 5650GE",
+      "gaming": 67,
+      "workstation": 51,
+      "overall": 61,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 7 5700",
+      "gaming": 69,
+      "workstation": 61,
+      "overall": 66,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 7 5700G",
+      "gaming": 73,
+      "workstation": 64,
+      "overall": 70,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 7 5700GE",
+      "gaming": 70,
+      "workstation": 61,
+      "overall": 67,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 7 5700X",
+      "gaming": 79,
+      "workstation": 72,
+      "overall": 77,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 7 5700X3D",
+      "gaming": 97,
+      "workstation": 69,
+      "overall": 87,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 7 5800",
+      "gaming": 81,
+      "workstation": 74,
+      "overall": 79,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 7 5800X",
+      "gaming": 83,
+      "workstation": 76,
+      "overall": 81,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 7 5800X3D",
+      "gaming": 100,
+      "workstation": 72,
+      "overall": 90,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 7 5800XT",
+      "gaming": 85,
+      "workstation": 78,
+      "overall": 83,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 7 PRO 5750G",
+      "gaming": 74,
+      "workstation": 65,
+      "overall": 71,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 7 PRO 5750GE",
+      "gaming": 71,
+      "workstation": 62,
+      "overall": 68,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 9 5900",
+      "gaming": 83,
+      "workstation": 85,
+      "overall": 84,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 9 5900X",
+      "gaming": 86,
+      "workstation": 88,
+      "overall": 87,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 9 5900XT",
+      "gaming": 87,
+      "workstation": 96,
+      "overall": 90,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Ryzen 9 5950X",
+      "gaming": 88,
+      "workstation": 100,
+      "overall": 92,
+      "platform": "AM4",
+      "generation": "Ryzen 5000"
+    },
+    {
+      "brand": "Intel",
+      "model": "Celeron G3900",
+      "gaming": 15,
+      "workstation": 7,
+      "overall": 12,
+      "platform": "LGA1151-v1",
+      "generation": "6th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Celeron G3900T",
+      "gaming": 13,
+      "workstation": 6,
+      "overall": 11,
+      "platform": "LGA1151-v1",
+      "generation": "6th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Celeron G3920",
+      "gaming": 17,
+      "workstation": 8,
+      "overall": 14,
+      "platform": "LGA1151-v1",
+      "generation": "6th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Pentium G4400",
+      "gaming": 19,
+      "workstation": 9,
+      "overall": 16,
+      "platform": "LGA1151-v1",
+      "generation": "6th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Pentium G4400T",
+      "gaming": 17,
+      "workstation": 8,
+      "overall": 14,
+      "platform": "LGA1151-v1",
+      "generation": "6th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Pentium G4500",
+      "gaming": 21,
+      "workstation": 10,
+      "overall": 17,
+      "platform": "LGA1151-v1",
+      "generation": "6th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Pentium G4500T",
+      "gaming": 19,
+      "workstation": 9,
+      "overall": 16,
+      "platform": "LGA1151-v1",
+      "generation": "6th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Pentium G4520",
+      "gaming": 22,
+      "workstation": 10,
+      "overall": 18,
+      "platform": "LGA1151-v1",
+      "generation": "6th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i3-6098P",
+      "gaming": 25,
+      "workstation": 13,
+      "overall": 21,
+      "platform": "LGA1151-v1",
+      "generation": "6th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i3-6100",
+      "gaming": 27,
+      "workstation": 14,
+      "overall": 22,
+      "platform": "LGA1151-v1",
+      "generation": "6th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i3-6100T",
+      "gaming": 23,
+      "workstation": 12,
+      "overall": 19,
+      "platform": "LGA1151-v1",
+      "generation": "6th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i3-6300",
+      "gaming": 29,
+      "workstation": 15,
+      "overall": 24,
+      "platform": "LGA1151-v1",
+      "generation": "6th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i3-6300T",
+      "gaming": 25,
+      "workstation": 13,
+      "overall": 21,
+      "platform": "LGA1151-v1",
+      "generation": "6th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i3-6320",
+      "gaming": 30,
+      "workstation": 16,
+      "overall": 25,
+      "platform": "LGA1151-v1",
+      "generation": "6th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-6400",
+      "gaming": 31,
+      "workstation": 18,
+      "overall": 26,
+      "platform": "LGA1151-v1",
+      "generation": "6th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-6400T",
+      "gaming": 27,
+      "workstation": 16,
+      "overall": 23,
+      "platform": "LGA1151-v1",
+      "generation": "6th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-6402P",
+      "gaming": 32,
+      "workstation": 19,
+      "overall": 27,
+      "platform": "LGA1151-v1",
+      "generation": "6th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-6500",
+      "gaming": 34,
+      "workstation": 20,
+      "overall": 29,
+      "platform": "LGA1151-v1",
+      "generation": "6th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-6500T",
+      "gaming": 29,
+      "workstation": 17,
+      "overall": 25,
+      "platform": "LGA1151-v1",
+      "generation": "6th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-6600",
+      "gaming": 36,
+      "workstation": 21,
+      "overall": 31,
+      "platform": "LGA1151-v1",
+      "generation": "6th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-6600T",
+      "gaming": 31,
+      "workstation": 18,
+      "overall": 26,
+      "platform": "LGA1151-v1",
+      "generation": "6th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-6600K",
+      "gaming": 40,
+      "workstation": 23,
+      "overall": 34,
+      "platform": "LGA1151-v1",
+      "generation": "6th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i7-6700",
+      "gaming": 43,
+      "workstation": 28,
+      "overall": 38,
+      "platform": "LGA1151-v1",
+      "generation": "6th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i7-6700T",
+      "gaming": 38,
+      "workstation": 25,
+      "overall": 33,
+      "platform": "LGA1151-v1",
+      "generation": "6th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i7-6700K",
+      "gaming": 47,
+      "workstation": 30,
+      "overall": 41,
+      "platform": "LGA1151-v1",
+      "generation": "6th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Celeron G3930",
+      "gaming": 17,
+      "workstation": 8,
+      "overall": 14,
+      "platform": "LGA1151-v1",
+      "generation": "7th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Celeron G3930T",
+      "gaming": 15,
+      "workstation": 7,
+      "overall": 12,
+      "platform": "LGA1151-v1",
+      "generation": "7th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Celeron G3950",
+      "gaming": 18,
+      "workstation": 9,
+      "overall": 15,
+      "platform": "LGA1151-v1",
+      "generation": "7th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Pentium G4560",
+      "gaming": 29,
+      "workstation": 15,
+      "overall": 24,
+      "platform": "LGA1151-v1",
+      "generation": "7th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Pentium G4560T",
+      "gaming": 25,
+      "workstation": 13,
+      "overall": 21,
+      "platform": "LGA1151-v1",
+      "generation": "7th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Pentium G4600",
+      "gaming": 31,
+      "workstation": 16,
+      "overall": 26,
+      "platform": "LGA1151-v1",
+      "generation": "7th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Pentium G4600T",
+      "gaming": 27,
+      "workstation": 14,
+      "overall": 22,
+      "platform": "LGA1151-v1",
+      "generation": "7th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Pentium G4620",
+      "gaming": 32,
+      "workstation": 17,
+      "overall": 27,
+      "platform": "LGA1151-v1",
+      "generation": "7th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i3-7100",
+      "gaming": 31,
+      "workstation": 16,
+      "overall": 26,
+      "platform": "LGA1151-v1",
+      "generation": "7th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i3-7100T",
+      "gaming": 27,
+      "workstation": 14,
+      "overall": 22,
+      "platform": "LGA1151-v1",
+      "generation": "7th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i3-7300",
+      "gaming": 33,
+      "workstation": 17,
+      "overall": 27,
+      "platform": "LGA1151-v1",
+      "generation": "7th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i3-7300T",
+      "gaming": 29,
+      "workstation": 15,
+      "overall": 24,
+      "platform": "LGA1151-v1",
+      "generation": "7th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i3-7320",
+      "gaming": 34,
+      "workstation": 18,
+      "overall": 28,
+      "platform": "LGA1151-v1",
+      "generation": "7th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i3-7350K",
+      "gaming": 38,
+      "workstation": 20,
+      "overall": 32,
+      "platform": "LGA1151-v1",
+      "generation": "7th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-7400",
+      "gaming": 34,
+      "workstation": 20,
+      "overall": 29,
+      "platform": "LGA1151-v1",
+      "generation": "7th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-7400T",
+      "gaming": 29,
+      "workstation": 17,
+      "overall": 25,
+      "platform": "LGA1151-v1",
+      "generation": "7th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-7500",
+      "gaming": 36,
+      "workstation": 21,
+      "overall": 31,
+      "platform": "LGA1151-v1",
+      "generation": "7th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-7500T",
+      "gaming": 31,
+      "workstation": 18,
+      "overall": 26,
+      "platform": "LGA1151-v1",
+      "generation": "7th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-7600",
+      "gaming": 39,
+      "workstation": 23,
+      "overall": 33,
+      "platform": "LGA1151-v1",
+      "generation": "7th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-7600T",
+      "gaming": 33,
+      "workstation": 19,
+      "overall": 28,
+      "platform": "LGA1151-v1",
+      "generation": "7th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-7600K",
+      "gaming": 43,
+      "workstation": 25,
+      "overall": 37,
+      "platform": "LGA1151-v1",
+      "generation": "7th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i7-7700",
+      "gaming": 48,
+      "workstation": 31,
+      "overall": 42,
+      "platform": "LGA1151-v1",
+      "generation": "7th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i7-7700T",
+      "gaming": 42,
+      "workstation": 27,
+      "overall": 37,
+      "platform": "LGA1151-v1",
+      "generation": "7th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i7-7700K",
+      "gaming": 53,
+      "workstation": 34,
+      "overall": 46,
+      "platform": "LGA1151-v1",
+      "generation": "7th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Celeron G4900",
+      "gaming": 19,
+      "workstation": 9,
+      "overall": 16,
+      "platform": "LGA1151-v2",
+      "generation": "8th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Celeron G4900T",
+      "gaming": 17,
+      "workstation": 8,
+      "overall": 14,
+      "platform": "LGA1151-v2",
+      "generation": "8th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Celeron G4920",
+      "gaming": 20,
+      "workstation": 10,
+      "overall": 16,
+      "platform": "LGA1151-v2",
+      "generation": "8th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Pentium Gold G5400",
+      "gaming": 31,
+      "workstation": 16,
+      "overall": 26,
+      "platform": "LGA1151-v2",
+      "generation": "8th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Pentium Gold G5400T",
+      "gaming": 27,
+      "workstation": 14,
+      "overall": 22,
+      "platform": "LGA1151-v2",
+      "generation": "8th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Pentium Gold G5500",
+      "gaming": 33,
+      "workstation": 17,
+      "overall": 27,
+      "platform": "LGA1151-v2",
+      "generation": "8th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Pentium Gold G5500T",
+      "gaming": 29,
+      "workstation": 15,
+      "overall": 24,
+      "platform": "LGA1151-v2",
+      "generation": "8th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Pentium Gold G5600",
+      "gaming": 35,
+      "workstation": 18,
+      "overall": 29,
+      "platform": "LGA1151-v2",
+      "generation": "8th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i3-8100",
+      "gaming": 42,
+      "workstation": 24,
+      "overall": 36,
+      "platform": "LGA1151-v2",
+      "generation": "8th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i3-8100F",
+      "gaming": 42,
+      "workstation": 24,
+      "overall": 36,
+      "platform": "LGA1151-v2",
+      "generation": "8th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i3-8100T",
+      "gaming": 36,
+      "workstation": 21,
+      "overall": 31,
+      "platform": "LGA1151-v2",
+      "generation": "8th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i3-8300",
+      "gaming": 44,
+      "workstation": 25,
+      "overall": 37,
+      "platform": "LGA1151-v2",
+      "generation": "8th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i3-8300T",
+      "gaming": 38,
+      "workstation": 22,
+      "overall": 32,
+      "platform": "LGA1151-v2",
+      "generation": "8th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i3-8350K",
+      "gaming": 49,
+      "workstation": 28,
+      "overall": 42,
+      "platform": "LGA1151-v2",
+      "generation": "8th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-8400",
+      "gaming": 50,
+      "workstation": 36,
+      "overall": 45,
+      "platform": "LGA1151-v2",
+      "generation": "8th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-8400T",
+      "gaming": 43,
+      "workstation": 31,
+      "overall": 39,
+      "platform": "LGA1151-v2",
+      "generation": "8th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-8500",
+      "gaming": 52,
+      "workstation": 37,
+      "overall": 47,
+      "platform": "LGA1151-v2",
+      "generation": "8th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-8500T",
+      "gaming": 45,
+      "workstation": 32,
+      "overall": 40,
+      "platform": "LGA1151-v2",
+      "generation": "8th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-8600",
+      "gaming": 54,
+      "workstation": 39,
+      "overall": 49,
+      "platform": "LGA1151-v2",
+      "generation": "8th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-8600T",
+      "gaming": 47,
+      "workstation": 34,
+      "overall": 42,
+      "platform": "LGA1151-v2",
+      "generation": "8th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-8600K",
+      "gaming": 59,
+      "workstation": 42,
+      "overall": 53,
+      "platform": "LGA1151-v2",
+      "generation": "8th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i7-8086K",
+      "gaming": 66,
+      "workstation": 51,
+      "overall": 61,
+      "platform": "LGA1151-v2",
+      "generation": "8th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i7-8700",
+      "gaming": 61,
+      "workstation": 48,
+      "overall": 56,
+      "platform": "LGA1151-v2",
+      "generation": "8th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i7-8700T",
+      "gaming": 53,
+      "workstation": 42,
+      "overall": 49,
+      "platform": "LGA1151-v2",
+      "generation": "8th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i7-8700K",
+      "gaming": 65,
+      "workstation": 51,
+      "overall": 60,
+      "platform": "LGA1151-v2",
+      "generation": "8th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Celeron G4930",
+      "gaming": 20,
+      "workstation": 10,
+      "overall": 16,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Celeron G4930T",
+      "gaming": 18,
+      "workstation": 9,
+      "overall": 15,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Celeron G4950",
+      "gaming": 21,
+      "workstation": 10,
+      "overall": 17,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Pentium Gold G5420",
+      "gaming": 33,
+      "workstation": 17,
+      "overall": 27,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Pentium Gold G5420T",
+      "gaming": 29,
+      "workstation": 15,
+      "overall": 24,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Pentium Gold G5600F",
+      "gaming": 35,
+      "workstation": 18,
+      "overall": 29,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Pentium Gold G5600T",
+      "gaming": 31,
+      "workstation": 16,
+      "overall": 26,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Pentium Gold G5620",
+      "gaming": 36,
+      "workstation": 19,
+      "overall": 30,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i3-9100",
+      "gaming": 45,
+      "workstation": 25,
+      "overall": 38,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i3-9100F",
+      "gaming": 45,
+      "workstation": 25,
+      "overall": 38,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i3-9100T",
+      "gaming": 39,
+      "workstation": 22,
+      "overall": 33,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i3-9300",
+      "gaming": 47,
+      "workstation": 27,
+      "overall": 40,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i3-9300T",
+      "gaming": 41,
+      "workstation": 23,
+      "overall": 35,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i3-9320",
+      "gaming": 49,
+      "workstation": 28,
+      "overall": 42,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i3-9350K",
+      "gaming": 53,
+      "workstation": 30,
+      "overall": 45,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i3-9350KF",
+      "gaming": 53,
+      "workstation": 30,
+      "overall": 45,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-9400",
+      "gaming": 54,
+      "workstation": 38,
+      "overall": 48,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-9400F",
+      "gaming": 54,
+      "workstation": 38,
+      "overall": 48,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-9400T",
+      "gaming": 46,
+      "workstation": 33,
+      "overall": 41,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-9500",
+      "gaming": 56,
+      "workstation": 40,
+      "overall": 50,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-9500F",
+      "gaming": 56,
+      "workstation": 40,
+      "overall": 50,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-9500T",
+      "gaming": 48,
+      "workstation": 34,
+      "overall": 43,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-9600",
+      "gaming": 58,
+      "workstation": 42,
+      "overall": 52,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-9600T",
+      "gaming": 50,
+      "workstation": 36,
+      "overall": 45,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-9600K",
+      "gaming": 63,
+      "workstation": 45,
+      "overall": 57,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i5-9600KF",
+      "gaming": 63,
+      "workstation": 45,
+      "overall": 57,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i7-9700",
+      "gaming": 68,
+      "workstation": 56,
+      "overall": 64,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i7-9700F",
+      "gaming": 68,
+      "workstation": 56,
+      "overall": 64,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i7-9700T",
+      "gaming": 59,
+      "workstation": 48,
+      "overall": 55,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i7-9700K",
+      "gaming": 72,
+      "workstation": 59,
+      "overall": 67,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i7-9700KF",
+      "gaming": 72,
+      "workstation": 59,
+      "overall": 67,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i9-9900",
+      "gaming": 73,
+      "workstation": 67,
+      "overall": 71,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i9-9900T",
+      "gaming": 63,
+      "workstation": 58,
+      "overall": 61,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i9-9900K",
+      "gaming": 77,
+      "workstation": 70,
+      "overall": 75,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i9-9900KF",
+      "gaming": 77,
+      "workstation": 70,
+      "overall": 75,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    },
+    {
+      "brand": "Intel",
+      "model": "Core i9-9900KS",
+      "gaming": 79,
+      "workstation": 72,
+      "overall": 77,
+      "platform": "LGA1151-v2",
+      "generation": "9th Gen"
+    }
+  ],
+  "gpus": [
+    {
+      "brand": "NVIDIA",
+      "model": "GTX 1050 2GB",
+      "raster": 6,
+      "ray_tracing": 0,
+      "overall": 6,
+      "family": "NVIDIA Pascal"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "GTX 1050 3GB",
+      "raster": 7,
+      "ray_tracing": 0,
+      "overall": 7,
+      "family": "NVIDIA Pascal"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "GTX 1050 Ti 4GB",
+      "raster": 8,
+      "ray_tracing": 0,
+      "overall": 8,
+      "family": "NVIDIA Pascal"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "GTX 1060 3GB",
+      "raster": 11,
+      "ray_tracing": 0,
+      "overall": 11,
+      "family": "NVIDIA Pascal"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "GTX 1060 5GB",
+      "raster": 12,
+      "ray_tracing": 0,
+      "overall": 12,
+      "family": "NVIDIA Pascal"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "GTX 1060 6GB",
+      "raster": 13,
+      "ray_tracing": 0,
+      "overall": 13,
+      "family": "NVIDIA Pascal"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "GTX 1070 8GB",
+      "raster": 18,
+      "ray_tracing": 0,
+      "overall": 18,
+      "family": "NVIDIA Pascal"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "GTX 1070 Ti 8GB",
+      "raster": 20,
+      "ray_tracing": 0,
+      "overall": 20,
+      "family": "NVIDIA Pascal"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "GTX 1080 8GB",
+      "raster": 22,
+      "ray_tracing": 0,
+      "overall": 22,
+      "family": "NVIDIA Pascal"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "GTX 1080 Ti 11GB",
+      "raster": 28,
+      "ray_tracing": 0,
+      "overall": 28,
+      "family": "NVIDIA Pascal"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "TITAN X Pascal 12GB",
+      "raster": 27,
+      "ray_tracing": 0,
+      "overall": 27,
+      "family": "NVIDIA Pascal"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "TITAN Xp 12GB",
+      "raster": 30,
+      "ray_tracing": 0,
+      "overall": 30,
+      "family": "NVIDIA Pascal"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "GTX 1630 4GB",
+      "raster": 7,
+      "ray_tracing": 0,
+      "overall": 7,
+      "family": "NVIDIA Turing GTX"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "GTX 1650 4GB GDDR5",
+      "raster": 10,
+      "ray_tracing": 0,
+      "overall": 10,
+      "family": "NVIDIA Turing GTX"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "GTX 1650 4GB GDDR6",
+      "raster": 11,
+      "ray_tracing": 0,
+      "overall": 11,
+      "family": "NVIDIA Turing GTX"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "GTX 1650 SUPER 4GB",
+      "raster": 14,
+      "ray_tracing": 0,
+      "overall": 14,
+      "family": "NVIDIA Turing GTX"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "GTX 1660 6GB",
+      "raster": 16,
+      "ray_tracing": 0,
+      "overall": 16,
+      "family": "NVIDIA Turing GTX"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "GTX 1660 SUPER 6GB",
+      "raster": 19,
+      "ray_tracing": 0,
+      "overall": 19,
+      "family": "NVIDIA Turing GTX"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "GTX 1660 Ti 6GB",
+      "raster": 19,
+      "ray_tracing": 0,
+      "overall": 19,
+      "family": "NVIDIA Turing GTX"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 2060 6GB",
+      "raster": 22,
+      "ray_tracing": 18,
+      "overall": 22,
+      "family": "NVIDIA RTX 20"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 2060 12GB",
+      "raster": 23,
+      "ray_tracing": 19,
+      "overall": 23,
+      "family": "NVIDIA RTX 20"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 2060 SUPER 8GB",
+      "raster": 25,
+      "ray_tracing": 21,
+      "overall": 25,
+      "family": "NVIDIA RTX 20"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 2070 8GB",
+      "raster": 26,
+      "ray_tracing": 23,
+      "overall": 26,
+      "family": "NVIDIA RTX 20"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 2070 SUPER 8GB",
+      "raster": 29,
+      "ray_tracing": 26,
+      "overall": 29,
+      "family": "NVIDIA RTX 20"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 2080 8GB",
+      "raster": 31,
+      "ray_tracing": 28,
+      "overall": 31,
+      "family": "NVIDIA RTX 20"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 2080 SUPER 8GB",
+      "raster": 33,
+      "ray_tracing": 30,
+      "overall": 33,
+      "family": "NVIDIA RTX 20"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 2080 Ti 11GB",
+      "raster": 38,
+      "ray_tracing": 36,
+      "overall": 38,
+      "family": "NVIDIA RTX 20"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "TITAN RTX 24GB",
+      "raster": 39,
+      "ray_tracing": 37,
+      "overall": 39,
+      "family": "NVIDIA RTX 20"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 3050 6GB",
+      "raster": 13,
+      "ray_tracing": 10,
+      "overall": 13,
+      "family": "NVIDIA RTX 30"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 3050 8GB",
+      "raster": 20,
+      "ray_tracing": 15,
+      "overall": 20,
+      "family": "NVIDIA RTX 30"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 3050 8GB OEM",
+      "raster": 19,
+      "ray_tracing": 14,
+      "overall": 18,
+      "family": "NVIDIA RTX 30"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 3060 8GB",
+      "raster": 24,
+      "ray_tracing": 20,
+      "overall": 24,
+      "family": "NVIDIA RTX 30"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 3060 12GB",
+      "raster": 27,
+      "ray_tracing": 23,
+      "overall": 27,
+      "family": "NVIDIA RTX 30"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 3060 Ti 8GB GDDR6",
+      "raster": 34,
+      "ray_tracing": 31,
+      "overall": 34,
+      "family": "NVIDIA RTX 30"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 3060 Ti 8GB GDDR6X",
+      "raster": 35,
+      "ray_tracing": 32,
+      "overall": 35,
+      "family": "NVIDIA RTX 30"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 3070 8GB",
+      "raster": 37,
+      "ray_tracing": 34,
+      "overall": 37,
+      "family": "NVIDIA RTX 30"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 3070 Ti 8GB",
+      "raster": 40,
+      "ray_tracing": 37,
+      "overall": 40,
+      "family": "NVIDIA RTX 30"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 3080 10GB",
+      "raster": 46,
+      "ray_tracing": 45,
+      "overall": 46,
+      "family": "NVIDIA RTX 30"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 3080 12GB",
+      "raster": 49,
+      "ray_tracing": 47,
+      "overall": 49,
+      "family": "NVIDIA RTX 30"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 3080 Ti 12GB",
+      "raster": 52,
+      "ray_tracing": 49,
+      "overall": 52,
+      "family": "NVIDIA RTX 30"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 3090 24GB",
+      "raster": 54,
+      "ray_tracing": 50,
+      "overall": 54,
+      "family": "NVIDIA RTX 30"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 3090 Ti 24GB",
+      "raster": 58,
+      "ray_tracing": 55,
+      "overall": 58,
+      "family": "NVIDIA RTX 30"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 4060 8GB",
+      "raster": 32,
+      "ray_tracing": 31,
+      "overall": 32,
+      "family": "NVIDIA RTX 40"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 4060 Ti 8GB",
+      "raster": 40,
+      "ray_tracing": 40,
+      "overall": 40,
+      "family": "NVIDIA RTX 40"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 4060 Ti 16GB",
+      "raster": 41,
+      "ray_tracing": 41,
+      "overall": 41,
+      "family": "NVIDIA RTX 40"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 4070 12GB",
+      "raster": 50,
+      "ray_tracing": 50,
+      "overall": 50,
+      "family": "NVIDIA RTX 40"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 4070 SUPER 12GB",
+      "raster": 62,
+      "ray_tracing": 58,
+      "overall": 62,
+      "family": "NVIDIA RTX 40"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 4070 Ti 12GB",
+      "raster": 66,
+      "ray_tracing": 62,
+      "overall": 66,
+      "family": "NVIDIA RTX 40"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 4070 Ti SUPER 16GB",
+      "raster": 69,
+      "ray_tracing": 70,
+      "overall": 69,
+      "family": "NVIDIA RTX 40"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 4080 16GB",
+      "raster": 77,
+      "ray_tracing": 74,
+      "overall": 77,
+      "family": "NVIDIA RTX 40"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 4080 SUPER 16GB",
+      "raster": 78,
+      "ray_tracing": 75,
+      "overall": 78,
+      "family": "NVIDIA RTX 40"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 4090 24GB",
+      "raster": 90,
+      "ray_tracing": 89,
+      "overall": 90,
+      "family": "NVIDIA RTX 40"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 4090 D 24GB",
+      "raster": 84,
+      "ray_tracing": 82,
+      "overall": 84,
+      "family": "NVIDIA RTX 40"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 5050 8GB",
+      "raster": 31,
+      "ray_tracing": 31,
+      "overall": 31,
+      "family": "NVIDIA RTX 50"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 5060 8GB",
+      "raster": 45,
+      "ray_tracing": 42,
+      "overall": 45,
+      "family": "NVIDIA RTX 50"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 5060 Ti 8GB",
+      "raster": 53,
+      "ray_tracing": 49,
+      "overall": 53,
+      "family": "NVIDIA RTX 50"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 5060 Ti 16GB",
+      "raster": 54,
+      "ray_tracing": 50,
+      "overall": 54,
+      "family": "NVIDIA RTX 50"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 5070 12GB",
+      "raster": 65,
+      "ray_tracing": 59,
+      "overall": 64,
+      "family": "NVIDIA RTX 50"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 5070 Ti 16GB",
+      "raster": 76,
+      "ray_tracing": 72,
+      "overall": 76,
+      "family": "NVIDIA RTX 50"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 5080 16GB",
+      "raster": 82,
+      "ray_tracing": 78,
+      "overall": 82,
+      "family": "NVIDIA RTX 50"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 5090 32GB",
+      "raster": 100,
+      "ray_tracing": 100,
+      "overall": 100,
+      "family": "NVIDIA RTX 50"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 5090 D",
+      "raster": 91,
+      "ray_tracing": 88,
+      "overall": 91,
+      "family": "NVIDIA RTX 50"
+    },
+    {
+      "brand": "NVIDIA",
+      "model": "RTX 5090 D v2",
+      "raster": 88,
+      "ray_tracing": 85,
+      "overall": 88,
+      "family": "NVIDIA RTX 50"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 470 4GB",
+      "raster": 11,
+      "ray_tracing": 0,
+      "overall": 11,
+      "family": "AMD RX 400"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 470 8GB",
+      "raster": 12,
+      "ray_tracing": 0,
+      "overall": 12,
+      "family": "AMD RX 400"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 470D 4GB",
+      "raster": 10,
+      "ray_tracing": 0,
+      "overall": 10,
+      "family": "AMD RX 400"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 480 4GB",
+      "raster": 13,
+      "ray_tracing": 0,
+      "overall": 13,
+      "family": "AMD RX 400"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 480 8GB",
+      "raster": 14,
+      "ray_tracing": 0,
+      "overall": 14,
+      "family": "AMD RX 400"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 570 4GB",
+      "raster": 12,
+      "ray_tracing": 0,
+      "overall": 12,
+      "family": "AMD RX 500"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 570 8GB",
+      "raster": 13,
+      "ray_tracing": 0,
+      "overall": 13,
+      "family": "AMD RX 500"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 570X OEM",
+      "raster": 12,
+      "ray_tracing": 0,
+      "overall": 12,
+      "family": "AMD RX 500"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 580 4GB",
+      "raster": 14,
+      "ray_tracing": 0,
+      "overall": 14,
+      "family": "AMD RX 500"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 580 8GB",
+      "raster": 15,
+      "ray_tracing": 0,
+      "overall": 15,
+      "family": "AMD RX 500"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 580 2048SP 4GB",
+      "raster": 12,
+      "ray_tracing": 0,
+      "overall": 12,
+      "family": "AMD RX 500"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 580 2048SP 8GB",
+      "raster": 13,
+      "ray_tracing": 0,
+      "overall": 13,
+      "family": "AMD RX 500"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 580X OEM",
+      "raster": 15,
+      "ray_tracing": 0,
+      "overall": 15,
+      "family": "AMD RX 500"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 590 8GB",
+      "raster": 16,
+      "ray_tracing": 0,
+      "overall": 16,
+      "family": "AMD RX 500"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 590 GME 8GB",
+      "raster": 15,
+      "ray_tracing": 0,
+      "overall": 15,
+      "family": "AMD RX 500"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX Vega 56 8GB",
+      "raster": 21,
+      "ray_tracing": 0,
+      "overall": 21,
+      "family": "AMD Vega"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX Vega 64 8GB",
+      "raster": 24,
+      "ray_tracing": 0,
+      "overall": 24,
+      "family": "AMD Vega"
+    },
+    {
+      "brand": "AMD",
+      "model": "Radeon VII 16GB",
+      "raster": 29,
+      "ray_tracing": 0,
+      "overall": 29,
+      "family": "AMD Vega"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 5300 3GB",
+      "raster": 11,
+      "ray_tracing": 0,
+      "overall": 11,
+      "family": "AMD RX 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 5300 XT OEM 4GB",
+      "raster": 13,
+      "ray_tracing": 0,
+      "overall": 13,
+      "family": "AMD RX 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 5500 OEM 4GB",
+      "raster": 14,
+      "ray_tracing": 0,
+      "overall": 14,
+      "family": "AMD RX 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 5600 OEM 6GB",
+      "raster": 21,
+      "ray_tracing": 0,
+      "overall": 21,
+      "family": "AMD RX 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 5500 XT 4GB",
+      "raster": 14,
+      "ray_tracing": 0,
+      "overall": 14,
+      "family": "AMD RX 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 5500 XT 8GB",
+      "raster": 16,
+      "ray_tracing": 0,
+      "overall": 16,
+      "family": "AMD RX 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 5600 XT 6GB",
+      "raster": 23,
+      "ray_tracing": 0,
+      "overall": 23,
+      "family": "AMD RX 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 5700 8GB",
+      "raster": 25,
+      "ray_tracing": 0,
+      "overall": 25,
+      "family": "AMD RX 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 5700 XT 8GB",
+      "raster": 28,
+      "ray_tracing": 0,
+      "overall": 28,
+      "family": "AMD RX 5000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 6400 4GB",
+      "raster": 9,
+      "ray_tracing": 6,
+      "overall": 9,
+      "family": "AMD RX 6000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 6500 XT 4GB",
+      "raster": 13,
+      "ray_tracing": 8,
+      "overall": 13,
+      "family": "AMD RX 6000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 6500 XT 8GB",
+      "raster": 14,
+      "ray_tracing": 9,
+      "overall": 14,
+      "family": "AMD RX 6000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 6600 8GB",
+      "raster": 25,
+      "ray_tracing": 16,
+      "overall": 24,
+      "family": "AMD RX 6000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 6600 XT 8GB",
+      "raster": 29,
+      "ray_tracing": 19,
+      "overall": 28,
+      "family": "AMD RX 6000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 6650 XT 8GB",
+      "raster": 31,
+      "ray_tracing": 20,
+      "overall": 30,
+      "family": "AMD RX 6000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 6700 10GB",
+      "raster": 34,
+      "ray_tracing": 23,
+      "overall": 33,
+      "family": "AMD RX 6000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 6700 XT 12GB",
+      "raster": 38,
+      "ray_tracing": 25,
+      "overall": 37,
+      "family": "AMD RX 6000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 6750 GRE 10GB",
+      "raster": 37,
+      "ray_tracing": 24,
+      "overall": 36,
+      "family": "AMD RX 6000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 6750 GRE 12GB",
+      "raster": 40,
+      "ray_tracing": 26,
+      "overall": 39,
+      "family": "AMD RX 6000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 6750 XT 12GB",
+      "raster": 41,
+      "ray_tracing": 27,
+      "overall": 40,
+      "family": "AMD RX 6000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 6800 16GB",
+      "raster": 48,
+      "ray_tracing": 31,
+      "overall": 46,
+      "family": "AMD RX 6000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 6800 XT 16GB",
+      "raster": 55,
+      "ray_tracing": 35,
+      "overall": 53,
+      "family": "AMD RX 6000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 6900 XT 16GB",
+      "raster": 59,
+      "ray_tracing": 37,
+      "overall": 57,
+      "family": "AMD RX 6000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 6950 XT 16GB",
+      "raster": 62,
+      "ray_tracing": 39,
+      "overall": 60,
+      "family": "AMD RX 6000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 7600 8GB",
+      "raster": 33,
+      "ray_tracing": 23,
+      "overall": 32,
+      "family": "AMD RX 7000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 7600 XT 16GB",
+      "raster": 36,
+      "ray_tracing": 25,
+      "overall": 35,
+      "family": "AMD RX 7000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 7650 GRE 8GB",
+      "raster": 38,
+      "ray_tracing": 26,
+      "overall": 37,
+      "family": "AMD RX 7000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 7700 XT 12GB",
+      "raster": 52,
+      "ray_tracing": 34,
+      "overall": 50,
+      "family": "AMD RX 7000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 7700 16GB",
+      "raster": 49,
+      "ray_tracing": 32,
+      "overall": 47,
+      "family": "AMD RX 7000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 7800 XT 16GB",
+      "raster": 59,
+      "ray_tracing": 39,
+      "overall": 57,
+      "family": "AMD RX 7000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 7900 GRE 16GB",
+      "raster": 65,
+      "ray_tracing": 43,
+      "overall": 63,
+      "family": "AMD RX 7000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 7900 XT 20GB",
+      "raster": 71,
+      "ray_tracing": 49,
+      "overall": 69,
+      "family": "AMD RX 7000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 7900 XTX 24GB",
+      "raster": 79,
+      "ray_tracing": 56,
+      "overall": 77,
+      "family": "AMD RX 7000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 9050 4GB",
+      "raster": 20,
+      "ray_tracing": 14,
+      "overall": 19,
+      "family": "AMD RX 9000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 9050 8GB",
+      "raster": 22,
+      "ray_tracing": 15,
+      "overall": 21,
+      "family": "AMD RX 9000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 9060 8GB",
+      "raster": 41,
+      "ray_tracing": 29,
+      "overall": 40,
+      "family": "AMD RX 9000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 9060 XT 8GB",
+      "raster": 49,
+      "ray_tracing": 35,
+      "overall": 48,
+      "family": "AMD RX 9000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 9060 XT 16GB",
+      "raster": 50,
+      "ray_tracing": 36,
+      "overall": 49,
+      "family": "AMD RX 9000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 9060 XT LP 16GB",
+      "raster": 46,
+      "ray_tracing": 33,
+      "overall": 45,
+      "family": "AMD RX 9000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 9070 GRE 12GB",
+      "raster": 60,
+      "ray_tracing": 44,
+      "overall": 58,
+      "family": "AMD RX 9000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 9070 16GB",
+      "raster": 69,
+      "ray_tracing": 54,
+      "overall": 68,
+      "family": "AMD RX 9000"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 9070 XT 16GB",
+      "raster": 77,
+      "ray_tracing": 62,
+      "overall": 76,
+      "family": "AMD RX 9000"
+    }
+  ]
+}
