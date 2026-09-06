@@ -54,7 +54,9 @@ const results = vm.runInContext(`(() => {
   state.rigDraft.slots.CPU.label = '3600';
   const searching = renderRigEditor();
   out.push(['typing 3600 immediately renders Ryzen 5 3600', searching.includes('data-rig-catalog-choice="CPU"')&&searching.includes('AMD Ryzen 5 3600')]);
+  out.push(['search result separates performance and tier badges', searching.includes('pn-result-rating')&&searching.includes('pn-result-tier pn-tier-revenant')]);
   out.push(['part rating and Gear Tier render separately', editor.includes('pn-meta-pill')&&editor.includes('Performance')&&editor.includes('pn-tier-pill')&&editor.includes('Tier')]);
+  out.push(['selected part carries its canonical tier color class', editor.includes('pn-tier-pill pn-tier-revenant')]);
   return out;
 })()`, sandbox);
 
