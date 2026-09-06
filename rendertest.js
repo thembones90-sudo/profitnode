@@ -91,6 +91,9 @@ const probe = `
   const htmlEmpty = renderRigBuild();
   out.push(['empty CPU slot shows dashed placeholder text', htmlEmpty.includes('— CPU EMPTY —')]);
   out.push(['empty slot placeholder uses the .rig-empty-slot class', htmlEmpty.includes('class="rig-empty-slot"')]);
+  out.push(['rig editor uses one Rig Name field', htmlEmpty.includes('>Rig Name<') && !htmlEmpty.includes('>Rig Family<') && !htmlEmpty.includes('>Variant Name<')]);
+  out.push(['rig editor omits the per-rig Currency field', !htmlEmpty.includes('>Currency<')]);
+  out.push(['slot table shows paid and original price columns', htmlEmpty.includes('>Paid Price<') && htmlEmpty.includes('>Original Price<')]);
 
   // Quick-fill affordance (item 10): exactly one unassigned STORAGE item -> one-click fill button
   const soleStorageItem = Actions.addInventory({category:'STORAGE',manufacturer:'Crucial',model:'MX500 1TB',purchaseDate:'2026-01-01',purchasePrice:5000,currency:'RSD',estimatedMarketValue:7000,source:'OTHER',condition:'WORKING',status:'IN_STORAGE',notes:''});
@@ -104,6 +107,7 @@ const probe = `
   const htmlEditor2 = renderRigBuild();
   out.push(['rig editor shows a Target Margin % field', htmlEditor2.includes('data-rig-field="targetMarginPct"')]);
   out.push(['rig editor shows a Parts-Out Value tile', htmlEditor2.includes('Parts-Out Value')]);
+  out.push(['rig editor shows parts value and margin tiles', htmlEditor2.includes('Original Parts Value') && htmlEditor2.includes('Parts Margin')]);
   out.push(['rig editor shows an apply-suggested-price affordance once a target margin is set', htmlEditor2.includes('data-rig-apply-suggested-price=')]);
   out.push(['rig editor shows the build-cost meter bar (score-row-bar/score-row-fill)', htmlEditor2.includes('score-row-bar') && htmlEditor2.includes('score-row-fill')]);
   out.push(['rig editor shows the copy-slot-to-family action', htmlEditor2.includes('data-rig-copy-slot-to-family="CPU"') && htmlEditor2.includes('FAMILY')]);

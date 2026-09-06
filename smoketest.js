@@ -152,6 +152,12 @@ const probe = `
   partsRig.slots.GPU = {kind:'INVENTORY', inventoryItemId: partsGpu.id};
   partsRig.slots.CASE = {kind:'PLANNED', label:'NZXT H510', cost:6000, currency:'RSD'};
   out.push(['rigPartsOutValue sums INVENTORY slot market values and ignores PLANNED slots', rigPartsOutValue(partsRig) === 12000 + 28000]);
+  const partsDerived = rigDerived(partsRig);
+  out.push(['rigDerived sums inventory and planned original prices', partsDerived.originalPartsValue === 12000 + 28000]);
+  partsRig.slots.CASE.originalPrice = 10000;
+  const plannedValueDerived = rigDerived(partsRig);
+  out.push(['planned original price contributes to parts value', plannedValueDerived.originalPartsValue === 50000]);
+  out.push(['parts margin uses paid versus original prices', Math.abs(plannedValueDerived.partsMargin - 32) < 0.001]);
 
   // 12. Target margin suggested price math (item 11)
   out.push(['suggestedSalePrice(30000, 25) == 40000', Math.abs(suggestedSalePrice(30000, 25) - 40000) < 0.001]);
