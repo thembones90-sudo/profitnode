@@ -29,6 +29,8 @@ const results = vm.runInContext(`(() => {
   const anchor=catalogFind('CPU','AMD Ryzen 7 5800X3D');
   out.push(['5800X3D canonical gaming anchor preserved', anchor&&anchor.gaming===100&&anchor.overall===90]);
   out.push(['canonical tier order preserved', PN_GEAR_TIERS.join('>')==='SCRAPBLADE>SCRAPWRAITH>REVENANT>GHOUL>ALGHOUL']);
+  out.push(['catalog suggestions wait for 2 characters', catalogSearch('MOBO','B').length===0]);
+  out.push(['catalog suggestions are capped at 12', catalogSearch('MOBO','B5').length<=12]);
   out.push(['Deal Score remains a separate 0-10 system', DealScore.auto({purchasePrice:50,estimatedMarketValue:100,condition:'WORKING',category:'GPU'}).score<=10]);
 
   function cat(type,label,cost=0){ return {kind:'CATALOG',catalogType:type,label,cost,currency:'RSD'}; }
