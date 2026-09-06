@@ -69,7 +69,10 @@ const results = vm.runInContext(`(() => {
   out.push(['DDR4 3600 CL16 follows canonical formula without brand/RGB bonus', ram3600.overall===84&&ram3600.tier==='GHOUL']);
   const ramRig=newRigDraft('RAM TEST');ramRig.slots.RAM={kind:'PLANNED',catalogType:'RAM',label:'Corsair Vengeance LPX',cost:0,originalPrice:0,currency:'RSD',ram:{technology:'DDR4',moduleCount:1,perModuleCapacity:8,totalCapacity:8,speed:2400,casLatency:16}};
   const ramEditor=renderRigSlotRow('RAM',ramRig);
-  out.push(['RIG BUILD renders structured DDR4 configuration fields', ramEditor.includes('data-rig-ram-field="moduleCount"')&&ramEditor.includes('data-rig-ram-field="speed"')&&ramEditor.includes('data-rig-ram-field="casLatency"')]);
+  out.push(['RIG BUILD renders the compact DDR4 configuration fields', ramEditor.includes('data-rig-ram-field="moduleCount"')&&ramEditor.includes('data-rig-ram-field="speed"')&&!ramEditor.includes('data-rig-ram-field="casLatency"')&&!ramEditor.includes('data-rig-ram-field="voltage"')&&!ramEditor.includes('data-rig-ram-field="model"')]);
+  const gpuEditor=renderRigSlotRow('GPU',Object.assign(example('AMD Ryzen 5 3600','NVIDIA RTX 2060 6GB','MSI B450 TOMAHAWK MAX'),{id:null}));
+  out.push(['GPU detail omits Raster and RT options', !gpuEditor.includes('Raster')&&!gpuEditor.includes('· RT')]);
+  out.push(['user-facing hardware labels spell out PROFITNODE', renderRigEditor.toString().includes('PROFITNODE Rig Performance')&&!renderRigEditor.toString().includes('PN Rig Performance')]);
   out.push(['single-channel and insufficient-capacity RAM warnings fire', rigWarnings(ramRig).some(w=>w.includes('Single-channel'))&&rigWarnings(ramRig).some(w=>w.includes('below 16 GB'))]);
   return out;
 })()`, sandbox);
