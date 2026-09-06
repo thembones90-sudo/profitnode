@@ -364,6 +364,11 @@ tbody tr.clickable{cursor:pointer}
 .pn-tier-alghoul{--tier-color:#ffd166;--tier-border:rgba(255,209,102,.52);--tier-wash:rgba(255,209,102,.14)}
 .pn-meta-detail{color:var(--text-dim);white-space:nowrap;padding-left:2px}
 .rig-catalog-help{color:var(--text-mute);padding-top:2px}
+.ram-config-grid{display:grid;grid-template-columns:repeat(4,minmax(78px,1fr));gap:7px;margin-top:8px;max-width:620px}
+.ram-config-grid label{min-width:0}
+.ram-config-grid label>span{display:block;margin:0 0 3px;font-family:var(--stamp);font-size:8px;letter-spacing:.06em;color:var(--text-mute);text-transform:uppercase}
+.ram-config-grid input,.ram-config-grid select{width:100%;min-width:0;padding:6px 7px;font-size:10.5px}
+.ram-config-wide{grid-column:span 2}
 .rig-slot-price{padding-top:0}
 .rig-price-input{width:100%;min-width:0;text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;padding-left:6px;padding-right:6px;color:var(--text)}
 .rig-price-input[readonly]{color:var(--text-dim);background:var(--bg-alt);cursor:not-allowed}
@@ -410,6 +415,7 @@ tbody tr.clickable{cursor:pointer}
   .rig-slot-price:before{content:attr(data-label);display:block;margin-bottom:4px;font-family:var(--stamp);font-size:8.5px;letter-spacing:.06em;color:var(--text-mute)}
   .rig-slot-control{grid-template-columns:1fr}
   .rig-slot-control .rig-catalog-fields{grid-template-columns:1fr}
+  .ram-config-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 </style>
 </head>

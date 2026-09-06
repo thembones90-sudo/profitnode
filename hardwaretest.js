@@ -3,6 +3,7 @@ const vm = require('vm');
 
 const hardware = JSON.parse(fs.readFileSync(__dirname + '/profitnode_hardware_ratings_v1.json', 'utf8'));
 const motherboards = JSON.parse(fs.readFileSync(__dirname + '/profitnode_motherboard_catalog_v1.json', 'utf8'));
+const ram = JSON.parse(fs.readFileSync(__dirname + '/profitnode_ram_catalog_v1.json', 'utf8'));
 const appFile = process.argv[2] || 'app.js';
 const store = {};
 const localStorage = {
@@ -13,7 +14,7 @@ const localStorage = {
 const fakeEl = () => ({ addEventListener(){}, innerHTML:'', querySelector:()=>null });
 const document = { addEventListener(){}, getElementById:()=>fakeEl(), createElement:()=>({}), head:{appendChild(){}} };
 const crypto = { randomUUID: (() => { let n=0; return () => 'hardware-test-' + n++; })() };
-const sandbox = { document, localStorage, crypto, window:{}, console, canonicalHardware:hardware, canonicalBoards:motherboards };
+const sandbox = { document, localStorage, crypto, window:{}, console, canonicalHardware:hardware, canonicalBoards:motherboards, canonicalRam:ram };
 vm.createContext(sandbox);
 vm.runInContext(fs.readFileSync(__dirname + '/' + appFile, 'utf8'), sandbox, { filename:appFile });
 
@@ -21,11 +22,15 @@ const results = vm.runInContext(`(() => {
   HardwareCatalog.cpus = canonicalHardware.cpus;
   HardwareCatalog.gpus = canonicalHardware.gpus;
   HardwareCatalog.boards = canonicalBoards.boards;
+  HardwareCatalog.ramFamilies = canonicalRam.families.map(f=>Object.assign({model:f.series,technology:'DDR4'},f));
+  HardwareCatalog.ramSupported = canonicalRam.supported;
   HardwareCatalog.status = 'ready';
   const out=[];
   out.push(['canonical CPU count is 221', HardwareCatalog.cpus.length===221]);
   out.push(['canonical GPU count is 123', HardwareCatalog.gpus.length===123]);
   out.push(['canonical motherboard count is 911', HardwareCatalog.boards.length===911]);
+  out.push(['canonical DDR4 family catalog is loaded', HardwareCatalog.ramFamilies.length>=90]);
+  out.push(['RAM catalog searches by brand and series', catalogSearch('RAM','vengeance lpx').some(r=>r.series==='Vengeance LPX')]);
   const anchor=catalogFind('CPU','AMD Ryzen 7 5800X3D');
   out.push(['5800X3D canonical gaming anchor preserved', anchor&&anchor.gaming===100&&anchor.overall===90]);
   out.push(['canonical tier order preserved', PN_GEAR_TIERS.join('>')==='SCRAPBLADE>SCRAPWRAITH>REVENANT>GHOUL>ALGHOUL']);
@@ -57,6 +62,15 @@ const results = vm.runInContext(`(() => {
   out.push(['search result separates performance and tier badges', searching.includes('pn-result-rating')&&searching.includes('pn-result-tier pn-tier-revenant')]);
   out.push(['part rating and Gear Tier render separately', editor.includes('pn-meta-pill')&&editor.includes('Performance')&&editor.includes('pn-tier-pill')&&editor.includes('Tier')]);
   out.push(['selected part carries its canonical tier color class', editor.includes('pn-tier-pill pn-tier-revenant')]);
+  const ram3200=ramRating({moduleCount:2,perModuleCapacity:8,totalCapacity:16,speed:3200,casLatency:16});
+  const ram3600=ramRating({moduleCount:2,perModuleCapacity:8,totalCapacity:16,speed:3600,casLatency:16});
+  out.push(['DDR4 true latency formula gives 10ns for 3200 CL16', ram3200.latencyNs===10]);
+  out.push(['DDR4 overall formula exposes all five component results', ram3200.capacityScore===75&&ram3200.speedScore===65&&ram3200.latencyScore===80&&ram3200.channelScore===100&&ram3200.overall===78]);
+  out.push(['DDR4 3600 CL16 follows canonical formula without brand/RGB bonus', ram3600.overall===84&&ram3600.tier==='GHOUL']);
+  const ramRig=newRigDraft('RAM TEST');ramRig.slots.RAM={kind:'PLANNED',catalogType:'RAM',label:'Corsair Vengeance LPX',cost:0,originalPrice:0,currency:'RSD',ram:{technology:'DDR4',moduleCount:1,perModuleCapacity:8,totalCapacity:8,speed:2400,casLatency:16}};
+  const ramEditor=renderRigSlotRow('RAM',ramRig);
+  out.push(['RIG BUILD renders structured DDR4 configuration fields', ramEditor.includes('data-rig-ram-field="moduleCount"')&&ramEditor.includes('data-rig-ram-field="speed"')&&ramEditor.includes('data-rig-ram-field="casLatency"')]);
+  out.push(['single-channel and insufficient-capacity RAM warnings fire', rigWarnings(ramRig).some(w=>w.includes('Single-channel'))&&rigWarnings(ramRig).some(w=>w.includes('below 16 GB'))]);
   return out;
 })()`, sandbox);
 
