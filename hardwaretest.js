@@ -4,6 +4,7 @@ const vm = require('vm');
 const hardware = JSON.parse(fs.readFileSync(__dirname + '/profitnode_hardware_ratings_v1.json', 'utf8'));
 const motherboards = JSON.parse(fs.readFileSync(__dirname + '/profitnode_motherboard_catalog_v1.json', 'utf8'));
 const ram = JSON.parse(fs.readFileSync(__dirname + '/profitnode_ram_catalog_v1.json', 'utf8'));
+const storage = JSON.parse(fs.readFileSync(__dirname + '/profitnode_storage_catalog_v1.json', 'utf8'));
 const appFile = process.argv[2] || 'app.js';
 const store = {};
 const localStorage = {
@@ -14,7 +15,7 @@ const localStorage = {
 const fakeEl = () => ({ addEventListener(){}, innerHTML:'', querySelector:()=>null });
 const document = { addEventListener(){}, getElementById:()=>fakeEl(), createElement:()=>({}), head:{appendChild(){}} };
 const crypto = { randomUUID: (() => { let n=0; return () => 'hardware-test-' + n++; })() };
-const sandbox = { document, localStorage, crypto, window:{}, console, canonicalHardware:hardware, canonicalBoards:motherboards, canonicalRam:ram };
+const sandbox = { document, localStorage, crypto, window:{}, console, canonicalHardware:hardware, canonicalBoards:motherboards, canonicalRam:ram, canonicalStorage:storage };
 vm.createContext(sandbox);
 vm.runInContext(fs.readFileSync(__dirname + '/' + appFile, 'utf8'), sandbox, { filename:appFile });
 
@@ -24,12 +25,16 @@ const results = vm.runInContext(`(() => {
   HardwareCatalog.boards = canonicalBoards.boards;
   HardwareCatalog.ramFamilies = canonicalRam.families.map(f=>Object.assign({model:f.series,technology:'DDR4'},f));
   HardwareCatalog.ramSupported = canonicalRam.supported;
+  HardwareCatalog.storage = canonicalStorage.entries.map(e=>Object.assign({overall:e.overall_score},e));
   HardwareCatalog.status = 'ready';
   const out=[];
   out.push(['canonical CPU count is 221', HardwareCatalog.cpus.length===221]);
   out.push(['canonical GPU count is 123', HardwareCatalog.gpus.length===123]);
   out.push(['canonical motherboard count is 911', HardwareCatalog.boards.length===911]);
   out.push(['canonical DDR4 family catalog is loaded', HardwareCatalog.ramFamilies.length>=90]);
+  out.push(['canonical storage catalog has 1,324 entries', HardwareCatalog.storage.length===1324]);
+  out.push(['storage type counts are preserved', HardwareCatalog.storage.filter(e=>e.drive_type==='NVMe SSD').length===658&&HardwareCatalog.storage.filter(e=>e.drive_type==='SATA SSD').length===462&&HardwareCatalog.storage.filter(e=>e.drive_type==='HDD').length===204]);
+  out.push(['storage catalog searches model and capacity', catalogSearch('STORAGE','970 evo plus 1tb').some(e=>e.series.includes('970 EVO Plus')&&e.capacity_gb===1000)]);
   out.push(['RAM catalog searches by brand and series', catalogSearch('RAM','vengeance lpx').some(r=>r.series==='Vengeance LPX')]);
   const anchor=catalogFind('CPU','AMD Ryzen 7 5800X3D');
   out.push(['5800X3D canonical gaming anchor preserved', anchor&&anchor.gaming===100&&anchor.overall===90]);
@@ -74,6 +79,16 @@ const results = vm.runInContext(`(() => {
   out.push(['GPU detail omits Raster and RT options', !gpuEditor.includes('Raster')&&!gpuEditor.includes('· RT')]);
   out.push(['user-facing hardware labels spell out PROFITNODE', renderRigEditor.toString().includes('PROFITNODE Rig Performance')&&!renderRigEditor.toString().includes('PN Rig Performance')]);
   out.push(['single-channel and insufficient-capacity RAM warnings fire', rigWarnings(ramRig).some(w=>w.includes('Single-channel'))&&rigWarnings(ramRig).some(w=>w.includes('below 16 GB'))]);
+  const storageRig=example('AMD Ryzen 5 3600','NVIDIA RTX 2060 6GB','MSI B450 TOMAHAWK MAX');
+  const hdd=HardwareCatalog.storage.find(e=>e.drive_type==='HDD'&&e.capacity_gb===2000),gen4=HardwareCatalog.storage.find(e=>e.drive_type==='NVMe SSD'&&/PCIe 4/.test(e.interface));
+  storageRig.slots.STORAGE=cat('STORAGE',hdd.brand+' '+hdd.model);
+  storageRig.slots.STORAGE2=cat('STORAGE2',gen4.brand+' '+gen4.model);
+  const storageWarnings=rigWarnings(storageRig);
+  out.push(['primary and secondary storage slots are distinct', RIG_SLOT_LABELS.STORAGE==='Primary Storage'&&RIG_SLOT_LABELS.STORAGE2==='Secondary Storage']);
+  out.push(['HDD-only primary warning fires', storageWarnings.some(w=>w.includes('HDD-ONLY PRIMARY'))]);
+  out.push(['newer NVMe on older platform is compatible but speed limited', storageWarnings.some(w=>w.includes('COMPATIBLE — PCIe SPEED LIMITED'))]);
+  const storageEditor=renderRigSlotRow('STORAGE2',storageRig);
+  out.push(['secondary storage shows role-specific suitability', storageEditor.includes('Secondary ')&&storageEditor.includes('Bulk ')&&storageEditor.includes('Archive ')]);
   return out;
 })()`, sandbox);
 
