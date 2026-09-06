@@ -49,7 +49,11 @@ const results = vm.runInContext(`(() => {
   const editor=renderRigSlotRow('CPU',Object.assign(example('AMD Ryzen 5 3600','NVIDIA RTX 2060 6GB','MSI B450 TOMAHAWK MAX'),{id:null}));
   out.push(['mode menu no longer exposes PN Hardware Catalog', !editor.includes('PN Hardware Catalog')]);
   out.push(['legacy catalog slots display as Planned Part', editor.includes('<option value="PLANNED" selected>Planned Part</option>')]);
-  out.push(['catalog selector is searchable through datalist', editor.includes('list="pn-catalog-CPU"')&&editor.includes('data-rig-catalog-item="CPU"')]);
+  out.push(['catalog selector uses an automatic results panel', editor.includes('data-rig-catalog-item="CPU"')&&!editor.includes('<datalist')]);
+  state.rigDraft = example('AMD Ryzen 5 3600','NVIDIA RTX 2060 6GB','MSI B450 TOMAHAWK MAX');
+  state.rigDraft.slots.CPU.label = '3600';
+  const searching = renderRigEditor();
+  out.push(['typing 3600 immediately renders Ryzen 5 3600', searching.includes('data-rig-catalog-choice="CPU"')&&searching.includes('AMD Ryzen 5 3600')]);
   out.push(['part rating and Gear Tier render separately', editor.includes('pn-meta-pill')&&editor.includes('Performance')&&editor.includes('pn-tier-pill')&&editor.includes('Tier')]);
   return out;
 })()`, sandbox);
