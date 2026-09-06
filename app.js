@@ -138,6 +138,7 @@ function dealDerived(e){return{amountSaved:Calc.savings(e.estimatedMarketValue,e
 function dealScoreResolved(e){const t=DealScore.auto(e);if("MANUAL"===(e.scoreMode||(null!=e.dealScore?"MANUAL":"AUTO"))){const a=null!=e.manualScore?e.manualScore:e.dealScore
 ;if(null!=a)return{score:clamp(Math.round(a),0,10),mode:"MANUAL",auto:t}}return{score:t.score,mode:"AUTO",auto:t}}
 function emptyRigSlots(){return{CPU:null,GPU:null,RAM:null,MOBO:null,PSU:null,CASE:null,COOLER:null,STORAGE:null}}
+function rigPriceField(e){return["cost","originalPrice"].includes(e)}
 function rigSlotResolved(e,t,a){if(!e)return null;if("INVENTORY"===e.kind){const r=Store.get("inventory",e.inventoryItemId)
 ;if(!r)return{label:"(deleted inventory item)",cost:0,originalPrice:0,missing:!0};const n=r.manufacturer+" "+r.model,s=a||("MOTHERBOARD"===r.category?"MOBO":r.category),l=catalogFind(s,n)
 ;return{label:n,cost:convert(r.purchasePrice,r.currency,t),originalPrice:convert(r.estimatedMarketValue||0,r.currency,t),category:r.category,condition:r.condition,status:r.status,item:r,pn:l?{type:s,data:l,performance:Number(l.overall)||0,tierIndex:catalogTier(s,l),tier:pnTier(catalogTier(s,l))}:null}}
@@ -626,6 +627,7 @@ label:"Misc cost",category:null,cost:0,currency:state.plannerDraft.currency}),vo
 ;if(e.target.closest("[data-import-trigger]"))return void document.getElementById("import-file-input").click()
 ;if(e.target.closest("[data-import-cancel]"))return state.importPreview=null,state.importArmed=!1,void render()
 ;e.target.closest("[data-import-confirm]")&&(state.importArmed?applyImport():(state.importArmed=!0,render()))}),e.addEventListener("change",e=>{
+const rsp=e.target.closest("input[data-rig-slot-field]");if(rsp&&state.rigDraft){const[k,f]=rsp.dataset.rigSlotField.split(".");if(rigPriceField(f)){const slot=state.rigDraft.slots[k];return slot&&(slot[f]=""===rsp.value?0:parseFloat(rsp.value)||0),void render()}}
 const rsm=e.target.closest("select[data-rig-slot-mode]");if(rsm&&state.rigDraft){const k=rsm.dataset.rigSlotMode,m=rsm.value
 ;return state.rigDraft.slots[k]="EMPTY"===m?null:"INVENTORY"===m?{kind:"INVENTORY",inventoryItemId:""}:{kind:"PLANNED",catalogType:["CPU","GPU","MOBO"].includes(k)?k:null,label:"",cost:0,originalPrice:0,currency:state.rigDraft.currency},void render()}
 const rsi=e.target.closest("select[data-rig-slot-item]");if(rsi&&state.rigDraft)return state.rigDraft.slots[rsi.dataset.rigSlotItem]={kind:"INVENTORY",inventoryItemId:rsi.value},void render()
@@ -643,11 +645,11 @@ const rf=e.target.closest("input[data-rig-field], textarea[data-rig-field]");if(
  const rci=e.target.closest("input[data-rig-catalog-item]");if(rci&&state.rigDraft){const k=rci.dataset.rigCatalogItem,cur=state.rigDraft.currency,slot=state.rigDraft.slots[k]||{kind:"PLANNED",catalogType:k,cost:0,originalPrice:0,currency:cur};slot.kind="PLANNED",slot.label=rci.value,slot.catalogType=k;const match=catalogFind(k,rci.value);slot.catalogKey=match?catalogKey(k,match):null,state.rigDraft.slots[k]=slot,render();const ag=document.querySelector('[data-rig-catalog-item="'+k+'"]');return void(ag&&(ag.focus(),ag.setSelectionRange(ag.value.length,ag.value.length)))}
  const rsf=e.target.closest("input[data-rig-slot-field]");if(rsf&&state.rigDraft){const[k,f]=rsf.dataset.rigSlotField.split("."),cur=state.rigDraft.currency
 ;let v=rsf.value;["cost","originalPrice"].includes(f)&&(v=""===v?0:parseFloat(v));const slot=state.rigDraft.slots[k]||{kind:"PLANNED",label:"",cost:0,originalPrice:0,currency:cur}
-;slot[f]=v,state.rigDraft.slots[k]=slot,render();const ag=document.querySelector('[data-rig-slot-field="'+rsf.dataset.rigSlotField+'"]')
+;slot[f]=v,state.rigDraft.slots[k]=slot;if(rigPriceField(f))return;render();const ag=document.querySelector('[data-rig-slot-field="'+rsf.dataset.rigSlotField+'"]')
 ;if(ag&&(ag.focus(),ag.setSelectionRange))try{ag.setSelectionRange(String(ag.value).length,String(ag.value).length)}catch(e){}return}
 const a=e.target.closest("input[data-draft-field], textarea[data-draft-field]");if(a&&state.plannerDraft){let e=a.value;"number"===a.type&&(e=""===e?null:parseFloat(e)),
 setDeepOn(state.plannerDraft,a.dataset.draftField,e),render();const t=a.dataset.draftField,r=document.querySelector('[data-draft-field="'+t+'"]');if(r&&(r.focus(),
 r.setSelectionRange))try{r.setSelectionRange(String(r.value).length,String(r.value).length)}catch(e){}return}const r=e.target.closest('form[data-entity-form="deal"]')
-;r&&updateDealScorePreview(r)}),e.addEventListener("keydown",e=>{const input=e.target.closest("input[data-rig-catalog-item]"),option=e.target.closest("[data-rig-catalog-choice]")
+;r&&updateDealScorePreview(r)}),e.addEventListener("focusin",e=>{const price=e.target.closest(".rig-price-input:not([readonly])");price&&0===Number(price.value)&&price.select()}),e.addEventListener("keydown",e=>{const input=e.target.closest("input[data-rig-catalog-item]"),option=e.target.closest("[data-rig-catalog-choice]")
 ;if(input&&["ArrowDown","Enter"].includes(e.key)){const first=document.querySelector('[data-rig-catalog-choice="'+input.dataset.rigCatalogItem+'"]');if(first)return e.preventDefault(),"Enter"===e.key?first.click():first.focus()}
 ;if(option&&["ArrowDown","ArrowUp","Enter","Escape"].includes(e.key)){const options=Array.from(document.querySelectorAll('[data-rig-catalog-choice="'+option.dataset.rigCatalogChoice+'"]')),i=options.indexOf(option);if(e.preventDefault(),"Enter"===e.key)return option.click();if("Escape"===e.key){const field=document.querySelector('[data-rig-catalog-item="'+option.dataset.rigCatalogChoice+'"]');return void(field&&field.focus())}const next=options[(i+("ArrowDown"===e.key?1:-1)+options.length)%options.length];next&&next.focus()}}),e.addEventListener("submit",e=>{const t=e.target.closest("[data-entity-form]");t&&(e.preventDefault(),handleFormSubmit(t))})});

@@ -158,6 +158,7 @@ const probe = `
   const plannedValueDerived = rigDerived(partsRig);
   out.push(['planned original price contributes to parts value', plannedValueDerived.originalPartsValue === 50000]);
   out.push(['parts margin uses paid versus original prices', Math.abs(plannedValueDerived.partsMargin - 32) < 0.001]);
+  out.push(['rig price fields are identified for caret-safe input handling', rigPriceField('cost') && rigPriceField('originalPrice') && !rigPriceField('label')]);
 
   // 12. Target margin suggested price math (item 11)
   out.push(['suggestedSalePrice(30000, 25) == 40000', Math.abs(suggestedSalePrice(30000, 25) - 40000) < 0.001]);
