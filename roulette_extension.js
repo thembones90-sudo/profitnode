@@ -23,6 +23,8 @@
 (function installProfitnodeRouletteV3(){
   const ROULETTE_LEDGER_KEY = "rouletteLedger";
   const LEGACY_POOL_KEY = "roulettePools";
+  const ROULETTE_DOCTRINE_KEY = "rouletteDoctrine";
+  const ROULETTE_FUND_KEY = "roulettePcBuildFund";
 
   const VERDICTS = ["BET","FUCK OFF","SAVE MONEY"];
   const WAGERS = [
@@ -63,6 +65,140 @@
   }
 
   rouletteEnsureCollections();
+
+  function rouletteDoctrineLoad(){
+    try{
+      const raw = localStorage.getItem(ROULETTE_DOCTRINE_KEY);
+      const rec = raw ? JSON.parse(raw) : null;
+      if (rec && rec.lastJudgementAt) return rec;
+    }catch(e){}
+    return null;
+  }
+
+  function rouletteDoctrineSave(rec){
+    try{ localStorage.setItem(ROULETTE_DOCTRINE_KEY, JSON.stringify(rec)); }catch(e){}
+  }
+
+  function rouletteDoctrineEvaluate(lastJudgementAt, nowMs){
+    const after = Number(lastJudgementAt);
+
+    if (!(after > 0)){
+      return {locked:false,allowed:true,nextAt:0,remainingMs:0,label:"00:00:00"};
+    }
+
+    const now = !isNaN(Number(nowMs)) ? Number(nowMs) : Date.now();
+    const last = new Date(after);
+    const t12 = after + 12*3600000;
+    const nextMidnight = new Date(last.getFullYear(),last.getMonth(),last.getDate()+1).getTime();
+    const nextAt = Math.max(t12,nextMidnight);
+    const remainingMs = Math.max(0,nextAt-now);
+
+    return {
+      locked:remainingMs>0,
+      allowed:remainingMs<=0,
+      nextAt:nextAt,
+      remainingMs:remainingMs,
+      label:rouletteDoctrineCountdown(remainingMs)
+    };
+  }
+
+  function rouletteDoctrineCountdown(ms){
+    if (!(ms>0)) return "00:00:00";
+    const total = Math.ceil(ms/1000);
+    const pad = n=>String(n).padStart(2,"0");
+    return pad(Math.floor(total/3600))+":"+pad(Math.floor((total%3600)/60))+":"+pad(total%60);
+  }
+
+  function rouletteDoctrineGate(nowMs){
+    const rec = rouletteDoctrineLoad();
+    const gate = rouletteDoctrineEvaluate(rec && rec.lastJudgementAt, nowMs);
+    gate.verdict = rec ? rec.verdict : null;
+    gate.recorded = !!rec;
+    return gate;
+  }
+
+  function rouletteDoctrineRecordJudgement(verdict){
+    const rec = rouletteDoctrineLoad() || {};
+    rec.lastJudgementAt = Date.now();
+    rec.verdict = verdict;
+    rec.round = {
+      verdict:verdict,
+      stake:rouletteStakeValue(),
+      currency:rouletteCurrentCurrency(),
+      wager:verdict==="BET" ? (state.rouletteWager||null) : null,
+      committedId:state.rouletteCommittedId||null
+    };
+    rouletteDoctrineSave(rec);
+  }
+
+  function rouletteDoctrineUpdateRound(patch){
+    const rec = rouletteDoctrineLoad();
+    if (!rec || !rec.round) return;
+    rec.round = Object.assign({},rec.round,patch);
+    rouletteDoctrineSave(rec);
+  }
+
+  function rouletteDoctrineCompleteRound(){
+    const rec = rouletteDoctrineLoad();
+    if (!rec || !rec.round) return;
+    rec.round = null;
+    rouletteDoctrineSave(rec);
+  }
+
+  function rouletteRehydrateDoctrine(){
+    const rec = rouletteDoctrineLoad();
+    if (!rec || !rec.round || !rec.round.verdict) return;
+
+    state.rouletteVerdict = rec.round.verdict;
+    state.rouletteStake = String(rec.round.stake!=null ? rec.round.stake : (state.rouletteStake||""));
+    state.rouletteCurrency = rec.round.currency || state.rouletteCurrency;
+    state.rouletteWager = rec.round.wager || null;
+    state.rouletteCommittedId = rec.round.committedId || null;
+  }
+
+  function rouletteDoctrineBannerHtml(){
+    const gate = rouletteDoctrineGate();
+    if (!gate.locked) return "";
+
+    return '<div class="pn-r3-doctrine-locked" role="status">'+
+      '<b>TODAY&#39;S VERDICT IS FINAL</b>'+
+      '<span>NEXT JUDGEMENT AVAILABLE IN <em data-pn-r3-cooldown>'+gate.label+'</em></span>'+
+    '</div>';
+  }
+
+  function rouletteFundLoad(){
+    try{
+      const raw = localStorage.getItem(ROULETTE_FUND_KEY);
+      const fund = raw ? JSON.parse(raw) : null;
+      if (fund && Array.isArray(fund.entries)) return fund;
+    }catch(e){}
+    return {entries:[]};
+  }
+
+  function rouletteFundSave(fund){
+    try{ localStorage.setItem(ROULETTE_FUND_KEY, JSON.stringify(fund)); }catch(e){}
+  }
+
+  function rouletteFundAdd(kind,amount,currency,verdict,note){
+    if (!(Number(amount)>0)) return;
+    const fund = rouletteFundLoad();
+    fund.entries.push({
+      at:nowISO(),
+      kind:kind,
+      amount:Number(amount),
+      currency:currency||"RSD",
+      verdict:verdict||"",
+      note:note||""
+    });
+    rouletteFundSave(fund);
+  }
+
+  function rouletteFundTotal(currency){
+    return rouletteFundLoad().entries.reduce(
+      (sum,entry)=>sum+convert(Number(entry.amount)||0,entry.currency,currency),
+      0
+    );
+  }
 
   function rouletteLedger(){
     rouletteEnsureCollections();
@@ -177,6 +313,10 @@
       '<div class="pn-r3-net">'+
         '<span>MONEY GAINED / LOST</span>'+
         '<b class="'+(stats.net>0?"pos":stats.net<0?"neg":"zero")+'">'+money(stats.net,currency)+'</b>'+
+      '</div>'+
+      '<div class="pn-r3-fund">'+
+        '<span>PC BUILD FUND</span>'+
+        '<b class="pos">'+money(rouletteFundTotal(currency),currency)+'</b>'+
       '</div>'+
     '</div>';
   }
@@ -359,7 +499,7 @@
       '</section>';
   }
 
-  function rouletteChamber(){
+function rouletteChamber(){
     const committed = rouletteCommittedRow();
     if (committed) return rouletteAwaitingResult(committed);
 
@@ -368,33 +508,34 @@
     const hasVerdict = !!state.rouletteVerdict;
     const wagerReady = state.rouletteVerdict==="BET";
     const wagerDone = !!state.rouletteWager;
+    const gate = rouletteDoctrineGate();
+    const roundClosedByDoctrine = hasVerdict || gate.locked;
 
     let action = "";
 
     if (wagerDone){
-      action =
-        '<button type="button" class="btn btn-primary pn-r3-commit" data-r3-commit>COMMIT THE DAMAGE</button>'+
-        '<button type="button" class="btn pn-r3-defy" data-r3-defy>DEFY THE NODE</button>';
+      action = '<button type="button" class="btn btn-primary pn-r3-commit" data-r3-commit>COMMIT THE DAMAGE</button>';
     } else if (state.rouletteVerdict==="FUCK OFF" || state.rouletteVerdict==="SAVE MONEY"){
       action = '<button type="button" class="btn" data-r3-close-round>END ROUND</button>';
     }
 
     return rouletteNoticeHtml()+
+      rouletteDoctrineBannerHtml()+
       '<div class="pn-r3-controls">'+
-        '<label><span>STAKE</span><input type="number" min="0" step="1" value="'+escAttr(state.rouletteStake)+'" data-r3-stake placeholder="3000" '+(hasVerdict?"disabled":"")+'></label>'+
-        '<label><span>CURRENCY</span><select data-r3-currency '+(hasVerdict?"disabled":"")+'>'+
+        '<label><span>STAKE</span><input type="number" min="0" step="1" value="'+escAttr(state.rouletteStake)+'" data-r3-stake placeholder="3000" '+(roundClosedByDoctrine?"disabled":"")+'></label>'+
+        '<label><span>CURRENCY</span><select data-r3-currency '+(roundClosedByDoctrine?"disabled":"")+'>'+
           '<option value="RSD"'+(currency==="RSD"?" selected":"")+'>RSD</option>'+
           '<option value="EUR"'+(currency==="EUR"?" selected":"")+'>EUR</option>'+
         '</select></label>'+
       '</div>'+
 
       '<div class="pn-r3-wheel-grid">'+
-        '<section class="panel pn-r3-panel '+(hasVerdict?"pn-r3-locked-wheel":"")+'">'+
+        '<section class="panel pn-r3-panel '+(roundClosedByDoctrine?"pn-r3-locked-wheel":"")+'">'+
           '<div class="panel-head"><h2>WHEEL #1</h2><span class="pn-r3-state">THE JUDGEMENT</span></div>'+
           '<div class="panel-body pn-r3-stage">'+
             rouletteVerdictWheel()+
-            '<button type="button" class="btn btn-primary pn-r3-spin" data-r3-spin-verdict '+(stake<=0||hasVerdict?"disabled":"")+'>'+
-              (hasVerdict?"JUDGEMENT LOCKED":"SPIN THE VERDICT")+
+            '<button type="button" class="btn btn-primary pn-r3-spin" data-r3-spin-verdict '+(stake<=0||roundClosedByDoctrine?"disabled":"")+'>'+
+              (hasVerdict?"JUDGEMENT LOCKED":gate.locked?"VERDICT FINAL":"SPIN THE VERDICT")+
             '</button>'+
             '<div class="pn-r3-legend">BET / FUCK OFF / SAVE MONEY</div>'+
           '</div>'+
@@ -509,6 +650,14 @@
   function rouletteSpinWheel(kind,labels){
     if (rouletteSpinLocked) return;
 
+    const gate = rouletteDoctrineGate();
+
+    if (kind==="verdict" && gate.locked){
+      state.rouletteNotice = {tone:"err",text:"TODAY'S VERDICT IS FINAL. ONE DAY, ONE JUDGEMENT, NO APPEAL."};
+      render();
+      return;
+    }
+
     const stake = rouletteStakeValue();
 
     if (kind==="verdict" && stake<=0){
@@ -548,8 +697,10 @@
       if (kind==="verdict"){
         state.rouletteVerdict = labels[index];
         state.rouletteWager = null;
+        rouletteDoctrineRecordJudgement(labels[index]);
       } else {
         state.rouletteWager = labels[index];
+        rouletteDoctrineUpdateRound({wager:labels[index]});
       }
 
       rouletteSpinLocked = false;
@@ -593,34 +744,7 @@
 
     state.rouletteCommittedId = row.id;
     state.rouletteNotice = {tone:"ok",text:"DAMAGE COMMITTED. AWAITING RESULT."};
-    render();
-  }
-
-  function rouletteDefy(){
-    if (state.rouletteVerdict!=="BET" || !state.rouletteWager) return;
-
-    const row = rouletteInsert({
-      type:"VERDICT",
-      date:todayISO(),
-      verdict:"BET",
-      wager:state.rouletteWager,
-      outcome:"DEFIED",
-      avoidedStake:rouletteStakeValue(),
-      currency:rouletteCurrentCurrency(),
-      notes:"THE NODE WAS DEFIED."
-    });
-
-    Timeline.log(
-      "ROULETTE_VERDICT",
-      "THE ROULETTE \u00B7 NODE DEFIED",
-      state.rouletteWager+" rejected after judgement.",
-      row.date,
-      "roulette",
-      row.id
-    );
-
-    rouletteResetRound({keepStake:true});
-    state.rouletteNotice = {tone:"ok",text:"THE NODE HAS BEEN DEFIED. NO MONEY INVESTED."};
+    rouletteDoctrineUpdateRound({wager:state.rouletteWager,committedId:row.id});
     render();
   }
 
@@ -648,7 +772,15 @@
     );
 
     rouletteResetRound({keepStake:true});
-    state.rouletteNotice = {tone:"ok",text:verdict+" RECORDED. MONEY REMAINS YOURS, SOMEHOW."};
+    rouletteDoctrineCompleteRound();
+
+    if (verdict==="SAVE MONEY"){
+      rouletteFundAdd("SAVED",row.avoidedStake,row.currency,verdict,"SAVE MONEY verdict routed into PC BUILD FUND");
+      state.rouletteNotice = {tone:"ok",text:"VERDICT FINAL. "+rouletteMoney(row.avoidedStake,row.currency)+" SAVED INTO PC BUILD FUND."};
+    } else {
+      state.rouletteNotice = {tone:"ok",text:"VERDICT FINAL. THE NODE REJECTS THIS NONSENSE. MONEY REMAINS YOURS."};
+    }
+
     render();
   }
 
@@ -688,9 +820,15 @@
     );
 
     rouletteResetRound({keepStake:false});
+    rouletteDoctrineCompleteRound();
+
+    if (net>0){
+      rouletteFundAdd("WIN",net,row.currency,"BET",row.wager);
+    }
+
     state.rouletteNotice = {
       tone:net>=0?"ok":"err",
-      text:"ROUND CLOSED. "+(net>=0?"GAIN ":"LOSS ")+rouletteMoney(Math.abs(net),row.currency)+"."
+      text:"ROUND CLOSED. "+(net>=0?"GAIN ":"LOSS ")+rouletteMoney(Math.abs(net),row.currency)+"."+(net>0?" ROUTED INTO PC BUILD FUND.":" VERDICT STANDS.")
     };
     render();
   }
@@ -713,7 +851,17 @@
     state.rouletteWager = row.wager || null;
   }
 
+  rouletteRehydrateDoctrine();
   rouletteResumePending();
+
+  setInterval(function(){
+    const cooldownEl = document.querySelector("[data-pn-r3-cooldown]");
+    if (!cooldownEl) return;
+
+    const gate = rouletteDoctrineGate();
+    if (!gate.locked) return;
+    cooldownEl.textContent = gate.label;
+  },1000);
 
   document.addEventListener("input",function(event){
     if (event.target.matches("[data-r3-stake]")){
@@ -754,11 +902,6 @@
 
     if (event.target.closest("[data-r3-commit]")){
       rouletteCommit();
-      return;
-    }
-
-    if (event.target.closest("[data-r3-defy]")){
-      rouletteDefy();
       return;
     }
 
@@ -818,6 +961,22 @@
         {label:"Currency",get:row=>row.currency||""},
         {label:"Notes",get:row=>row.notes||""}
       ]
+    };
+  }
+
+  if (typeof window !== "undefined" && !window.__pnRouletteDoctrine){
+    window.__pnRouletteDoctrine = {
+      evaluate:rouletteDoctrineEvaluate,
+      countdown:rouletteDoctrineCountdown,
+      gate:rouletteDoctrineGate,
+      record:rouletteDoctrineRecordJudgement,
+      updateRound:rouletteDoctrineUpdateRound,
+      completeRound:rouletteDoctrineCompleteRound,
+      rehydrate:rouletteRehydrateDoctrine,
+      fundAdd:rouletteFundAdd,
+      fundTotal:rouletteFundTotal,
+      KEY:ROULETTE_DOCTRINE_KEY,
+      FUND_KEY:ROULETTE_FUND_KEY
     };
   }
 
@@ -939,6 +1098,42 @@
   .pn-r3-stats b.pos{color:var(--green)}
   .pn-r3-stats b.neg{color:var(--red)}
   .pn-r3-stats b.zero{color:#c36cf1}
+
+  .pn-r3-fund b{
+    color:#8fd3ff;
+  }
+
+  .pn-r3-doctrine-locked{
+    margin-bottom:14px;
+    padding:12px 14px;
+    gap:12px;
+    flex-wrap:wrap;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    border:1px solid rgba(255,196,57,.45);
+    background:linear-gradient(135deg,rgba(120,86,24,.22),rgba(60,20,70,.18));
+  }
+
+  .pn-r3-doctrine-locked b{
+    color:#ffe08a;
+    font-size:11px;
+    font-weight:900;
+    letter-spacing:.16em;
+  }
+
+  .pn-r3-doctrine-locked span{
+    color:var(--muted);
+    font-family:var(--mono);
+    font-size:9px;
+    letter-spacing:.06em;
+  }
+
+  .pn-r3-doctrine-locked em{
+    color:#ffe08a;
+    font-style:normal;
+    font-size:14px;
+  }
 
   .pn-r3-stage-strip{
     display:grid;
@@ -1310,10 +1505,6 @@
 
   .pn-r3-commit{
     box-shadow:0 0 18px rgba(180,53,239,.14);
-  }
-
-  .pn-r3-defy{
-    color:#bdb4c2;
   }
 
   .pn-r3-awaiting{

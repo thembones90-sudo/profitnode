@@ -885,11 +885,6 @@
     animation:pnCommitPulse 2.9s ease-in-out infinite;
   }
 
-  body.pn-roulette-open .pn-r3-defy{
-    border-color:rgba(137,115,146,.45) !important;
-    background:rgba(23,20,27,.70) !important;
-  }
-
   body.pn-roulette-compact .pn-roulette-blessing b{font-size:9px}
   body.pn-roulette-compact .pn-roulette-blessing span{font-size:6.2px}
   body.pn-roulette-compact .pn-r3-stage{min-height:calc(var(--pn-roulette-wheel-size,270px) + 66px) !important}

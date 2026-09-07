@@ -35,6 +35,19 @@ checks.push(['app.js loader streams the manifest via document.write',
 checks.push(['index.html loads pn_scripts.js before app.js',
   (fs.readFileSync(path.join(DIR, 'index.html'), 'utf8').match(/<script src="pn_scripts\.js"><\/script>/g) || []).length === 1]);
 
+const indexCss = fs.readFileSync(path.join(DIR, 'index.html'), 'utf8');
+checks.push(['page-mount layer bridges .main into a bounded flex column (content is the scroll layer)',
+  indexCss.includes('#page-mount{flex:1;min-height:0;display:flex;flex-direction:column}')]);
+checks.push(['app shell keeps height:100vh on .main with overflow:hidden (no doc-level scroll)',
+  /\.main\{[^}]*height:100vh[^}]*overflow:hidden/.test(indexCss)]);
+checks.push(['.content is the single internal scroll container with min-height:0',
+  /\.content\{[^}]*min-height:0/.test(indexCss) && /\.content\{[^}]*overflow-y:auto/.test(indexCss)]);
+checks.push(['rig slot grid collapses to stacked rows by 1180px so controls never clip',
+  /@media \(max-width:1180px\)\{[\s\S]*?\.rig-slot-row\{grid-template-columns:1fr 1fr/.test(indexCss)]);
+checks.push(['no global viewport squeeze via transform:scale in the shell CSS', !indexCss.includes('transform:scale(')]);
+checks.push(['mobile media query detaches content from the fixed-height shell',
+  /@media \(max-width:760px\)\{[\s\S]*?\.main\{height:auto;min-height:100vh\}/.test(indexCss) && /\.content\{overflow-y:visible;flex:none\}/.test(indexCss)]);
+
 // --- Sandbox probe: post-load global state ---
 const meta = env.run(sandbox, `(() => ({
   routes: ROUTES.map(r => r.key + '|' + r.nix + '|' + r.label),
@@ -120,6 +133,108 @@ const probe = `
 })()
 `;
 const results = env.run(sandbox, probe);
+
+// --- Roulette doctrine (permanent judgement rules) ---
+const doctrineProbe = `
+(function(){
+  const out = [];
+  const D = window.__pnRouletteDoctrine;
+
+  out.push(['doctrine hooks exposed', typeof D === 'object' && typeof D.evaluate === 'function']);
+
+  const sun8pm  = new Date(2026,8,6,20,0,0).getTime();
+  const mon7am  = new Date(2026,8,7,7,0,0).getTime();
+  const mon8am  = new Date(2026,8,7,8,0,0).getTime();
+  const mon1pm  = new Date(2026,8,7,13,0,0).getTime();
+  const mon1155 = new Date(2026,8,7,11,55,0).getTime();
+  const sun1155pm = new Date(2026,8,6,23,55,0).getTime();
+  const mon12am = new Date(2026,8,7,0,5,0).getTime();
+  const mon9pm  = new Date(2026,8,7,21,0,0).getTime();
+
+  out.push(['sun 20:00 -> mon 13:00 allowed (date changed + 12h passed)',
+    D.evaluate(sun8pm, mon1pm).allowed === true]);
+
+  out.push(['sun 20:00 -> mon 07:00 locked (12h not elapsed)',
+    D.evaluate(sun8pm, mon7am).allowed === false && D.evaluate(sun8pm, mon7am).label === '01:00:00']);
+
+  out.push(['sun 20:00 -> mon 08:00 unlocked exactly at 12h mark',
+    D.evaluate(sun8pm, mon8am).allowed === true]);
+
+  out.push(['sun 23:55 -> mon 00:05 locked (date changed but 10min elapsed)',
+    D.evaluate(sun1155pm, mon12am).allowed === false && D.evaluate(sun1155pm, mon12am).label === '11:50:00']);
+
+  out.push(['sun 23:55 -> mon 11:55 first allowed window (12h from spin)',
+    D.evaluate(sun1155pm, mon1155).allowed === true]);
+
+  out.push(['mon 08:00 -> mon 21:00 locked (second spin same day always blocked)',
+    D.evaluate(mon8am, mon9pm).allowed === false]);
+
+  out.push(['no doctrine record = always allowed', D.evaluate(null, Date.now()).allowed === true]);
+
+  out.push(['judgement lockdown blocks a fresh spin on chamber render',
+    (function(){
+      D.record('SAVE MONEY');
+      const html = (function(){ state.route='roulette'; return renderShell(); })();
+      return html.includes('pn-r3-doctrine-locked') && html.includes('TODAY&#39;S VERDICT IS FINAL') && html.includes('NEXT JUDGEMENT AVAILABLE IN');
+    })()]);
+
+  out.push(['no DEFY THE NODE control remains in the chamber',
+    (function(){
+      state.route='roulette';
+      const html = renderShell();
+      return !html.includes('data-r3-defy') && !html.includes('DEFY') && !html.includes('pn-r3-defy');
+    })()]);
+
+  out.push(['wheel #1 shows VERDICT FINAL and is disabled when locked without a verdict',
+    (function(){
+      D.record('SAVE MONEY');
+      state.rouletteVerdict = null;
+      state.route='roulette';
+      const html = renderShell();
+      return html.includes('VERDICT FINAL') && html.includes('data-r3-spin-verdict') && html.includes('disabled');
+    })()]);
+
+  out.push(['PC BUILD FUND tile renders in the stats header',
+    (function(){
+      state.rouletteVerdict = null;
+      state.route='roulette';
+      const html = renderShell();
+      return html.includes('pn-r3-fund') && html.includes('PC BUILD FUND');
+    })()]);
+
+  out.push(['fundAdd routes money into the PC BUILD FUND total',
+    (function(){
+      D.fundAdd('SAVED', 3000, 'RSD', 'SAVE MONEY');
+      D.fundAdd('WIN', 2000, 'EUR', 'BET');
+      return D.fundTotal('RSD') === 3000 + convert(2000,'EUR','RSD');
+    })()]);
+
+  out.push(['fundAdd ignores zero/negative amounts', (function(){ D.fundAdd('WIN', 0, 'RSD'); return D.fundTotal('RSD') > 0; })()]);
+
+  out.push(['doctrine round snapshot rehydrates into state',
+    (function(){
+      D.record('FUCK OFF');
+      D.updateRound({});
+      state.rouletteVerdict = null;
+      state.rouletteWager = null;
+      state.rouletteStake = '';
+      state.rouletteCommittedId = null;
+      D.rehydrate();
+      return state.rouletteVerdict === 'FUCK OFF';
+    })()]);
+
+  out.push(['completeRound clears the round but keeps the judgement lock',
+    (function(){
+      D.completeRound();
+      state.rouletteVerdict = null;
+      const gate = D.gate();
+      return gate.locked === true && gate.verdict === 'FUCK OFF';
+    })()]);
+
+  return out;
+})()
+`;
+const doctrineResults = env.run(sandbox, doctrineProbe);
 
 // --- Legacy RIG BUILD logic probe (kept from previous suite) ---
 const rigProbe = `
@@ -268,7 +383,7 @@ const rigProbe = `
 `;
 const rigResults = env.run(sandbox, rigProbe);
 
-const all = checks.concat(results).concat(rigResults);
+const all = checks.concat(results).concat(rigResults).concat(doctrineResults);
 let fail = 0;
 for (const [name, ok] of all){
   console.log((ok ? 'PASS' : 'FAIL') + ' - ' + name);
