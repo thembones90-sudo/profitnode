@@ -12,14 +12,14 @@ const checks = [];
 // --- Manifest / architecture checks (Node side) ---
 const CANONICAL_ORDER = [
   'app_core.js', 'planner_retirement_extension.js', 'terminal_naming_extension.js',
-  'psu_extension.js', 'sale_type_extension.js', 'command_center_extension.js',
-  'command_header_glitch_extension.js', 'rig_bench_navigation_extension.js',
-  'command_financial_model_extension.js', 'profitnode_intelligence_extension.js',
-  'command_separator_tune.js', 'roulette_extension.js', 'roulette_ui_extension.js',
-  'sidebar_cleanup_extension.js'
+  'psu_extension.js', 'rig_enclosure_extension.js', 'sale_type_extension.js',
+  'command_center_extension.js', 'command_header_glitch_extension.js',
+  'rig_bench_navigation_extension.js', 'command_financial_model_extension.js',
+  'profitnode_intelligence_extension.js', 'command_separator_tune.js',
+  'roulette_extension.js', 'roulette_ui_extension.js', 'sidebar_cleanup_extension.js'
 ];
-checks.push(['manifest has 14 scripts', entries.length === 14]);
-checks.push(['manifest order matches canonical 14-file load order',
+checks.push(['manifest has 15 scripts', entries.length === 15]);
+checks.push(['manifest order matches canonical 15-file load order',
   entries.map(e => e.split('?')[0]).join(',') === CANONICAL_ORDER.join(',')]);
 checks.push(['first script is app_core.js', entries[0].split('?')[0] === 'app_core.js']);
 checks.push(['last script is sidebar_cleanup_extension.js',
@@ -75,7 +75,7 @@ checks.push(['plans CSV export retired', !meta.csvKeys.includes('plans')]);
 checks.push(['roulette ledger CSV export registered', meta.csvKeys.includes('rouletteLedger')]);
 checks.push(['PN_SALE_TYPES = RIG,COMPONENT,OTHER', meta.saleTypes === 'RIG,COMPONENT,OTHER']);
 checks.push(['currencies remain RSD,EUR', meta.curren === 'RSD,EUR']);
-checks.push(['manifest still declares 14 scripts in sandbox', meta.manifestLen === 14]);
+checks.push(['manifest still declares 15 scripts in sandbox', meta.manifestLen === 15]);
 
 // --- Functional probe (Store/Actions + extensions wiring) ---
 const probe = `
@@ -100,6 +100,9 @@ const probe = `
   log('catalogEntriesForSlot(PSU) delegates to HardwareCatalog.psus', catalogEntriesForSlot('PSU') === (HardwareCatalog.psus || []));
   log('gpuPsuRequirement and psuResolvedWattage exist', typeof gpuPsuRequirement === 'function' && typeof psuResolvedWattage === 'function');
   log('HardwareCatalog.psuError starts null', HardwareCatalog.psuError === null);
+
+  log('catalogEntriesForSlot(CASE) delegates to HardwareCatalog.cases', catalogEntriesForSlot('CASE') === (HardwareCatalog.cases || []));
+  log('catalogEntriesForSlot(COOLER) delegates to HardwareCatalog.coolers', catalogEntriesForSlot('COOLER') === (HardwareCatalog.coolers || []));
 
   const dashHtml = renderDashboard();
   log('renderDashboard renders the command financial model', typeof dashHtml === 'string' && dashHtml.includes('TOTAL SPENT'));
@@ -383,7 +386,72 @@ const rigProbe = `
 `;
 const rigResults = env.run(sandbox, rigProbe);
 
-const all = checks.concat(results).concat(rigResults).concat(doctrineResults);
+// --- RIG ENCLOSURE probe (case/cooler capability profiles + build integrity) ---
+const enclosureProbe = `
+(function(){
+  const out = [];
+  const E = window.__pnEnclosure;
+
+  out.push(['__pnEnclosure exposes integrity + capability helpers', typeof E === 'object' && typeof E.integrity === 'function' && typeof E.caseCapabilities === 'function' && typeof E.coolerCapabilities === 'function']);
+
+  HardwareCatalog.cases = [{brand:'Fractal Design',model:'Meshify 2',confidence:'HIGH',caps:{formFactors:['ITX','MATX','ATX'],maxGpuLengthMm:355,maxCoolerHeightMm:185,psuSupport:'ATX',radiator:{front:'360',top:'360',rear:'140'},airflow:'EXCELLENT',buildQuality:'PREMIUM',sidePanel:'mesh',notes:''}}];
+  HardwareCatalog.coolers = [{brand:'Noctua',model:'NH-D15',confidence:'HIGH',caps:{type:'DUAL TOWER',radiator:null,heightMm:165,sockets:['AM4','AM5','LGA115X','LGA1200','LGA1700'],coolingClass:'EXTREME',fanCount:2,noiseClass:'QUIET',tdpClass:'EXTREME',ramClearance:'UNKNOWN',notes:''}}];
+
+  const caseSlot = {kind:'PLANNED', catalogType:'CASE', label:'Fractal Design Meshify 2', cost:0, originalPrice:0, currency:'RSD'};
+  const cc = E.caseCapabilities(caseSlot, 'Fractal Design Meshify 2');
+  out.push(['catalog label hydrates case caps and stamps CATALOG source', cc && cc.maxGpuLengthMm === 355 && caseSlot.source === 'CATALOG' && caseSlot.catalogKey === 'CASE:FRACTAL DESIGN MESHIFY 2']);
+  const coolerSlot = {kind:'PLANNED', catalogType:'COOLER', label:'Noctua NH-D15', cost:0, originalPrice:0, currency:'RSD'};
+  const kc = E.coolerCapabilities(coolerSlot, 'Noctua NH-D15');
+  out.push(['catalog label hydrates cooler caps and stamps COOLER source', kc && kc.coolingClass === 'EXTREME' && coolerSlot.source === 'CATALOG']);
+
+  out.push(['catalogSearchAll now covers CASE and COOLER', catalogSearchAll('Meshify').some(m => m.cat === 'CASE') && catalogSearchAll('NH-D15').some(m => m.cat === 'COOLER')]);
+
+  function baseRig(){ return {id:null,family:'INI',variantName:'A',status:'PLANNED',currency:'RSD',slots:emptyRigSlots(),estimatedMarketValue:0,expectedSalePrice:0,targetMarginPct:null,salePrice:null,saleDate:null,notes:''}; }
+  function cat(type,label){ return {kind:'CATALOG',catalogType:type,label,cost:0,originalPrice:0,currency:'RSD'}; }
+
+  const single = baseRig();
+  single.slots.CASE = {kind:'PLANNED', catalogType:'CASE', label:'Fractal Design Meshify 2', cost:0, originalPrice:0, currency:'RSD'};
+  const caseHtml = renderRigSlotRow('CASE', single);
+  out.push(['CASE slot renders generic profile + cap editor + search box', caseHtml.includes('data-rig-generic="CASE"') && caseHtml.includes('data-rig-cap-field="CASE.maxGpuLengthMm"') && caseHtml.includes('data-rig-catalog-item="CASE"')]);
+  single.slots.COOLER = {kind:'PLANNED', catalogType:'COOLER', label:'Noctua NH-D15', cost:0, originalPrice:0, currency:'RSD'};
+  const coolerHtml = renderRigSlotRow('COOLER', single);
+  out.push(['COOLER slot renders generic profile + cap editor + search box', coolerHtml.includes('data-rig-generic="COOLER"') && coolerHtml.includes('data-rig-cap-field="COOLER.coolingClass"') && coolerHtml.includes('data-rig-catalog-item="COOLER"')]);
+  state.rigDraft = single;
+  out.push(['RIG BENCH editor injects the BUILD INTEGRITY panel', renderRigEditor().includes('BUILD INTEGRITY') && renderRigEditor().includes('pn-integrity-grid')]);
+
+  const unknown = baseRig();
+  unknown.slots.CASE = {kind:'PLANNED', label:'Generic steel case', cost:0, originalPrice:0, currency:'RSD'};
+  unknown.slots.COOLER = {kind:'PLANNED', label:'Tower cooler', cost:0, originalPrice:0, currency:'RSD'};
+  unknown.slots.PSU = {kind:'PLANNED', label:'Corsair 750W', cost:0, originalPrice:0, currency:'RSD'};
+  const u = E.integrity(unknown);
+  out.push(['no capability profile = UNKNOWN never auto-fails (no WARN checks)', u.state === 'SOUND' && u.checks.every(c => c.status !== 'WARN')]);
+  out.push(['unverified checks still surface for a profile-less build', u.checks.some(c => c.status === 'UNVERIFIED')]);
+
+  HardwareCatalog.psus = [{brand:'BeQuiet',model:'Pure Power 750W',wattage_w:750,quality_score:90,quality_class:'GOLD',safety_status:'ACCEPTABLE',connector_data_confidence:'OFFICIAL',pcie_6_2_connectors:6,pcie_16pin_connectors:0,atx_spec:'ATX'}];
+  const good = baseRig();
+  good.slots.CPU = cat('CPU','AMD Ryzen 7 5800X3D');
+  good.slots.GPU = cat('GPU','NVIDIA RTX 3080 280mm');
+  good.slots.MOBO = cat('MOBO','Gigabyte B550 AORUS ATX');
+  good.slots.RAM = {kind:'PLANNED', label:'2x8GB DDR4 dual channel', cost:0, originalPrice:0, currency:'RSD'};
+  good.slots.CASE = {kind:'PLANNED', catalogType:'CASE', label:'Fractal Design Meshify 2', cost:0, originalPrice:0, currency:'RSD'};
+  good.slots.COOLER = {kind:'PLANNED', catalogType:'COOLER', label:'Noctua NH-D15', cost:0, originalPrice:0, currency:'RSD', caps:{type:'DUAL TOWER',radiator:null,heightMm:160,sockets:['AM4','AM5','LGA1200','LGA1700'],coolingClass:'EXTREME',fanCount:2,noiseClass:'NORMAL',tdpClass:'EXTREME',ramClearance:'NO',notes:''}};
+  good.slots.PSU = cat('PSU','BeQuiet Pure Power 750W');
+  const g = E.integrity(good);
+  out.push(['known compatibility = EXCELLENT integrity, every check PASS', g.state === 'EXCELLENT' && g.checks.every(c => c.status === 'PASS')]);
+
+  const bad = baseRig();
+  Object.keys(good.slots).forEach(k => bad.slots[k] = good.slots[k]);
+  bad.slots.GPU = cat('GPU','NVIDIA RTX 3080 500mm');
+  const b = E.integrity(bad);
+  out.push(['GPU over the case limit drops integrity to MARGINAL', b.state === 'MARGINAL' && b.checks.some(c => c.id === 'GPU_CLEARANCE' && c.status === 'WARN')]);
+  out.push(['integrity warnings append into rigWarnings', rigWarnings(bad).some(w => w.includes('GPU EXCEEDS CASE CLEARANCE'))]);
+
+  return out;
+})()
+`;
+const enclosureResults = env.run(sandbox, enclosureProbe);
+
+const all = checks.concat(results).concat(rigResults).concat(doctrineResults).concat(enclosureResults);
 let fail = 0;
 for (const [name, ok] of all){
   console.log((ok ? 'PASS' : 'FAIL') + ' - ' + name);

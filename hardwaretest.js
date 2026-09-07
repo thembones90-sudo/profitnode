@@ -10,11 +10,15 @@ const hardware = JSON.parse(fs.readFileSync(path.join(DIR, 'profitnode_hardware_
 const motherboards = JSON.parse(fs.readFileSync(path.join(DIR, 'profitnode_motherboard_catalog_v1.json'), 'utf8'));
 const ram = JSON.parse(fs.readFileSync(path.join(DIR, 'profitnode_ram_catalog_v1.json'), 'utf8'));
 const storage = JSON.parse(fs.readFileSync(path.join(DIR, 'profitnode_storage_catalog_v1.json'), 'utf8'));
+const cases = JSON.parse(fs.readFileSync(path.join(DIR, 'profitnode_case_catalog_v1.json'), 'utf8'));
+const coolers = JSON.parse(fs.readFileSync(path.join(DIR, 'profitnode_cooler_catalog_v1.json'), 'utf8'));
 
 sandbox.canonicalHardware = hardware;
 sandbox.canonicalBoards = motherboards;
 sandbox.canonicalRam = ram;
 sandbox.canonicalStorage = storage;
+sandbox.canonicalCases = cases;
+sandbox.canonicalCoolers = coolers;
 
 env.loadAll(sandbox, DIR);
 
@@ -88,6 +92,62 @@ const results = env.run(sandbox, `(() => {
   out.push(['newer NVMe on older platform is compatible but speed limited', storageWarnings.some(w=>w.includes('COMPATIBLE — PCIe SPEED LIMITED'))]);
   const storageEditor=renderRigSlotRow('STORAGE2',storageRig);
   out.push(['secondary storage shows role-specific suitability', storageEditor.includes('Secondary ')&&storageEditor.includes('Bulk ')&&storageEditor.includes('Archive ')]);
+
+  HardwareCatalog.cases = canonicalCases.cases;
+  HardwareCatalog.coolers = canonicalCoolers.coolers;
+  out.push(['canonical case catalog is loaded with 24 entries', HardwareCatalog.cases.length === 24]);
+  out.push(['canonical cooler catalog is loaded with 24 entries', HardwareCatalog.coolers.length === 24]);
+  out.push(['case catalog searches brand + model', catalogSearch('CASE','Lancool 216').some(e => e.brand === 'Lian Li' && e.model === 'Lancool 216')]);
+  out.push(['cooler catalog searches brand + model', catalogSearch('COOLER','NH-D15').some(e => e.brand === 'Noctua' && e.caps.type === 'DUAL TOWER')]);
+  const hydCase = {kind:'PLANNED',catalogType:'CASE',catalogKey:null,label:'Fractal Design Meshify 2',cost:0,currency:'RSD'};
+  const hydCC = caseCapabilities(hydCase,'Fractal Design Meshify 2');
+  out.push(['case capabilities hydrate from the canonical catalog', hydCC && hydCC.maxGpuLengthMm === 355 && hydCC.airflow === 'EXCELLENT' && hydCase.source === 'CATALOG' && hydCase.catalogKey === 'CASE:FRACTAL DESIGN MESHIFY 2']);
+  const encRig = example('AMD Ryzen 5 3600','NVIDIA RTX 2060 6GB','MSI B450 TOMAHAWK MAX');
+  encRig.slots.CASE = {kind:'CATALOG',catalogType:'CASE',label:'NZXT H510',cost:0,currency:'RSD'};
+  encRig.slots.COOLER = {kind:'CATALOG',catalogType:'COOLER',label:'Noctua NH-D15',cost:0,currency:'RSD'};
+  const caseSlotHtml = renderRigSlotRow('CASE',encRig);
+  out.push(['CASE slot renders the enclosure editor', caseSlotHtml.includes('data-rig-generic="CASE"') && caseSlotHtml.includes('data-rig-cap-field="CASE.maxGpuLengthMm"') && caseSlotHtml.includes('data-rig-catalog-item="CASE"')]);
+  const coolerSlotHtml = renderRigSlotRow('COOLER',encRig);
+  out.push(['COOLER slot renders the enclosure editor', coolerSlotHtml.includes('data-rig-generic="COOLER"') && coolerSlotHtml.includes('data-rig-cap-field="COOLER.coolingClass"') && coolerSlotHtml.includes('data-rig-catalog-item="COOLER"')]);
+
+  function cat2(type,label){ return {kind:'CATALOG',catalogType:type,label,cost:0,originalPrice:0,currency:'RSD'}; }
+  function goodRig(){
+    const r = newRigDraft('INTG');
+    r.slots.CPU = cat2('CPU','AMD Ryzen 7 5800X3D');
+    r.slots.GPU = cat2('GPU','NVIDIA RTX 3080 280mm');
+    r.slots.MOBO = cat2('MOBO','Gigabyte B550 AORUS ATX');
+    r.slots.RAM = {kind:'PLANNED',label:'2x8GB DDR4 dual channel',cost:0,originalPrice:0,currency:'RSD'};
+    r.slots.CASE = {kind:'CATALOG',catalogType:'CASE',label:'Fractal Design Meshify 2',cost:0,originalPrice:0,currency:'RSD'};
+    r.slots.COOLER = {kind:'PLANNED',catalogType:'COOLER',label:'Noctua NH-D15',cost:0,originalPrice:0,currency:'RSD',caps:{type:'DUAL TOWER',radiator:null,heightMm:160,sockets:['AM4','AM5','LGA1200','LGA1700'],coolingClass:'EXTREME',fanCount:2,noiseClass:'NORMAL',tdpClass:'EXTREME',ramClearance:'NO',notes:''}};
+    r.slots.PSU = cat2('PSU','BeQuiet Pure Power 750W');
+    return r;
+  }
+  HardwareCatalog.psus = [{brand:'BeQuiet',model:'Pure Power 750W',wattage_w:750,quality_score:90,quality_class:'GOLD',safety_status:'ACCEPTABLE',connector_data_confidence:'OFFICIAL',pcie_6_2_connectors:6,pcie_16pin_connectors:0,atx_spec:'ATX'}];
+  const perfectIt = rigIntegrity(goodRig());
+  out.push(['fully-characterized build judges BUILD INTEGRITY EXCELLENT', perfectIt.state === 'EXCELLENT']);
+  out.push(['EXCELLENT build has every present check PASS', perfectIt.checks.every(c => c.status === 'PASS') && perfectIt.warnings.length === 0]);
+  const oversized = goodRig();
+  oversized.slots.GPU = cat2('GPU','NVIDIA RTX 3080 500mm');
+  const marginalIt = rigIntegrity(oversized);
+  out.push(['GPU beyond the case envelope judges MARGINAL with a clearance WARN', marginalIt.state === 'MARGINAL' && marginalIt.checks.some(c => c.id === 'GPU_CLEARANCE' && c.status === 'WARN')]);
+  const plain = goodRig();
+  plain.slots.CASE = {kind:'PLANNED',label:'Generic steel case',cost:0,originalPrice:0,currency:'RSD'};
+  plain.slots.COOLER = {kind:'PLANNED',label:'Tower cooler',cost:0,originalPrice:0,currency:'RSD'};
+  const unknownIt = rigIntegrity(plain);
+  out.push(['unknown enclosure stays SOUND — UNKNOWN is never INCOMPATIBLE', unknownIt.state === 'SOUND' && unknownIt.checks.every(c => c.status !== 'WARN')]);
+  out.push(['unreadable GPU length grades UNVERIFIED rather than failing the build', unknownIt.checks.find(c => c.id === 'GPU_CLEARANCE').status === 'UNVERIFIED']);
+  const dec = example('AMD Ryzen 7 5800X3D','NVIDIA RTX 3080 10GB','ASRock X570 Taichi');
+  const perfBefore = rigHardwareProfile(dec).performance;
+  dec.slots.CASE = {kind:'PLANNED',label:'NZXT H510',cost:0,originalPrice:0,currency:'RSD',caps:{formFactors:['ATX'],maxGpuLengthMm:400,maxCoolerHeightMm:160,psuSupport:'ATX',radiator:{front:'none',top:'240',rear:'none'},airflow:'POOR',buildQuality:'SOLID',sidePanel:'steel',notes:''}};
+  dec.slots.COOLER = {kind:'PLANNED',label:'Tower cooler',cost:0,originalPrice:0,currency:'RSD',caps:{type:'SINGLE TOWER',radiator:null,heightMm:155,sockets:[],coolingClass:'STANDARD',fanCount:1,noiseClass:'NORMAL',tdpClass:'STANDARD',ramClearance:'NO',notes:''}};
+  dec.slots.PSU = {kind:'PLANNED',label:'Corsair 750W',cost:0,originalPrice:0,currency:'RSD'};
+  out.push(['MARGINAL enclosure profile never changes the CPU/GPU/MOBO performance score', rigHardwareProfile(dec).performance === perfBefore && rigIntegrity(dec).state === 'MARGINAL']);
+  out.push(['integrity warnings append into rigWarnings', rigWarnings(oversized).some(w => w.includes('GPU EXCEEDS CASE CLEARANCE'))]);
+
+  HardwareCatalog.cases = [];
+  HardwareCatalog.coolers = [];
+  const missingCaseCaps = caseCapabilities({kind:'PLANNED',catalogType:'CASE',label:'Fractal Design Meshify 2',cost:0,currency:'RSD'},'Fractal Design Meshify 2');
+  out.push(['missing case catalog degrades to UNVERIFIED, never a hard fail', missingCaseCaps === null && rigIntegrity(plain).state === 'SOUND']);
   return out;
 })()`);
 

@@ -4,6 +4,7 @@ window.__PN_SCRIPTS = [
   "planner_retirement_extension.js?v=planner-retired-v1",
   "terminal_naming_extension.js?v=terminal-naming-v2",
   "psu_extension.js?v=sales-ledger-v1",
+  "rig_enclosure_extension.js?v=rig-enclosure-v1",
   "sale_type_extension.js?v=sales-ledger-v1",
   "command_center_extension.js?v=command-center-v1",
   "command_header_glitch_extension.js?v=command-header-glitch-v1",
