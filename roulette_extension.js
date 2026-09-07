@@ -234,12 +234,13 @@
     }).join("")+'</div>';
   }
 
-  function rouletteWheelLabels(labels){
+  function rouletteWheelLabels(labels,rotation){
     const count = labels.length;
+    const wheelRotation = Number(rotation)||0;
 
     return labels.map((label,index)=>{
-      const angle = index*(360/count);
-      return '<span class="pn-r3-wheel-label" style="--a:'+angle+'deg">'+escHtml(label)+'</span>';
+      const angle = -90 + (index+0.5)*(360/count);
+      return '<span class="pn-r3-wheel-label" style="--a:'+angle+'deg;--neg-a:'+(-angle)+'deg;--neg-r:'+(-wheelRotation)+'deg">'+escHtml(label)+'</span>';
     }).join("");
   }
 
@@ -247,7 +248,7 @@
     return '<div class="pn-r3-wheel-shell">'+
       '<div class="pn-r3-pointer"></div>'+
       '<div class="pn-r3-wheel pn-r3-verdict-wheel" data-r3-verdict-wheel style="transform:rotate('+state.rouletteVerdictRotation+'deg)">'+
-        rouletteWheelLabels(VERDICTS)+
+        rouletteWheelLabels(VERDICTS,state.rouletteVerdictRotation)+
         '<div class="pn-r3-core">PN</div>'+
       '</div>'+
     '</div>';
@@ -257,7 +258,7 @@
     return '<div class="pn-r3-wheel-shell">'+
       '<div class="pn-r3-pointer"></div>'+
       '<div class="pn-r3-wheel pn-r3-wager-wheel" data-r3-wager-wheel style="transform:rotate('+state.rouletteWagerRotation+'deg)">'+
-        rouletteWheelLabels(WAGERS)+
+        rouletteWheelLabels(WAGERS,state.rouletteWagerRotation)+
         '<div class="pn-r3-core">R</div>'+
       '</div>'+
     '</div>';
@@ -525,7 +526,7 @@
 
     const index = rouletteRandomIndex(labels.length);
     const slice = 360/labels.length;
-    const center = index*slice;
+    const center = (index+0.5)*slice;
     const key = kind==="verdict" ? "rouletteVerdictRotation" : "rouletteWagerRotation";
 
     const current = Number(state[key])||0;
@@ -1143,7 +1144,7 @@
     top:50%;
     width:42%;
     transform-origin:0 0;
-    transform:rotate(var(--a)) translate(34%,-50%);
+    transform:rotate(var(--a)) translate(34%,-50%) rotate(var(--neg-a)) rotate(var(--neg-r));
     color:#f4eafa;
     font-size:9px;
     font-weight:900;
