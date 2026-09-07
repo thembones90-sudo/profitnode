@@ -705,6 +705,18 @@
   document.addEventListener("input",function(event){
     if (event.target.matches("[data-roulette-stake]")){
       state.rouletteStake = event.target.value;
+
+      /*
+        The verdict button is rendered disabled while the stake is zero.
+        Typing a stake updates state without re-rendering, so we must also
+        update the live button state here. Otherwise the button remains a
+        very attractive but completely inert rectangle. Human UI design,
+        undefeated.
+      */
+      const verdictButton = document.querySelector("[data-roulette-spin-verdict]");
+      if (verdictButton){
+        verdictButton.disabled = rouletteStakeValue() <= 0;
+      }
     }
   });
 
