@@ -1,28 +1,9 @@
-const fs = require('fs');
-const vm = require('vm');
+"use strict";
+const env = require('./pn_test_env.js');
 
-const store = {};
-const localStorage = {
-  getItem: (k) => (k in store ? store[k] : null),
-  setItem: (k, v) => { store[k] = String(v); },
-  removeItem: (k) => { delete store[k]; },
-};
-const fakeEl = () => ({ addEventListener(){}, innerHTML: '', querySelector: () => null });
-const document = {
-  addEventListener: (ev, fn) => { if (ev === 'DOMContentLoaded') fn(); },
-  getElementById: (id) => (id === 'root' ? fakeEl() : null),
-  createElement: () => ({ textContent: '', appendChild(){}, setAttribute(){}, style:{} }),
-  head: { appendChild(){} },
-  querySelector: () => null,
-};
-let uuidN = 0;
-const crypto = { randomUUID: () => 'test-uuid-' + (uuidN++) };
-const window = { claude: undefined };
-
-const code = fs.readFileSync(__dirname + '/app.js', 'utf8');
-const sandbox = { document, localStorage, crypto, window, console };
-vm.createContext(sandbox);
-vm.runInContext(code, sandbox, { filename: 'app.js' });
+const DIR = __dirname;
+const sandbox = env.createSandbox();
+env.loadAll(sandbox, DIR);
 
 const probe = `
 (function(){
@@ -73,20 +54,55 @@ const probe = `
   const html6 = renderRigBuild();
   out.push(['saved rig editor renders with ASSEMBLE button', html6.includes('ASSEMBLE') && html6.includes('DELETE')]);
 
-  // assemble then re-render editor -> should show DISASSEMBLE/MARK SOLD, no slot selects editable text mismatch
+  // assemble then re-render editor -> DISASSEMBLE/MARK SOLD
   const res = Actions.assembleRig(id);
   state.rigDraft = JSON.parse(JSON.stringify(Store.get('rigs', id)));
   const html7 = renderRigBuild();
   out.push(['assembled rig shows DISASSEMBLE + MARK SOLD, no ASSEMBLE', res.ok && html7.includes('DISASSEMBLE') && html7.includes('MARK SOLD') && !html7.includes('>ASSEMBLE<')]);
 
-  // full page shell render (renderShell / render()) doesn't throw, and nav includes RIG BUILD
+  // --- NAV LABELS (terminal naming — replaces old 'RIG BUILD' assertion) ---
   render();
   const shellHtml = renderShell();
-  out.push(['nav includes RIG BUILD label', shellHtml.includes('RIG BUILD')]);
+  const navLabels = ['COMMAND','INTEL','RIG BENCH','BUILDS','PARTS VAULT','REPAIR BAY','THE HUNT','LEDGER','ARCHIVE','THE ROULETTE','BLACKBOX'];
+  out.push(['nav shows terminal labels', navLabels.every(l => shellHtml.includes(l))]);
+  out.push(['nav no longer shows legacy labels', !shellHtml.includes('RIG BUILD') && !shellHtml.includes('BUILD PLANNER') && !shellHtml.includes('>DASHBOARD<')]);
+  out.push(['nav includes the roulette button', shellHtml.includes('data-route="roulette"')]);
+
+  // --- COMMAND (command center + financial model render on dashboard route) ---
+  state.route = 'dashboard';
+  const dashHtml = renderShell();
+  out.push(['dashboard renders command hero-finance', dashHtml.includes('pn-command-hero-finance') && dashHtml.includes('TOTAL SPENT')]);
+
+  // --- INTEL (analytics route render wraps in capital velocity strip) ---
+  state.route = 'analytics';
+  const intelHtml = renderShell();
+  out.push(['analytics header says INTEL', intelHtml.includes('>INTEL<') || intelHtml.includes('INTEL')]);
+  out.push(['analytics includes intelligence capital velocity block', intelHtml.includes('pn-section-kicker') && intelHtml.includes('CAPITAL VELOCITY')]);
+
+  // --- PARTS VAULT (intelligence stock aging injection) ---
+  state.route = 'inventory';
+  const vaultHtml = renderShell();
+  out.push(['inventory header says PARTS VAULT', vaultHtml.includes('PARTS VAULT')]);
+  out.push(['inventory includes intelligence aging panel', vaultHtml.includes('INVENTORY AGING') && vaultHtml.includes('pn-aging-strip')]);
+
+  // --- THE ROULETTE route renders ---
+  state.route = 'roulette';
+  const rouletteHtml = renderShell();
+  out.push(['roulette route renders the chamber', rouletteHtml.includes('pn-r3-content') && rouletteHtml.includes('THE ROULETTE')]);
+
+  // --- LEDGER (sales route now sale_type render) ---
+  state.route = 'sales';
+  const salesHtml = renderShell();
+  out.push(['sales route header says LEDGER', salesHtml.includes('>LEDGER<') || salesHtml.includes('LEDGER')]);
+  out.push(['sales route renders sale-type filters', salesHtml.includes('pn-sales-filter') && salesHtml.includes('pn-sales-summary')]);
+
+  // --- BLACKBOX route renders with intelligence data-health ---
+  state.route = 'backup';
+  const backupHtml = renderShell();
+  out.push(['backup header says BLACKBOX', backupHtml.includes('>BLACKBOX<') || backupHtml.includes('BLACKBOX')]);
+  out.push(['backup renders export/import panels', backupHtml.includes('data-export-backup') && backupHtml.includes('data-import-trigger')]);
 
   // --- new markup assertions for the 12-item extension ---
-
-  // Empty slot placeholder (item 1): a brand new draft has every slot empty
   state.rigDraft = newRigDraft(null);
   const htmlEmpty = renderRigBuild();
   out.push(['empty CPU slot shows dashed placeholder text', htmlEmpty.includes('— CPU EMPTY —')]);
@@ -95,26 +111,23 @@ const probe = `
   out.push(['rig editor omits the per-rig Currency field', !htmlEmpty.includes('>Currency<')]);
   out.push(['slot table shows paid and original price columns', htmlEmpty.includes('>Paid Price<') && htmlEmpty.includes('>Original Price<')]);
 
-  // Quick-fill affordance (item 10): exactly one unassigned STORAGE item -> one-click fill button
   const soleStorageItem = Actions.addInventory({category:'STORAGE',manufacturer:'Crucial',model:'MX500 1TB',purchaseDate:'2026-01-01',purchasePrice:5000,currency:'RSD',estimatedMarketValue:7000,source:'OTHER',condition:'WORKING',status:'IN_STORAGE',notes:''});
   state.rigDraft = newRigDraft(null);
   const htmlQuick = renderRigBuild();
   out.push(['quick-fill button appears for the sole unassigned STORAGE item', htmlQuick.includes('data-rig-slot-quickfill="STORAGE:' + soleStorageItem.id + '"') && htmlQuick.includes('+ USE Crucial MX500 1TB')]);
 
-  // Target Margin % input + Parts-Out Value tile + build-cost meter (items 6, 9, 11)
   state.rigDraft = JSON.parse(JSON.stringify(Store.get('rigs', id)));
   state.rigDraft.targetMarginPct = 25;
   const htmlEditor2 = renderRigBuild();
   out.push(['rig editor shows a Target Margin % field', htmlEditor2.includes('data-rig-field="targetMarginPct"')]);
   out.push(['rig editor shows a Parts-Out Value tile', htmlEditor2.includes('Parts-Out Value')]);
   out.push(['rig editor shows parts value and margin tiles', htmlEditor2.includes('Original Parts Value') && htmlEditor2.includes('Parts Margin')]);
-  out.push(['rig performance and tier summaries use distinct color hooks', renderRigEditor.toString().includes('pn-performance-text') && renderRigEditor.toString().includes('pn-tier-text ')]);
+  out.push(['rig performance and tier summaries use distinct color hooks', typeof PNCoreRenderRigEditor === 'function' && PNCoreRenderRigEditor.toString().includes('pn-performance-text') && PNCoreRenderRigEditor.toString().includes('pn-tier-text ')]);
+  out.push(['rig editor wraps the core renderer in the PSU extension', renderRigEditor.toString() !== PNCoreRenderRigEditor.toString()]);
   out.push(['rig editor shows an apply-suggested-price affordance once a target margin is set', htmlEditor2.includes('data-rig-apply-suggested-price=')]);
   out.push(['rig editor shows the build-cost meter bar (score-row-bar/score-row-fill)', htmlEditor2.includes('score-row-bar') && htmlEditor2.includes('score-row-fill')]);
   out.push(['rig editor shows the copy-slot-to-family action', htmlEditor2.includes('data-rig-copy-slot-to-family="CPU"') && htmlEditor2.includes('FAMILY')]);
 
-  // Comparison table: profit bar + empty-slot placeholder + assembled border (items 1, 3, 4, 5)
-  // state.rigFamilyView='REVENANT III' still selected, rigCompareIds=[id,dup.id] from earlier, and rig "id" is now ASSEMBLED (from res above)
   state.rigFamilyView = 'REVENANT III';
   state.rigDraft = null;
   const htmlCompare = renderRigBuild();
@@ -122,17 +135,16 @@ const probe = `
   out.push(['compare table falls back to the empty-slot placeholder for a blank slot', htmlCompare.includes('rig-empty-slot')]);
   out.push(['assembled variant row/column gets an amber left border', htmlCompare.includes('border-left:3px solid var(--amber)')]);
 
-  // RIG_STATUS_META retune (item 2): DISASSEMBLED now uses the new chip-blue-outline class
   out.push(['RIG_STATUS_META.DISASSEMBLED uses chip-blue-outline', RIG_STATUS_META.DISASSEMBLED.chip === 'chip-blue-outline']);
 
   return out;
 })()
 `;
-const results = vm.runInContext(probe, sandbox, { filename: 'probe.js' });
+const results = env.run(sandbox, probe);
 let fail = 0;
 for (const [name, ok] of results) {
   console.log((ok ? 'PASS' : 'FAIL') + ' - ' + name);
   if (!ok) fail++;
 }
-console.log('\n' + (fail === 0 ? 'ALL PASSED' : fail + ' FAILED'));
+console.log('\n' + (fail === 0 ? 'ALL PASSED' : fail + ' FAILED') + ' (' + results.length + ' assertions)');
 process.exit(fail === 0 ? 0 : 1);

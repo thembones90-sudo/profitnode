@@ -1,25 +1,24 @@
+"use strict";
 const fs = require('fs');
-const vm = require('vm');
+const path = require('path');
+const env = require('./pn_test_env.js');
 
-const hardware = JSON.parse(fs.readFileSync(__dirname + '/profitnode_hardware_ratings_v1.json', 'utf8'));
-const motherboards = JSON.parse(fs.readFileSync(__dirname + '/profitnode_motherboard_catalog_v1.json', 'utf8'));
-const ram = JSON.parse(fs.readFileSync(__dirname + '/profitnode_ram_catalog_v1.json', 'utf8'));
-const storage = JSON.parse(fs.readFileSync(__dirname + '/profitnode_storage_catalog_v1.json', 'utf8'));
-const appFile = process.argv[2] || 'app.js';
-const store = {};
-const localStorage = {
-  getItem: k => (k in store ? store[k] : null),
-  setItem: (k, v) => { store[k] = String(v); },
-  removeItem: k => { delete store[k]; },
-};
-const fakeEl = () => ({ addEventListener(){}, innerHTML:'', querySelector:()=>null });
-const document = { addEventListener(){}, getElementById:()=>fakeEl(), createElement:()=>({}), head:{appendChild(){}} };
-const crypto = { randomUUID: (() => { let n=0; return () => 'hardware-test-' + n++; })() };
-const sandbox = { document, localStorage, crypto, window:{}, console, canonicalHardware:hardware, canonicalBoards:motherboards, canonicalRam:ram, canonicalStorage:storage };
-vm.createContext(sandbox);
-vm.runInContext(fs.readFileSync(__dirname + '/' + appFile, 'utf8'), sandbox, { filename:appFile });
+const DIR = __dirname;
+const sandbox = env.createSandbox();
 
-const results = vm.runInContext(`(() => {
+const hardware = JSON.parse(fs.readFileSync(path.join(DIR, 'profitnode_hardware_ratings_v1.json'), 'utf8'));
+const motherboards = JSON.parse(fs.readFileSync(path.join(DIR, 'profitnode_motherboard_catalog_v1.json'), 'utf8'));
+const ram = JSON.parse(fs.readFileSync(path.join(DIR, 'profitnode_ram_catalog_v1.json'), 'utf8'));
+const storage = JSON.parse(fs.readFileSync(path.join(DIR, 'profitnode_storage_catalog_v1.json'), 'utf8'));
+
+sandbox.canonicalHardware = hardware;
+sandbox.canonicalBoards = motherboards;
+sandbox.canonicalRam = ram;
+sandbox.canonicalStorage = storage;
+
+env.loadAll(sandbox, DIR);
+
+const results = env.run(sandbox, `(() => {
   HardwareCatalog.cpus = canonicalHardware.cpus;
   HardwareCatalog.gpus = canonicalHardware.gpus;
   HardwareCatalog.boards = canonicalBoards.boards;
@@ -77,22 +76,25 @@ const results = vm.runInContext(`(() => {
   out.push(['RIG BUILD renders the compact DDR4 configuration fields', ramEditor.includes('data-rig-ram-field="moduleCount"')&&ramEditor.includes('data-rig-ram-field="speed"')&&!ramEditor.includes('data-rig-ram-field="casLatency"')&&!ramEditor.includes('data-rig-ram-field="voltage"')&&!ramEditor.includes('data-rig-ram-field="model"')]);
   const gpuEditor=renderRigSlotRow('GPU',Object.assign(example('AMD Ryzen 5 3600','NVIDIA RTX 2060 6GB','MSI B450 TOMAHAWK MAX'),{id:null}));
   out.push(['GPU detail omits Raster and RT options', !gpuEditor.includes('Raster')&&!gpuEditor.includes('· RT')]);
-  out.push(['user-facing hardware labels spell out PROFITNODE', renderRigEditor.toString().includes('PROFITNODE Rig Performance')&&!renderRigEditor.toString().includes('PN Rig Performance')]);
+  out.push(['user-facing hardware labels spell out PROFITNODE', PNCoreRenderRigEditor.toString().includes('PROFITNODE Rig Performance')&&!PNCoreRenderRigEditor.toString().includes('PN Rig Performance')]);
   out.push(['single-channel and insufficient-capacity RAM warnings fire', rigWarnings(ramRig).some(w=>w.includes('Single-channel'))&&rigWarnings(ramRig).some(w=>w.includes('below 16 GB'))]);
   const storageRig=example('AMD Ryzen 5 3600','NVIDIA RTX 2060 6GB','MSI B450 TOMAHAWK MAX');
   const hdd=HardwareCatalog.storage.find(e=>e.drive_type==='HDD'&&e.capacity_gb===2000),gen4=HardwareCatalog.storage.find(e=>e.drive_type==='NVMe SSD'&&/PCIe 4/.test(e.interface));
   storageRig.slots.STORAGE=cat('STORAGE',hdd.brand+' '+hdd.model);
   storageRig.slots.STORAGE2=cat('STORAGE2',gen4.brand+' '+gen4.model);
   const storageWarnings=rigWarnings(storageRig);
-  out.push(['primary and secondary storage slots are distinct', RIG_SLOT_LABELS.STORAGE==='Primary Storage'&&RIG_SLOT_LABELS.STORAGE2==='Secondary Storage']);
+  out.push(['primary and secondary storage slots are distinct', RIG_SLOT_LABELS.STORAGE==='Primary Storage'&&RIG_SLOT_LABELS.STORAGE2==='Storage 2']);
   out.push(['HDD-only primary warning fires', storageWarnings.some(w=>w.includes('HDD-ONLY PRIMARY'))]);
   out.push(['newer NVMe on older platform is compatible but speed limited', storageWarnings.some(w=>w.includes('COMPATIBLE — PCIe SPEED LIMITED'))]);
   const storageEditor=renderRigSlotRow('STORAGE2',storageRig);
   out.push(['secondary storage shows role-specific suitability', storageEditor.includes('Secondary ')&&storageEditor.includes('Bulk ')&&storageEditor.includes('Archive ')]);
   return out;
-})()`, sandbox);
+})()`);
 
 let failures=0;
-for(const [name,ok] of results){ console.log((ok?'PASS':'FAIL')+' - '+name); if(!ok) failures++; }
-console.log('\n'+(failures===0?'ALL PASSED':failures+' FAILED'));
+for(const [name, ok] of results){
+  console.log((ok ? 'PASS' : 'FAIL') + ' - ' + name);
+  if(!ok) failures++;
+}
+console.log('\n'+(failures===0?'ALL PASSED':failures+' FAILED')+' ('+results.length+' assertions)');
 process.exit(failures===0?0:1);

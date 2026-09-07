@@ -7,7 +7,7 @@
 
 ## TL;DR
 
-The code is done and tested. 65/65 tests pass (28 logic + 37 render, `smoketest*.js` + `rendertest*.js`, both minified and unminified variants). **The blocker is entirely deployment, not code.** Every Vercel project this Claude session created — via the Vercel MCP `deploy_to_vercel` tool, i.e. direct file-upload API deploys — was garbage-collected off the account within minutes, including ones that came back `READY` immediately after creation. This happened to every non-git-linked project across two separate sessions now (burned names below). The one project in the account that has never disappeared, `teacher-preacher`, is the only one that's **GitHub-linked** rather than API-uploaded. That's the strongest lead: this Vercel team appears to only retain git-linked deployments.
+The code runs from unminified source (no build/minification pipeline). **The blocker is entirely deployment, not code.** Every Vercel project this Claude session created — via the Vercel MCP `deploy_to_vercel` tool, i.e. direct file-upload API deploys — was garbage-collected off the account within minutes, including ones that came back `READY` immediately after creation. This happened to every non-git-linked project across two separate sessions now (burned names below). The one project in the account that has never disappeared, `teacher-preacher`, is the only one that's **GitHub-linked** rather than API-uploaded. That's the strongest lead: this Vercel team appears to only retain git-linked deployments.
 
 Claude's environment could not complete a GitHub-linked deploy: no working GitHub token (`GH_TOKEN`/`GITHUB_TOKEN` are proxy-injected placeholders that 502 against `api.github.com`), and browser-automation file upload only accepts files already on the *user's own machine*, not paths inside Claude's cloud container. If Codex's environment has real `git`/GitHub push access, that's very likely the actual unblock: push this repo to GitHub, then link it as a Vercel project (`vercel link` / import from Git in the dashboard, or Vercel's `create_git_project` API) instead of uploading files directly.
 
@@ -15,18 +15,16 @@ Claude's environment could not complete a GitHub-linked deploy: no working GitHu
 
 | File | What it is |
 |---|---|
-| `app.js` | Canonical unminified source, 117,332 bytes. All 12 RIG BUILD tweaks implemented here. |
-| `app.min.js` | Minified build for deploy, 100,090 bytes. **SHA-256: `43fe40e73e14ddeab63e1c51fa6d607b318dc571606da1cc4ccdcc2cad0eb8f8`** — verified byte-identical to the tested source at deploy time (this hash is your ground truth if you need to confirm a deployed copy matches). |
-| `index.html` | The single HTML shell. Loads `app.js` via a **relative** `<script src="app.js">` — expects to be served from the same origin/project as the JS file, not split across two hosts. |
-| `smoketest.js` / `smoketest_min.js` | Node/vm-based logic test harness (no browser needed) — same 28 assertions, run against unminified/minified builds respectively. |
-| `rendertest.js` / `rendertest_min.js` | Node/vm-based render/DOM-shim test harness — same 37 assertions, unminified/minified. |
+| `index.html` | The single HTML shell. Loads `pn_scripts.js` then `app.js` — expects to be served from the same origin/project as the JS files, not split across two hosts. |
+| `pn_scripts.js` | **Canonical script manifest** — defines `window.__PN_SCRIPTS` (source order + `?v=` suffixes). Both the browser loader and the Node tests consume this single list. |
+| `app.js` | Loader only — `document.write()`s the scripts listed in `window.__PN_SCRIPTS`. No minified build exists; the unminified source is the runtime. |
+| `app_core.js` + `*_extension.js` | Core data model / Store / Actions / rendering / UI, plus feature modules loaded after core in manifest order. |
+| `smoketest.js` / `rendertest.js` / `hardwaretest.js` | Node/vm-based test harnesses (no browser needed); run every manifest script in order via the shared bootstrap in `pn_test_env.js`. |
 
 Run tests with plain Node, no deps:
 ```
-node smoketest.js && node rendertest.js       # unminified
-node smoketest_min.js && node rendertest_min.js   # minified (this is what's actually deployed)
+node smoketest.js && node rendertest.js && node hardwaretest.js
 ```
-All four currently report `ALL PASSED`, confirmed moments before this handoff was written.
 
 **Not included** (left behind in the working scratchpad, not canonical): `app.noseed.js` (an experimental variant, ~9.5KB smaller, purpose not fully audited — don't treat as a source of truth), and four early `bootstrap_test*.js` files superseded by `smoketest`/`rendertest`.
 
@@ -49,8 +47,8 @@ The user's actual inventory/sales data (7 inventory items, projects "REVENANT II
 ## Recommended next step for Codex
 
 1. Confirm you have working git + GitHub credentials in your environment (`git push` to a real remote).
-2. Push this app (`index.html` + `app.min.js`, renamed to `app.js` on deploy, or update `index.html`'s script tag if you keep the `.min` suffix) to a GitHub repo.
+2. Push this app (`index.html` + `pn_scripts.js` + `app.js` + all extension JS + catalog JSONs) to a GitHub repo.
 3. Link that repo as a new Vercel project (dashboard "Import Git Repository," or `vercel link` / the Vercel API's git-project-creation endpoint) under the same Vercel account/team (`team_p26UJZ9MgenN71TjBdHzUeMo`, slug `thembones90-sudos-projects`) — this is the account's only project that has ever persisted (`teacher-preacher`), so mirroring its setup is the working template.
-4. Verify the deployed `app.js` hashes to `43fe40e73e14ddeab63e1c51fa6d607b318dc571606da1cc4ccdcc2cad0eb8f8` before telling the user it's live.
+4. Verify the deployed `pn_scripts.js` manifest matches the repo copy before telling the user it's live.
 5. Ask the user for a JSON backup of their ledger data if they have one — don't assume it's lost, but don't try to guess/reconstruct it either.
 6. Going forward, git-linked deploy also solves the user's standing "keep just one version and upgrade it in place" request, which the API one-shot-per-name pattern could never satisfy anyway.
