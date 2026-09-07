@@ -1,4 +1,4 @@
-﻿"use strict";
+"use strict";
 
 /*
   PROFITNODE Sales Type Fix
@@ -49,7 +49,7 @@ renderSales = function(){
       '<td class="num" style="color:'+(d.profit>=0?"var(--green)":"var(--red)")+'">'+money(d.profit,sale.currency)+'</td>'+
       '<td class="num">'+pct(d.margin)+'</td>'+
       '<td class="num" style="color:'+(d.roi>=0?"var(--green)":"var(--red)")+'">'+pct(d.roi)+'</td>'+
-      '<td class="num">'+(d.daysHeld!=null?d.daysHeld:"â€”")+'</td>'+
+      '<td class="num">'+(d.daysHeld!=null?d.daysHeld:"—")+'</td>'+
       '</tr>';
   }).join("") : '<tr class="empty-row"><td colspan="8">No sales match this filter.</td></tr>';
 
@@ -59,7 +59,7 @@ renderSales = function(){
     '<button class="btn btn-primary" data-open-form="sale">+ NEW SALE</button>'
   )+
   '<div class="content"><div class="search-bar">'+
-  '<input type="text" placeholder="Search salesâ€¦" data-filter="sales.q" value="'+escAttr(filters.q)+'">'+
+  '<input type="text" placeholder="Search sales…" data-filter="sales.q" value="'+escAttr(filters.q)+'">'+
   '</div><div class="panel"><div class="table-scroll"><table><thead><tr>'+
   '<th>Sale Item</th><th>Sale Date</th><th class="num">Sale Price</th><th class="num">Total Cost</th>'+
   '<th class="num">Profit</th><th class="num">Margin</th><th class="num">ROI</th><th class="num">Days Held</th>'+
