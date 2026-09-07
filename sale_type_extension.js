@@ -66,6 +66,13 @@ renderSales = function(){
   '</tr></thead><tbody>'+rows+'</tbody></table></div></div></div>';
 };
 
+
+/* ROUTES captured the original renderSales function during app_core initialization.
+   Rebind the Sales route so it actually uses the RIG-aware renderer. */
+if (typeof ROUTES !== "undefined") {
+  const pnSalesRoute = ROUTES.find(route => route.key === "sales");
+  if (pnSalesRoute) pnSalesRoute.render = renderSales;
+}
 /* Dashboard counts: projects and RIG BUILD sales are PCs sold, not components. */
 const PNCoreDashboardStatsSaleTypes = dashboardStats;
 dashboardStats = function(currency){
