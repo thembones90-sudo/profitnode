@@ -676,7 +676,7 @@ renderRigSlotRow=function(slotKey,rig){
     (kind==="INVENTORY"?'readonly title="Managed from Inventory"':'data-rig-slot-field="'+slotKey+'.'+field+'"')+
     ' value="'+escAttr(resolved?resolved[field]:slot[field]||0)+'">':"—";
   const copyBtn=rig.id?'<button type="button" class="btn btn-sm btn-ghost" data-rig-copy-slot-to-family="'+slotKey+'" title="Copy this slot to every other variant in this family">→ FAMILY</button>':"";
-  return '<div class="rig-slot-row"><div class="rig-slot-label">'+RIG_SLOT_LABELS[slotKey]+'</div><div class="rig-slot-control">'+modeSelect+
+  return '<div class="rig-slot-row"><div class="rig-slot-label pn-cat-label '+categoryColorClass(RIG_SLOT_CATEGORY[slotKey])+'">'+RIG_SLOT_LABELS[slotKey]+'</div><div class="rig-slot-control">'+modeSelect+
     '<div class="rig-slot-detail">'+detail+'</div></div>'+
     '<div class="rig-slot-price" data-label="PAID PRICE">'+priceInput("cost","Paid price")+'</div>'+
     '<div class="rig-slot-price" data-label="ORIGINAL PRICE">'+priceInput("originalPrice","Original price")+'</div>'+

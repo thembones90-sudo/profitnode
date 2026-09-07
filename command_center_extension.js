@@ -52,7 +52,7 @@
               '<span class="pn-op-node danger"></span>'+
               '<div class="pn-op-main">'+
                 '<b>'+escHtml(item.manufacturer+" "+item.model)+'</b>'+
-                '<span>REPAIR BAY \xb7 '+escHtml(item.category)+'</span>'+
+                '<span>REPAIR BAY \xb7 <span class="'+categoryColorClass(item.category)+'" style="color:var(--cat)">'+escHtml(item.category)+'</span></span>'+
               '</div>'+
               '<span class="chip chip-red-outline">REPAIR</span>'+
             '</div>'
