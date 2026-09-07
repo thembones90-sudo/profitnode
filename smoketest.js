@@ -97,6 +97,10 @@ const probe = `
   Store.remove('sales', sale.id);
   log('Store.remove deletes the row', !Store.get('sales', sale.id));
 
+  const saleSchema = FORM_SCHEMAS.sale(null);
+  log('NEW SALE item field uses the component search type', saleSchema.fields[0].type === 'componentSearch');
+  log('NEW SALE schema carries a Category select', saleSchema.fields.some(f=>f.key==='category' && f.options === CATEGORIES));
+
   log('catalogEntriesForSlot(PSU) delegates to HardwareCatalog.psus', catalogEntriesForSlot('PSU') === (HardwareCatalog.psus || []));
   log('gpuPsuRequirement and psuResolvedWattage exist', typeof gpuPsuRequirement === 'function' && typeof psuResolvedWattage === 'function');
   log('HardwareCatalog.psuError starts null', HardwareCatalog.psuError === null);
@@ -118,6 +122,21 @@ const probe = `
 
   const gpu = Actions.addInventory({category:'GPU',manufacturer:'NVIDIA',model:'GTX 1070',purchaseDate:'2026-01-01',purchasePrice:12000,currency:'RSD',estimatedMarketValue:16000,source:'OTHER',condition:'WORKING',status:'IN_STORAGE',notes:''});
   const rigCpu = Actions.addInventory({category:'CPU',manufacturer:'AMD',model:'Ryzen 5 3600',purchaseDate:'2026-01-01',purchasePrice:9000,currency:'RSD',estimatedMarketValue:13000,source:'OTHER',condition:'WORKING',status:'IN_STORAGE',notes:''});
+  const compA = Actions.addInventory({category:'GPU',manufacturer:'ASUS',model:'RTX 3060',purchaseDate:'2026-02-01',purchasePrice:30000,currency:'RSD',estimatedMarketValue:38000,source:'KP',condition:'WORKING',status:'LISTED',notes:''});
+  const compB = Actions.addInventory({category:'MOTHERBOARD',manufacturer:'MSI',model:'B450 Tomahawk',purchaseDate:'2026-02-10',purchasePrice:12000,currency:'RSD',estimatedMarketValue:16500,source:'FRIEND',condition:'WORKING',status:'IN_STORAGE',notes:''});
+  const compMatches = salesComponentMatches('3060');
+  log('component search finds an owned GPU for "3060"', compMatches.some(m=>m.kind==='inventory' && m.cat==='GPU' && m.label.indexOf('3060') > -1));
+  log('component search excludes SOLD inventory', compMatches.every(m=>m.kind!=='inventory' || m.item.status !== 'SOLD'));
+  const compMatches2 = salesComponentMatches('b450');
+  log('component search ranks owned inventory before catalog', compMatches2.length > 0 && compMatches2[0].kind === 'inventory');
+  const linked = Actions.addSale({inventoryItemId:compB.id,itemName:'MSI B450 Tomahawk',saleDate:'2026-03-01',buyerPrice:15000,originalInvestment:12000,additionalCosts:0,currency:'RSD',saleType:'COMPONENT',category:'MOTHERBOARD',notes:''});
+  log('linked component sale retires the part as SOLD', linked && Store.get('inventory', compB.id).status === 'SOLD');
+  Store.remove('sales', linked.id);
+  const invHtml = renderInventory();
+  log('inventory groups by category sections', typeof invHtml === 'string' && invHtml.includes('pn-inv-group'));
+  log('inventory group headers show count and est value', invHtml.includes('pn-inv-group-count') && invHtml.includes('pn-inv-group-val'));
+  log('inventory group order is canonical CPU-GPU-MOTHERBOARD', invHtml.indexOf('CPU') > -1 && invHtml.indexOf('CPU') < invHtml.indexOf('GPU') && invHtml.indexOf('GPU') < invHtml.indexOf('MOTHERBOARD'));
+
   const draft = newRigDraft('REV');
   draft.slots.CPU = {kind:'INVENTORY', inventoryItemId: rigCpu.id};
   draft.slots.GPU = {kind:'INVENTORY', inventoryItemId: gpu.id};

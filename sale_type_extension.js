@@ -224,6 +224,7 @@ if (typeof FORM_SCHEMAS !== "undefined" && FORM_SCHEMAS.sale){
 
     schema.title = entity ? "EDIT SALE RECORD" : "NEW SALE";
     schema.fields[0].label = "Item / Rig Name";
+    schema.fields[0].type = "componentSearch";
 
     const buyerField = schema.fields.find(f=>f.key==="buyerPrice");
     if (buyerField) buyerField.label = "Sale Price";
@@ -236,6 +237,19 @@ if (typeof FORM_SCHEMAS !== "undefined" && FORM_SCHEMAS.sale){
         options:PN_SALE_TYPES,
         required:true,
         default:entity ? saleTypeResolved(entity) : "RIG",
+        half:true
+      });
+    }
+
+    if (!schema.fields.some(f=>f.key==="category")){
+      const saleTypeIndex = schema.fields.findIndex(f=>f.key==="saleType");
+      schema.fields.splice(saleTypeIndex+1,0,{
+        key:"category",
+        label:"Category",
+        type:"select",
+        options:CATEGORIES,
+        required:true,
+        default:"OTHER",
         half:true
       });
     }
@@ -313,6 +327,19 @@ if (Actions && Actions.addSale){
   };
 }
 
+/* Linking a sale to a physical inventory part retires it — SOLD. */
+if (Actions && Actions.updateSale){
+  const PNCoreUpdateSaleLedger = Actions.updateSale.bind(Actions);
+
+  Actions.updateSale = function(id, data){
+    if (data && data.inventoryItemId){
+      const item = Store.get("inventory", data.inventoryItemId);
+      if (item) Store.update("inventory", item.id, {status:"SOLD"});
+    }
+    return PNCoreUpdateSaleLedger(id, data);
+  };
+}
+
 /* Type filter click handling. */
 document.addEventListener("click",function(event){
   const btn = event.target.closest("[data-sale-type-filter]");
@@ -320,6 +347,176 @@ document.addEventListener("click",function(event){
 
   state.filters.sales.type = btn.dataset.saleTypeFilter || "ALL";
   render();
+});
+
+/* ------------------------------------------------------------------
+   LEDGER → NEW SALE → COMPONENT autocomplete.
+   Inventory-first ranked search with a manual free-text fallback.
+   Picking a part pre-fills held-since, cost basis, currency and links
+   the sale to the physical part (which retires it as SOLD). Every
+   surface keeps the canonical per-category colors.
+------------------------------------------------------------------ */
+
+function saleComponentKey(cat){
+  return CATEGORIES.indexOf(cat) > -1 ? cat : "OTHER";
+}
+
+function salesComponentMatches(query){
+  const q = pnNorm(query);
+  const matches = [];
+  if (q.length < 2) return matches;
+  const seen = new Set();
+
+  Store.all("inventory").forEach(item=>{
+    if (item.status === "SOLD") return;
+    const label = ((item.manufacturer || "")+" "+(item.model || "")).trim();
+    const combined = pnNorm(label);
+    const model = pnNorm(item.model || "");
+    const mfr = pnNorm(item.manufacturer || "");
+    const cat = pnNorm(item.category || "");
+    let score = 0;
+    if (combined === q) score += 200;
+    else if (combined.indexOf(q) === 0) score += 110;
+    if (model.indexOf(q) === 0) score += 60;
+    if (mfr.indexOf(q) === 0) score += 40;
+    if (cat.indexOf(q) === 0) score += 8;
+    if (combined.indexOf(q) > 0) score += 18;
+    if (model.indexOf(q) > 0) score += 12;
+    if (!score) return;
+    const group = (item.status==="IN_STORAGE"||item.status==="PERSONAL") ? 0 : item.status==="LISTED" ? 1 : 2;
+    if (seen.has(item.id)) return;
+    seen.add(item.id);
+    matches.push({
+      kind:"inventory",
+      item:item,
+      cat:saleComponentKey(item.category),
+      label:label,
+      status:item.status,
+      price:item.purchasePrice || 0,
+      cur:item.currency || "RSD",
+      score:score,
+      group:group
+    });
+  });
+
+  matches.sort((a,b)=>
+    b.score-a.score ||
+    a.group-b.group ||
+    (b.item.purchaseDate||"").localeCompare(a.item.purchaseDate||""));
+
+  const out = matches.slice(0,7);
+  out.forEach(m=>seen.add(m.cat+":"+pnNorm(m.label)));
+  catalogSearchAll(query).forEach(m=>{
+    if (out.length >= 10) return;
+    const key = m.cat+":"+pnNorm((m.item.brand||"")+" "+(m.item.model||""));
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({
+      kind:"catalog",
+      cat:saleComponentKey(m.cat),
+      label:((m.item.brand||"")+" "+(m.item.model||"")).trim(),
+      score:0,
+      group:3
+    });
+  });
+  return out;
+}
+
+function renderSaleComponentResults(query){
+  const matches = salesComponentMatches(query);
+  if (!matches.length){
+    return '<div class="rig-catalog-help pn-sale-empty">'+(pnNorm(query).length < 2
+      ? "Type at least 2 characters to search inventory and the catalog…"
+      : "No match — keep typing to record this component manually.")+'</div>';
+  }
+  return matches.map((m,i)=>
+    '<button type="button" class="rig-catalog-option" data-sale-component-pick="'+i+'">'+
+      '<span class="rig-option-name">'+escHtml(m.label)+'</span>'+
+      '<span class="pn-result-badges">'+
+        '<span class="pn-result-rating pn-cat-label '+categoryColorClass(m.cat)+'">'+escHtml(m.cat)+'</span>'+
+        (m.kind==="inventory"
+          ? '<span class="pn-result-rating pn-sale-match-state">'+escHtml(STATUS_LABEL(m.status))+" · "+money(m.price,m.cur)+'</span>'
+          : '<span class="pn-result-rating pn-sale-match-state">CATALOG</span>')+
+      '</span>'+
+    '</button>'
+  ).join("");
+}
+
+function renderSaleItemField(field, record){
+  if (saleTypeResolved(record || {}) !== "COMPONENT"){
+    return renderFieldHtml(field, record);
+  }
+  return '<label class="field" style="flex:1 1 100%;position:relative">'+
+    '<span class="req">Item / Component Name</span>'+
+    '<input type="text" name="itemName" class="part-search-input" data-sale-component-search autocomplete="off" placeholder="Type a component name — owned inventory first, catalog fallback…" value="'+escAttr(record && record.itemName || "")+'" required>'+
+    '<div class="rig-catalog-results" data-sale-component-results style="display:none"></div>'+
+    '<input type="hidden" name="inventoryItemId" value="'+escAttr(record && record.inventoryItemId || "")+'">'+
+    '<p class="hint" style="margin:4px 0 0">Type to search. Picking a part pre-fills held-since, cost basis, currency and links the sale to the physical part. Any manual name still submits as a free-text component.</p>'+
+  '</label>';
+}
+
+document.addEventListener("input",function(event){
+  const input = event.target.closest("input[data-sale-component-search]");
+  if (!input) return;
+  const wrap = input.closest(".part-search-field") || input.closest(".field");
+  const res = wrap && wrap.querySelector("[data-sale-component-results]");
+  if (!res) return;
+  const q = input.value;
+  if (pnNorm(q).length < 2){
+    window.__pnSaleComponentMatches = null;
+    res.style.display = "none";
+    res.innerHTML = "";
+    return;
+  }
+  const matches = salesComponentMatches(q);
+  window.__pnSaleComponentMatches = matches;
+  res.style.display = "";
+  res.innerHTML = renderSaleComponentResults(q);
+});
+
+document.addEventListener("change",function(event){
+  const sel = event.target;
+  if (!sel || sel.name !== "saleType") return;
+  const form = sel.closest("form[data-entity-form='sale']");
+  if (!form || !state.modal) return;
+  const live = {};
+  new FormData(form).forEach((v,k)=>{ live[k]=v; });
+  if (String(sel.value).toUpperCase() !== "COMPONENT") delete live.inventoryItemId;
+  state.modal.live = live;
+  render();
+});
+
+document.addEventListener("click",function(event){
+  const pick = event.target.closest("[data-sale-component-pick]");
+  if (!pick || !state.modal || state.modal.entityType !== "sale") return;
+  const match = (window.__pnSaleComponentMatches || [])[Number(pick.dataset.saleComponentPick)];
+  if (!match) return;
+  const form = pick.closest("form[data-entity-form='sale']");
+  if (!form) return;
+  const set = (name, value)=>{
+    const el = form.querySelector('[name="'+name+'"]');
+    if (el) el.value = value;
+  };
+  set("itemName", match.label);
+  set("category", match.cat);
+  if (match.kind === "inventory"){
+    set("referenceStartDate", match.item.purchaseDate || "");
+    set("currency", match.cur);
+    set("originalInvestment", String(match.price || 0));
+    set("additionalCosts", String(repairCostForItem(match.item.id, match.cur) || 0));
+    set("inventoryItemId", match.item.id);
+    const notes = form.querySelector('[name="notes"]');
+    if (notes && !String(notes.value||"").trim()){
+      notes.value = "Sold from inventory · source: "+(match.item.source ? STATUS_LABEL(match.item.source) : "OTHER");
+    }
+  } else {
+    set("inventoryItemId", "");
+  }
+  const res = form.querySelector("[data-sale-component-results]");
+  if (res){ res.style.display="none"; res.innerHTML=""; }
+  window.__pnSaleComponentMatches = null;
+  const price = form.querySelector('[name="buyerPrice"]');
+  if (price) price.focus();
 });
 
 /* Sales ledger visual language. */
@@ -427,6 +624,17 @@ pnSalesLedgerStyle.textContent = `
   color:var(--amber) !important;
   border-color:var(--amber-dim) !important;
   background:var(--amber-wash) !important;
+}
+.pn-result-rating.pn-sale-match-state{
+  color:var(--text-mute);
+  border-color:var(--border-strong);
+  background:var(--panel-2);
+}
+.pn-sale-empty{
+  padding:9px 11px;
+  font-family:var(--mono);
+  font-size:10px;
+  color:var(--text-mute);
 }
 
 @media(max-width:1100px){
