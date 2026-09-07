@@ -1,16 +1,26 @@
 "use strict";
 
 /*
-  PROFITNODE THE ROULETTE v2
-  Simplified chaos protocol:
-  - Wheel 1 decides BET / FUCK OFF / SAVE MONEY.
-  - Wheel 2 decides the actual roulette protocol.
-  - Only two KPIs survive: MONEY INVESTED and MONEY GAINED / LOST.
-  - Results are entered manually as WIN / DEFEAT with the net amount gained or lost.
-  - Roulette accounting remains completely separate from normal shop finances.
+  PROFITNODE THE ROULETTE v3
+  Canonical round flow:
+  SET STAKE -> JUDGEMENT -> WAGER -> COMMITTED -> RESULT
+
+  - Wheel #1: BET / FUCK OFF / SAVE MONEY.
+  - Wheel #2:
+      ODD RED
+      ODD BLACK
+      EVEN RED
+      EVEN BLACK
+      1ST + 2ND
+      1ST + 3RD
+      2ND + 3RD
+  - A BET protocol always splits the entered stake 50/50 across its two legs.
+  - Only two headline KPIs exist: MONEY INVESTED and MONEY GAINED / LOST.
+  - Result entry is WIN / DEFEAT plus the net amount earned or lost.
+  - Roulette accounting remains separate from normal shop finances.
 */
 
-(function installProfitnodeRouletteV2(){
+(function installProfitnodeRouletteV3(){
   const ROULETTE_LEDGER_KEY = "rouletteLedger";
   const LEGACY_POOL_KEY = "roulettePools";
 
@@ -25,6 +35,16 @@
     "2ND + 3RD"
   ];
 
+  const PROTOCOLS = {
+    "ODD RED":["ODD","RED"],
+    "ODD BLACK":["ODD","BLACK"],
+    "EVEN RED":["EVEN","RED"],
+    "EVEN BLACK":["EVEN","BLACK"],
+    "1ST + 2ND":["1ST THIRD 1-12","2ND THIRD 13-24"],
+    "1ST + 3RD":["1ST THIRD 1-12","3RD THIRD 25-36"],
+    "2ND + 3RD":["2ND THIRD 13-24","3RD THIRD 25-36"]
+  };
+
   function rouletteEnsureCollections(){
     const data = Store.load();
     let changed = false;
@@ -34,7 +54,6 @@
       changed = true;
     }
 
-    /* Preserve old pool data in backups, but v2 no longer exposes pool management. */
     if (!Array.isArray(data[LEGACY_POOL_KEY])){
       data[LEGACY_POOL_KEY] = [];
       changed = true;
@@ -72,25 +91,47 @@
   }
 
   function rouletteStakeValue(){
-    return Math.max(0,Number(state.rouletteStake)||0);
+    return Math.max(0,Math.round(Number(state.rouletteStake)||0));
   }
 
-  function rouletteResetRound(keepStake){
+  function rouletteCurrentCurrency(){
+    return state.rouletteCurrency || displayCurrency();
+  }
+
+  function rouletteSplitStake(stake){
+    const first = Math.floor(stake/2);
+    return [first,stake-first];
+  }
+
+  function rouletteProtocolParts(protocol,stake){
+    const labels = PROTOCOLS[protocol] || [protocol,""];
+    const split = rouletteSplitStake(stake);
+    return [
+      {label:labels[0],amount:split[0]},
+      {label:labels[1],amount:split[1]}
+    ];
+  }
+
+  function rouletteResetRound(options){
+    const keepStake = !!(options && options.keepStake);
+
     if (!keepStake) state.rouletteStake = "";
+
     state.rouletteVerdict = null;
     state.rouletteWager = null;
+    state.rouletteCommittedId = null;
     state.rouletteNotice = null;
   }
 
-  state.rouletteTab = state.rouletteTab || "CHAMBER";
+  state.rouletteTab = state.rouletteTab==="RESULTS" ? "RESULTS" : "CHAMBER";
   state.rouletteStake = state.rouletteStake || "";
   state.rouletteCurrency = state.rouletteCurrency || displayCurrency();
   state.rouletteVerdict = null;
   state.rouletteWager = null;
+  state.rouletteCommittedId = null;
   state.rouletteVerdictRotation = Number(state.rouletteVerdictRotation)||0;
   state.rouletteWagerRotation = Number(state.rouletteWagerRotation)||0;
   state.rouletteNotice = null;
-  state.roulettePendingFocus = state.roulettePendingFocus || null;
 
   let rouletteSpinLocked = false;
 
@@ -101,10 +142,9 @@
       return convert(Number(row.net)||0,row.currency,currency);
     }
 
-    /* Legacy fallback: old v1 records stored returned amount. */
     if (row.returned!=null){
-      const net = (Number(row.returned)||0) - (Number(row.stake)||0);
-      return convert(net,row.currency,currency);
+      const legacyNet = (Number(row.returned)||0) - (Number(row.stake)||0);
+      return convert(legacyNet,row.currency,currency);
     }
 
     return 0;
@@ -129,27 +169,69 @@
   function rouletteStatsHtml(currency){
     const stats = rouletteStats(currency);
 
-    return '<div class="pn-r2-stats">'+
-      '<div>'+
+    return '<div class="pn-r3-stats">'+
+      '<div class="pn-r3-invested">'+
         '<span>MONEY INVESTED</span>'+
         '<b>'+money(stats.invested,currency)+'</b>'+
       '</div>'+
-      '<div>'+
+      '<div class="pn-r3-net">'+
         '<span>MONEY GAINED / LOST</span>'+
-        '<b class="'+(stats.net>0?"pos":stats.net<0?"neg":"")+'">'+money(stats.net,currency)+'</b>'+
+        '<b class="'+(stats.net>0?"pos":stats.net<0?"neg":"zero")+'">'+money(stats.net,currency)+'</b>'+
       '</div>'+
     '</div>';
   }
 
   function rouletteVerdictMessage(verdict){
     if (verdict==="BET") return "POOR JUDGMENT AUTHORIZED";
-    if (verdict==="SAVE MONEY") return "CAPITAL PRESERVATION EVENT";
-    return "TACTICAL RETREAT APPROVED";
+    if (verdict==="SAVE MONEY") return "CAPITAL PRESERVATION ORDER";
+    return "THE NODE REJECTS THIS NONSENSE";
   }
 
   function rouletteNoticeHtml(){
     if (!state.rouletteNotice) return "";
-    return '<div class="pn-r2-notice '+escAttr(state.rouletteNotice.tone||"info")+'">'+escHtml(state.rouletteNotice.text)+'</div>';
+    return '<div class="pn-r3-notice '+escAttr(state.rouletteNotice.tone||"info")+'">'+escHtml(state.rouletteNotice.text)+'</div>';
+  }
+
+  function rouletteRoundNumber(){
+    return rouletteLedger().length + 1;
+  }
+
+  function rouletteStage(){
+    if (state.rouletteCommittedId) return "RESULT";
+    if (state.rouletteWager) return "COMMITTED";
+    if (state.rouletteVerdict==="BET") return "WAGER";
+    if (state.rouletteVerdict) return "JUDGEMENT";
+    return "STAKE";
+  }
+
+  function rouletteStageStrip(){
+    const current = rouletteStage();
+    const verdictBet = state.rouletteVerdict==="BET";
+    const committed = !!state.rouletteCommittedId;
+    const stages = [
+      {key:"STAKE",label:"SET STAKE",done:rouletteStakeValue()>0},
+      {key:"JUDGEMENT",label:"JUDGEMENT",done:!!state.rouletteVerdict},
+      {key:"WAGER",label:"WAGER",done:!!state.rouletteWager},
+      {key:"COMMITTED",label:"COMMITTED",done:committed},
+      {key:"RESULT",label:"RESULT",done:false}
+    ];
+
+    if (state.rouletteVerdict && !verdictBet){
+      stages[2].blocked = true;
+      stages[3].blocked = true;
+      stages[4].blocked = true;
+    }
+
+    return '<div class="pn-r3-stage-strip">'+stages.map(stage=>{
+      let cls = "";
+      if (stage.done) cls = "done";
+      if (stage.key===current) cls += " current";
+      if (stage.blocked) cls += " blocked";
+
+      const mark = stage.done ? "OK" : stage.blocked ? "X" : stage.key===current ? ">" : "o";
+
+      return '<div class="'+cls.trim()+'"><span>'+mark+'</span><b>'+stage.label+'</b></div>';
+    }).join("")+'</div>';
   }
 
   function rouletteWheelLabels(labels){
@@ -157,36 +239,47 @@
 
     return labels.map((label,index)=>{
       const angle = index*(360/count);
-      return '<span class="pn-r2-wheel-label" style="--a:'+angle+'deg;--neg:'+(-angle)+'deg">'+escHtml(label)+'</span>';
+      return '<span class="pn-r3-wheel-label" style="--a:'+angle+'deg">'+escHtml(label)+'</span>';
     }).join("");
   }
 
   function rouletteVerdictWheel(){
-    return '<div class="pn-r2-wheel-shell">'+
-      '<div class="pn-r2-pointer"></div>'+
-      '<div class="pn-r2-wheel pn-r2-verdict-wheel" data-r2-verdict-wheel style="transform:rotate('+state.rouletteVerdictRotation+'deg)">'+
+    return '<div class="pn-r3-wheel-shell">'+
+      '<div class="pn-r3-pointer"></div>'+
+      '<div class="pn-r3-wheel pn-r3-verdict-wheel" data-r3-verdict-wheel style="transform:rotate('+state.rouletteVerdictRotation+'deg)">'+
         rouletteWheelLabels(VERDICTS)+
-        '<div class="pn-r2-core">PN</div>'+
+        '<div class="pn-r3-core">PN</div>'+
       '</div>'+
     '</div>';
   }
 
   function rouletteWagerWheel(){
-    return '<div class="pn-r2-wheel-shell">'+
-      '<div class="pn-r2-pointer"></div>'+
-      '<div class="pn-r2-wheel pn-r2-wager-wheel" data-r2-wager-wheel style="transform:rotate('+state.rouletteWagerRotation+'deg)">'+
+    return '<div class="pn-r3-wheel-shell">'+
+      '<div class="pn-r3-pointer"></div>'+
+      '<div class="pn-r3-wheel pn-r3-wager-wheel" data-r3-wager-wheel style="transform:rotate('+state.rouletteWagerRotation+'deg)">'+
         rouletteWheelLabels(WAGERS)+
-        '<div class="pn-r2-core">R</div>'+
+        '<div class="pn-r3-core">R</div>'+
       '</div>'+
     '</div>';
   }
 
+  function rouletteProtocolSplitHtml(protocol,stake,currency){
+    if (!protocol || stake<=0) return "";
+
+    const parts = rouletteProtocolParts(protocol,stake);
+
+    return '<div class="pn-r3-split">'+
+      '<div><span>'+escHtml(parts[0].label)+'</span><b>'+rouletteMoney(parts[0].amount,currency)+'</b></div>'+
+      '<div><span>'+escHtml(parts[1].label)+'</span><b>'+rouletteMoney(parts[1].amount,currency)+'</b></div>'+
+    '</div>';
+  }
+
   function rouletteProtocolLegend(){
-    return '<div class="pn-r2-protocol-key">'+
-      '<span><b>ODD RED</b> odd + red</span>'+
-      '<span><b>ODD BLACK</b> odd + black</span>'+
-      '<span><b>EVEN RED</b> even + red</span>'+
-      '<span><b>EVEN BLACK</b> even + black</span>'+
+    return '<div class="pn-r3-protocol-key">'+
+      '<span><b>ODD RED</b> ODD + RED</span>'+
+      '<span><b>ODD BLACK</b> ODD + BLACK</span>'+
+      '<span><b>EVEN RED</b> EVEN + RED</span>'+
+      '<span><b>EVEN BLACK</b> EVEN + BLACK</span>'+
       '<span><b>1ST + 2ND</b> 1-12 + 13-24</span>'+
       '<span><b>1ST + 3RD</b> 1-12 + 25-36</span>'+
       '<span><b>2ND + 3RD</b> 13-24 + 25-36</span>'+
@@ -194,165 +287,191 @@
   }
 
   function rouletteResultTerminal(){
+    const stake = rouletteStakeValue();
+    const currency = rouletteCurrentCurrency();
+
     if (!state.rouletteVerdict){
-      return '<div class="pn-r2-terminal idle"><span>FATE AWAITS INPUT</span><b>SPIN THE VERDICT</b></div>';
+      return '<div class="pn-r3-terminal idle"><span>ROUND #'+String(rouletteRoundNumber()).padStart(3,"0")+'</span><b>FATE AWAITS INPUT</b><small>SET STAKE AND SPIN THE JUDGEMENT</small></div>';
     }
 
-    let html =
-      '<div class="pn-r2-terminal '+(state.rouletteVerdict==="BET"?"bet":state.rouletteVerdict==="SAVE MONEY"?"save":"retreat")+'">'+
+    if (state.rouletteVerdict!=="BET"){
+      return '<div class="pn-r3-terminal '+(state.rouletteVerdict==="SAVE MONEY"?"save":"retreat")+'">'+
         '<span>THE NODE HAS SPOKEN</span>'+
         '<b>'+escHtml(state.rouletteVerdict)+'</b>'+
         '<small>'+escHtml(rouletteVerdictMessage(state.rouletteVerdict))+'</small>'+
       '</div>';
-
-    if (state.rouletteVerdict==="BET" && state.rouletteWager){
-      html +=
-        '<div class="pn-r2-wager-result">'+
-          '<span>WAGER PROTOCOL</span>'+
-          '<b>'+escHtml(state.rouletteWager)+'</b>'+
-        '</div>';
     }
 
-    return html;
-  }
-
-  function roulettePendingRows(){
-    const pending = rouletteLedger()
-      .filter(row=>row.type==="BET" && row.status==="PENDING")
-      .slice()
-      .sort((a,b)=>String(b.createdAt||b.date||"").localeCompare(String(a.createdAt||a.date||"")));
-
-    if (!pending.length){
-      return '<div class="pn-r2-empty">NO UNRESOLVED BETS</div>';
-    }
-
-    return pending.map(row=>{
-      const focused = state.roulettePendingFocus===row.id;
-      return '<div class="pn-r2-pending '+(focused?"focused":"")+'">'+
-        '<div class="pn-r2-pending-copy">'+
-          '<span>'+fmtDate(row.date)+'</span>'+
-          '<b>'+escHtml(row.wager||"BET")+'</b>'+
-          '<small>'+rouletteMoney(row.stake,row.currency)+' INVESTED</small>'+
-        '</div>'+
-        '<div class="pn-r2-result-entry">'+
-          '<label><span>RESULT</span><select data-r2-result-outcome="'+row.id+'">'+
-            '<option value="WIN">WIN</option>'+
-            '<option value="DEFEAT">DEFEAT</option>'+
-          '</select></label>'+
-          '<label><span>AMOUNT EARNED / LOST</span><input type="number" min="0" step="1" data-r2-result-amount="'+row.id+'" placeholder="0"></label>'+
-          '<button type="button" class="btn btn-primary" data-r2-record-result="'+row.id+'">RECORD RESULT</button>'+
-        '</div>'+
+    if (!state.rouletteWager){
+      return '<div class="pn-r3-terminal bet">'+
+        '<span>THE NODE HAS SPOKEN</span>'+
+        '<b>BET</b>'+
+        '<small>SPIN WHEEL #2 FOR THE PROTOCOL</small>'+
       '</div>';
-    }).join("");
-  }
-
-  function rouletteHistoryRows(currency){
-    const rows = rouletteLedger()
-      .filter(row=>row.type==="BET")
-      .slice()
-      .sort((a,b)=>String(b.createdAt||b.date||"").localeCompare(String(a.createdAt||a.date||"")));
-
-    if (!rows.length){
-      return '<tr class="empty-row"><td colspan="7">No roulette bets recorded yet.</td></tr>';
     }
 
-    return rows.map(row=>{
-      const outcome =
-        row.status==="PENDING" ? "PENDING" :
-        row.outcome==="LOSE" ? "DEFEAT" :
-        row.outcome || "RESOLVED";
+    return '<div class="pn-r3-protocol-terminal">'+
+      '<div class="pn-r3-protocol-title">'+
+        '<span>THE NODE HAS SPOKEN</span>'+
+        '<b>'+escHtml(state.rouletteWager)+'</b>'+
+        '<small>TOTAL EXPOSURE '+rouletteMoney(stake,currency)+' / SPLIT 50-50</small>'+
+      '</div>'+
+      rouletteProtocolSplitHtml(state.rouletteWager,stake,currency)+
+    '</div>';
+  }
 
-      const net = row.status==="RESOLVED" ? rouletteRowNet(row,currency) : null;
+  function rouletteCommittedRow(){
+    if (!state.rouletteCommittedId) return null;
+    return rouletteLedger().find(row=>row.id===state.rouletteCommittedId) || null;
+  }
 
-      return '<tr>'+
-        '<td class="mono">'+fmtDate(row.date)+'</td>'+
-        '<td><b>'+escHtml(row.wager||"BET")+'</b></td>'+
-        '<td>'+escHtml(outcome)+'</td>'+
-        '<td class="num">'+rouletteMoney(row.stake,row.currency)+'</td>'+
-        '<td class="num '+(net==null?"":net>=0?"pos":"neg")+'">'+(net==null?"-":money(net,currency))+'</td>'+
-        '<td>'+escHtml(row.notes||"")+'</td>'+
-        '<td class="num"><button type="button" class="btn btn-sm btn-ghost" data-r2-delete="'+row.id+'">DELETE</button></td>'+
-      '</tr>';
-    }).join("");
+  function rouletteAwaitingResult(row){
+    if (!row){
+      state.rouletteCommittedId = null;
+      return "";
+    }
+
+    const parts = rouletteProtocolParts(row.wager,Number(row.stake)||0);
+
+    return rouletteNoticeHtml()+
+      '<section class="panel pn-r3-panel pn-r3-awaiting">'+
+        '<div class="panel-head"><h2>AWAITING RESULT</h2><span class="pn-r3-state">ROUND LOCKED</span></div>'+
+        '<div class="panel-body">'+
+          '<div class="pn-r3-awaiting-head">'+
+            '<div><span>PROTOCOL</span><b>'+escHtml(row.wager)+'</b></div>'+
+            '<div><span>MONEY INVESTED</span><b>'+rouletteMoney(row.stake,row.currency)+'</b></div>'+
+          '</div>'+
+          '<div class="pn-r3-awaiting-split">'+
+            '<div><span>'+escHtml(parts[0].label)+'</span><b>'+rouletteMoney(parts[0].amount,row.currency)+'</b></div>'+
+            '<div><span>'+escHtml(parts[1].label)+'</span><b>'+rouletteMoney(parts[1].amount,row.currency)+'</b></div>'+
+          '</div>'+
+          '<div class="pn-r3-result-form">'+
+            '<label><span>RESULT</span><select data-r3-result-outcome="'+row.id+'">'+
+              '<option value="WIN">WIN</option>'+
+              '<option value="DEFEAT">DEFEAT</option>'+
+            '</select></label>'+
+            '<label><span>MONEY EARNED / LOST</span><input type="number" min="0" step="1" data-r3-result-amount="'+row.id+'" placeholder="0"></label>'+
+            '<button type="button" class="btn btn-primary" data-r3-record-result="'+row.id+'">RECORD RESULT</button>'+
+          '</div>'+
+          '<div class="pn-r3-result-hint">WIN makes the entered amount positive. DEFEAT makes it negative. The stake is already known.</div>'+
+        '</div>'+
+      '</section>';
   }
 
   function rouletteChamber(){
+    const committed = rouletteCommittedRow();
+    if (committed) return rouletteAwaitingResult(committed);
+
     const stake = rouletteStakeValue();
+    const currency = rouletteCurrentCurrency();
+    const hasVerdict = !!state.rouletteVerdict;
     const wagerReady = state.rouletteVerdict==="BET";
+    const wagerDone = !!state.rouletteWager;
 
-    let roundAction = "";
+    let action = "";
 
-    if (state.rouletteVerdict==="BET" && state.rouletteWager){
-      roundAction =
-        '<button type="button" class="btn btn-primary pn-r2-lock" data-r2-lock-bet>'+
-          'LOCK BET'+
-        '</button>';
-    }
-
-    if (state.rouletteVerdict==="FUCK OFF" || state.rouletteVerdict==="SAVE MONEY"){
-      roundAction =
-        '<button type="button" class="btn" data-r2-new-round>NEW ROUND</button>';
+    if (wagerDone){
+      action =
+        '<button type="button" class="btn btn-primary pn-r3-commit" data-r3-commit>COMMIT THE DAMAGE</button>'+
+        '<button type="button" class="btn pn-r3-defy" data-r3-defy>DEFY THE NODE</button>';
+    } else if (state.rouletteVerdict==="FUCK OFF" || state.rouletteVerdict==="SAVE MONEY"){
+      action = '<button type="button" class="btn" data-r3-close-round>END ROUND</button>';
     }
 
     return rouletteNoticeHtml()+
-      '<div class="pn-r2-controls">'+
-        '<label><span>HOW MUCH DAMAGE?</span><input type="number" min="0" step="1" value="'+escAttr(state.rouletteStake)+'" data-r2-stake placeholder="3000"></label>'+
-        '<label><span>CURRENCY</span><select data-r2-currency>'+
-          '<option value="RSD"'+(state.rouletteCurrency==="RSD"?" selected":"")+'>RSD</option>'+
-          '<option value="EUR"'+(state.rouletteCurrency==="EUR"?" selected":"")+'>EUR</option>'+
+      '<div class="pn-r3-controls">'+
+        '<label><span>STAKE</span><input type="number" min="0" step="1" value="'+escAttr(state.rouletteStake)+'" data-r3-stake placeholder="3000" '+(hasVerdict?"disabled":"")+'></label>'+
+        '<label><span>CURRENCY</span><select data-r3-currency '+(hasVerdict?"disabled":"")+'>'+
+          '<option value="RSD"'+(currency==="RSD"?" selected":"")+'>RSD</option>'+
+          '<option value="EUR"'+(currency==="EUR"?" selected":"")+'>EUR</option>'+
         '</select></label>'+
       '</div>'+
 
-      '<div class="pn-r2-wheel-grid">'+
-        '<section class="panel pn-r2-panel">'+
-          '<div class="panel-head"><h2>WHEEL #1</h2><span class="pn-r2-state">THE JUDGEMENT</span></div>'+
-          '<div class="panel-body pn-r2-stage">'+
+      '<div class="pn-r3-wheel-grid">'+
+        '<section class="panel pn-r3-panel '+(hasVerdict?"pn-r3-locked-wheel":"")+'">'+
+          '<div class="panel-head"><h2>WHEEL #1</h2><span class="pn-r3-state">THE JUDGEMENT</span></div>'+
+          '<div class="panel-body pn-r3-stage">'+
             rouletteVerdictWheel()+
-            '<button type="button" class="btn btn-primary pn-r2-spin" data-r2-spin-verdict '+(stake<=0?"disabled":"")+'>'+
-              'SPIN THE VERDICT'+
+            '<button type="button" class="btn btn-primary pn-r3-spin" data-r3-spin-verdict '+(stake<=0||hasVerdict?"disabled":"")+'>'+
+              (hasVerdict?"JUDGEMENT LOCKED":"SPIN THE VERDICT")+
             '</button>'+
-            '<div class="pn-r2-legend">BET / FUCK OFF / SAVE MONEY</div>'+
+            '<div class="pn-r3-legend">BET / FUCK OFF / SAVE MONEY</div>'+
           '</div>'+
         '</section>'+
 
-        '<section class="panel pn-r2-panel '+(!wagerReady?"pn-r2-dormant":"")+'">'+
-          '<div class="panel-head"><h2>WHEEL #2</h2><span class="pn-r2-state">THE WAGER</span></div>'+
-          '<div class="panel-body pn-r2-stage">'+
+        '<section class="panel pn-r3-panel '+(!wagerReady?"pn-r3-dormant":"")+' '+(wagerDone?"pn-r3-locked-wheel":"")+'">'+
+          '<div class="panel-head"><h2>WHEEL #2</h2><span class="pn-r3-state">THE WAGER</span></div>'+
+          '<div class="panel-body pn-r3-stage">'+
             rouletteWagerWheel()+
-            '<button type="button" class="btn btn-primary pn-r2-spin" data-r2-spin-wager '+(!wagerReady?"disabled":"")+'>'+
-              'SPIN THE WAGER'+
+            '<button type="button" class="btn btn-primary pn-r3-spin" data-r3-spin-wager '+(!wagerReady||wagerDone?"disabled":"")+'>'+
+              (wagerDone?"PROTOCOL LOCKED":"SPIN THE WAGER")+
             '</button>'+
             rouletteProtocolLegend()+
           '</div>'+
         '</section>'+
       '</div>'+
 
-      '<div class="pn-r2-result-zone">'+
+      '<div class="pn-r3-result-zone">'+
         rouletteResultTerminal()+
-        '<div class="pn-r2-round-actions">'+roundAction+'</div>'+
-      '</div>'+
+        '<div class="pn-r3-actions">'+action+'</div>'+
+      '</div>';
+  }
 
-      '<section class="panel pn-r2-panel pn-r2-pending-panel">'+
-        '<div class="panel-head"><h2>IMPORT RESULT</h2><span class="pn-r2-state">WIN OR DEFEAT</span></div>'+
-        '<div class="panel-body pn-no-pad">'+roulettePendingRows()+'</div>'+
-      '</section>';
+  function rouletteHistoryRows(currency){
+    const rows = rouletteLedger()
+      .slice()
+      .sort((a,b)=>String(b.createdAt||b.date||"").localeCompare(String(a.createdAt||a.date||"")));
+
+    if (!rows.length){
+      return '<tr class="empty-row"><td colspan="7">No roulette rounds recorded yet.</td></tr>';
+    }
+
+    const chronological = rows.slice().sort((a,b)=>String(a.createdAt||a.date||"").localeCompare(String(b.createdAt||b.date||"")));
+    const roundNumber = new Map(chronological.map((row,index)=>[row.id,index+1]));
+
+    return rows.map(row=>{
+      let result = "";
+      let protocol = "-";
+      let stake = "-";
+      let net = null;
+
+      if (row.type==="BET"){
+        protocol = row.wager || "BET";
+        stake = rouletteMoney(row.stake,row.currency);
+        result = row.status==="PENDING" ? "AWAITING RESULT" : (row.outcome==="LOSE"?"DEFEAT":row.outcome||"RESOLVED");
+        net = row.status==="RESOLVED" ? rouletteRowNet(row,currency) : null;
+      } else {
+        protocol = row.wager || "-";
+        result = row.outcome==="DEFIED" ? "NODE DEFIED" : (row.verdict || "VERDICT");
+      }
+
+      return '<tr>'+
+        '<td class="mono">#'+String(roundNumber.get(row.id)||0).padStart(3,"0")+'</td>'+
+        '<td class="mono">'+fmtDate(row.date)+'</td>'+
+        '<td class="num">'+stake+'</td>'+
+        '<td>'+escHtml(row.verdict||"BET")+'</td>'+
+        '<td><b>'+escHtml(protocol)+'</b></td>'+
+        '<td>'+escHtml(result)+'</td>'+
+        '<td class="num '+(net==null?"":net>=0?"pos":"neg")+'">'+(net==null?"-":money(net,currency))+'</td>'+
+      '</tr>';
+    }).join("");
   }
 
   function rouletteResults(currency){
     return rouletteNoticeHtml()+
-      '<section class="panel pn-r2-panel">'+
-        '<div class="panel-head"><h2>ROULETTE LEDGER</h2><span class="pn-r2-state">PERMANENT DAMAGE RECORD</span></div>'+
+      '<section class="panel pn-r3-panel">'+
+        '<div class="panel-head"><h2>ROUND HISTORY</h2><span class="pn-r3-state">PERMANENT EVIDENCE</span></div>'+
         '<div class="panel-body pn-no-pad">'+
           '<div class="table-scroll">'+
             '<table>'+
               '<thead><tr>'+
+                '<th>Round</th>'+
                 '<th>Date</th>'+
+                '<th class="num">Stake</th>'+
+                '<th>Judgement</th>'+
                 '<th>Protocol</th>'+
                 '<th>Result</th>'+
-                '<th class="num">Invested</th>'+
-                '<th class="num">Gained / Lost</th>'+
-                '<th>Notes</th>'+
-                '<th></th>'+
+                '<th class="num">Net</th>'+
               '</tr></thead>'+
               '<tbody>'+rouletteHistoryRows(currency)+'</tbody>'+
             '</table>'+
@@ -362,24 +481,25 @@
   }
 
   function rouletteTabs(){
-    return '<div class="pn-r2-tabs">'+
-      '<button type="button" class="'+(state.rouletteTab==="CHAMBER"?"active":"")+'" data-r2-tab="CHAMBER">CHAMBER</button>'+
-      '<button type="button" class="'+(state.rouletteTab==="RESULTS"?"active":"")+'" data-r2-tab="RESULTS">RESULTS</button>'+
+    return '<div class="pn-r3-tabs">'+
+      '<button type="button" class="'+(state.rouletteTab==="CHAMBER"?"active":"")+'" data-r3-tab="CHAMBER">CHAMBER</button>'+
+      '<button type="button" class="'+(state.rouletteTab==="RESULTS"?"active":"")+'" data-r3-tab="RESULTS">RESULTS</button>'+
     '</div>';
   }
 
-  function renderRouletteV2(){
+  function renderRouletteV3(){
     const currency = displayCurrency();
     const body = state.rouletteTab==="RESULTS" ? rouletteResults(currency) : rouletteChamber();
 
     return pageHeader("THE ROULETTE","CHAOS PROTOCOL ARMED","")+
-      '<div class="content pn-r2-content">'+
-        '<div class="pn-r2-header">'+
+      '<div class="content pn-r3-content">'+
+        '<div class="pn-r3-header">'+
           '<span>PROBABILITY ENGINE</span>'+
           '<b>THE ROULETTE</b>'+
           '<small>BAD DECISIONS, CONTROLLED</small>'+
         '</div>'+
         rouletteStatsHtml(currency)+
+        rouletteStageStrip()+
         rouletteTabs()+
         body+
       '</div>';
@@ -391,14 +511,15 @@
     const stake = rouletteStakeValue();
 
     if (kind==="verdict" && stake<=0){
-      state.rouletteNotice = {tone:"err",text:"ENTER THE AMOUNT BEFORE SUMMONING FATE."};
+      state.rouletteNotice = {tone:"err",text:"ENTER THE STAKE BEFORE SUMMONING FATE."};
       render();
       return;
     }
 
-    if (kind==="wager" && state.rouletteVerdict!=="BET") return;
+    if (kind==="verdict" && state.rouletteVerdict) return;
+    if (kind==="wager" && (state.rouletteVerdict!=="BET" || state.rouletteWager)) return;
 
-    const selector = kind==="verdict" ? "[data-r2-verdict-wheel]" : "[data-r2-wager-wheel]";
+    const selector = kind==="verdict" ? "[data-r3-verdict-wheel]" : "[data-r3-wager-wheel]";
     const wheel = document.querySelector(selector);
     if (!wheel) return;
 
@@ -417,7 +538,7 @@
     state.rouletteNotice = null;
     rouletteSpinLocked = true;
 
-    document.querySelectorAll("[data-r2-spin-verdict],[data-r2-spin-wager]").forEach(btn=>btn.disabled=true);
+    document.querySelectorAll("[data-r3-spin-verdict],[data-r3-spin-wager]").forEach(btn=>btn.disabled=true);
 
     wheel.style.transform = "rotate("+target+"deg)";
     wheel.classList.add("spinning");
@@ -435,10 +556,13 @@
     },3300);
   }
 
-  function rouletteLockBet(){
+  function rouletteCommit(){
     const stake = rouletteStakeValue();
+    const currency = rouletteCurrentCurrency();
 
     if (state.rouletteVerdict!=="BET" || !state.rouletteWager || stake<=0) return;
+
+    const parts = rouletteProtocolParts(state.rouletteWager,stake);
 
     const row = rouletteInsert({
       type:"BET",
@@ -447,7 +571,11 @@
       verdict:"BET",
       wager:state.rouletteWager,
       stake:stake,
-      currency:state.rouletteCurrency||displayCurrency(),
+      split:[
+        {label:parts[0].label,amount:parts[0].amount},
+        {label:parts[1].label,amount:parts[1].amount}
+      ],
+      currency:currency,
       outcome:null,
       net:null,
       notes:"FATE ACCEPTED."
@@ -456,15 +584,70 @@
     Timeline.log(
       "ROULETTE_BET",
       "THE ROULETTE \u00B7 "+state.rouletteWager,
-      rouletteMoney(stake,row.currency)+" invested. FATE ACCEPTED.",
+      rouletteMoney(stake,currency)+" invested / "+rouletteMoney(parts[0].amount,currency)+" "+parts[0].label+" / "+rouletteMoney(parts[1].amount,currency)+" "+parts[1].label,
       row.date,
       "roulette",
       row.id
     );
 
-    state.roulettePendingFocus = row.id;
-    rouletteResetRound(true);
-    state.rouletteNotice = {tone:"ok",text:"BET LOCKED. IMPORT THE RESULT WHEN THE DAMAGE IS KNOWN."};
+    state.rouletteCommittedId = row.id;
+    state.rouletteNotice = {tone:"ok",text:"DAMAGE COMMITTED. AWAITING RESULT."};
+    render();
+  }
+
+  function rouletteDefy(){
+    if (state.rouletteVerdict!=="BET" || !state.rouletteWager) return;
+
+    const row = rouletteInsert({
+      type:"VERDICT",
+      date:todayISO(),
+      verdict:"BET",
+      wager:state.rouletteWager,
+      outcome:"DEFIED",
+      avoidedStake:rouletteStakeValue(),
+      currency:rouletteCurrentCurrency(),
+      notes:"THE NODE WAS DEFIED."
+    });
+
+    Timeline.log(
+      "ROULETTE_VERDICT",
+      "THE ROULETTE \u00B7 NODE DEFIED",
+      state.rouletteWager+" rejected after judgement.",
+      row.date,
+      "roulette",
+      row.id
+    );
+
+    rouletteResetRound({keepStake:true});
+    state.rouletteNotice = {tone:"ok",text:"THE NODE HAS BEEN DEFIED. NO MONEY INVESTED."};
+    render();
+  }
+
+  function rouletteCloseRound(){
+    const verdict = state.rouletteVerdict;
+    if (!["FUCK OFF","SAVE MONEY"].includes(verdict)) return;
+
+    const row = rouletteInsert({
+      type:"VERDICT",
+      date:todayISO(),
+      verdict:verdict,
+      wager:null,
+      avoidedStake:rouletteStakeValue(),
+      currency:rouletteCurrentCurrency(),
+      notes:rouletteVerdictMessage(verdict)
+    });
+
+    Timeline.log(
+      "ROULETTE_VERDICT",
+      "THE ROULETTE \u00B7 "+verdict,
+      rouletteMoney(row.avoidedStake,row.currency)+" not invested.",
+      row.date,
+      "roulette",
+      row.id
+    );
+
+    rouletteResetRound({keepStake:true});
+    state.rouletteNotice = {tone:"ok",text:verdict+" RECORDED. MONEY REMAINS YOURS, SOMEHOW."};
     render();
   }
 
@@ -472,11 +655,11 @@
     const row = rouletteLedger().find(item=>item.id===id);
     if (!row || row.type!=="BET" || row.status!=="PENDING") return;
 
-    const outcomeEl = document.querySelector('[data-r2-result-outcome="'+CSS.escape(id)+'"]');
-    const amountEl = document.querySelector('[data-r2-result-amount="'+CSS.escape(id)+'"]');
+    const outcomeEl = document.querySelector('[data-r3-result-outcome="'+CSS.escape(id)+'"]');
+    const amountEl = document.querySelector('[data-r3-result-amount="'+CSS.escape(id)+'"]');
 
     const outcome = outcomeEl ? outcomeEl.value : "DEFEAT";
-    const magnitude = Math.max(0,Number(amountEl && amountEl.value)||0);
+    const magnitude = Math.max(0,Math.round(Number(amountEl && amountEl.value)||0));
 
     if (magnitude<=0){
       state.rouletteNotice = {tone:"err",text:"ENTER HOW MUCH MONEY WAS EARNED OR LOST."};
@@ -503,116 +686,97 @@
       id
     );
 
-    state.roulettePendingFocus = null;
+    rouletteResetRound({keepStake:false});
     state.rouletteNotice = {
       tone:net>=0?"ok":"err",
-      text:"RESULT RECORDED. "+(net>=0?"GAIN ":"LOSS ")+rouletteMoney(Math.abs(net),row.currency)+"."
+      text:"ROUND CLOSED. "+(net>=0?"GAIN ":"LOSS ")+rouletteMoney(Math.abs(net),row.currency)+"."
     };
     render();
   }
 
-  function rouletteLogNonBetVerdict(){
-    const verdict = state.rouletteVerdict;
+  function rouletteResumePending(){
+    if (state.rouletteCommittedId) return;
 
-    if (!["FUCK OFF","SAVE MONEY"].includes(verdict)) return;
+    const pending = rouletteLedger()
+      .filter(row=>row.type==="BET" && row.status==="PENDING")
+      .slice()
+      .sort((a,b)=>String(b.createdAt||b.date||"").localeCompare(String(a.createdAt||a.date||"")));
 
-    const row = rouletteInsert({
-      type:"VERDICT",
-      date:todayISO(),
-      verdict:verdict,
-      avoidedStake:rouletteStakeValue(),
-      currency:state.rouletteCurrency||displayCurrency(),
-      notes:rouletteVerdictMessage(verdict)
-    });
+    if (!pending.length) return;
 
-    Timeline.log(
-      "ROULETTE_VERDICT",
-      "THE ROULETTE \u00B7 "+verdict,
-      rouletteMoney(row.avoidedStake,row.currency)+" not invested.",
-      row.date,
-      "roulette",
-      row.id
-    );
+    const row = pending[0];
+    state.rouletteCommittedId = row.id;
+    state.rouletteStake = String(row.stake||"");
+    state.rouletteCurrency = row.currency || displayCurrency();
+    state.rouletteVerdict = "BET";
+    state.rouletteWager = row.wager || null;
   }
 
-  function rouletteDeleteRecord(id){
-    Store.remove(ROULETTE_LEDGER_KEY,id);
-
-    if (state.roulettePendingFocus===id){
-      state.roulettePendingFocus = null;
-    }
-
-    state.rouletteNotice = {tone:"ok",text:"ROULETTE RECORD DELETED."};
-    render();
-  }
+  rouletteResumePending();
 
   document.addEventListener("input",function(event){
-    if (event.target.matches("[data-r2-stake]")){
+    if (event.target.matches("[data-r3-stake]")){
       state.rouletteStake = event.target.value;
 
-      const button = document.querySelector("[data-r2-spin-verdict]");
+      const button = document.querySelector("[data-r3-spin-verdict]");
       if (button){
-        button.disabled = rouletteStakeValue()<=0;
+        button.disabled = rouletteStakeValue()<=0 || !!state.rouletteVerdict;
       }
     }
   });
 
   document.addEventListener("change",function(event){
-    if (event.target.matches("[data-r2-currency]")){
+    if (event.target.matches("[data-r3-currency]")){
       state.rouletteCurrency = event.target.value;
       state.rouletteNotice = null;
     }
   });
 
   document.addEventListener("click",function(event){
-    const tab = event.target.closest("[data-r2-tab]");
+    const tab = event.target.closest("[data-r3-tab]");
     if (tab){
-      state.rouletteTab = tab.dataset.r2Tab;
+      state.rouletteTab = tab.dataset.r3Tab;
       state.rouletteNotice = null;
       render();
       return;
     }
 
-    if (event.target.closest("[data-r2-spin-verdict]")){
+    if (event.target.closest("[data-r3-spin-verdict]")){
       rouletteSpinWheel("verdict",VERDICTS);
       return;
     }
 
-    if (event.target.closest("[data-r2-spin-wager]")){
+    if (event.target.closest("[data-r3-spin-wager]")){
       rouletteSpinWheel("wager",WAGERS);
       return;
     }
 
-    if (event.target.closest("[data-r2-lock-bet]")){
-      rouletteLockBet();
+    if (event.target.closest("[data-r3-commit]")){
+      rouletteCommit();
       return;
     }
 
-    if (event.target.closest("[data-r2-new-round]")){
-      rouletteLogNonBetVerdict();
-      rouletteResetRound(true);
-      render();
+    if (event.target.closest("[data-r3-defy]")){
+      rouletteDefy();
       return;
     }
 
-    const result = event.target.closest("[data-r2-record-result]");
+    if (event.target.closest("[data-r3-close-round]")){
+      rouletteCloseRound();
+      return;
+    }
+
+    const result = event.target.closest("[data-r3-record-result]");
     if (result){
-      rouletteRecordResult(result.dataset.r2RecordResult);
-      return;
-    }
-
-    const del = event.target.closest("[data-r2-delete]");
-    if (del){
-      rouletteDeleteRecord(del.dataset.r2Delete);
+      rouletteRecordResult(result.dataset.r3RecordResult);
     }
   });
 
-  /* Backups: export already serializes the entire ledger object. Restore needs the custom arrays preserved. */
   if (typeof inspectBackupFile === "function"){
-    const PNCoreInspectBackupRouletteV2 = inspectBackupFile;
+    const PNCoreInspectBackupRouletteV3 = inspectBackupFile;
 
     inspectBackupFile = function(raw){
-      const counts = PNCoreInspectBackupRouletteV2(raw) || {};
+      const counts = PNCoreInspectBackupRouletteV3(raw) || {};
 
       if (Array.isArray(raw[ROULETTE_LEDGER_KEY])){
         counts[ROULETTE_LEDGER_KEY] = raw[ROULETTE_LEDGER_KEY].length;
@@ -627,10 +791,10 @@
   }
 
   if (Store && typeof Store.replaceAll === "function"){
-    const PNCoreReplaceAllRouletteV2 = Store.replaceAll.bind(Store);
+    const PNCoreReplaceAllRouletteV3 = Store.replaceAll.bind(Store);
 
     Store.replaceAll = function(raw){
-      PNCoreReplaceAllRouletteV2(raw);
+      PNCoreReplaceAllRouletteV3(raw);
 
       const data = Store.load();
       data[ROULETTE_LEDGER_KEY] = Array.isArray(raw && raw[ROULETTE_LEDGER_KEY]) ? raw[ROULETTE_LEDGER_KEY] : [];
@@ -645,10 +809,9 @@
       columns:[
         {label:"Date",get:row=>row.date||""},
         {label:"Type",get:row=>row.type||""},
-        {label:"Verdict",get:row=>row.verdict||""},
+        {label:"Judgement",get:row=>row.verdict||""},
         {label:"Protocol",get:row=>row.wager||""},
-        {label:"Status",get:row=>row.status||""},
-        {label:"Outcome",get:row=>row.outcome==="LOSE"?"DEFEAT":row.outcome||""},
+        {label:"Result",get:row=>row.outcome==="LOSE"?"DEFEAT":row.outcome||row.status||""},
         {label:"Money Invested",get:row=>row.type==="BET"?(row.stake||0):0},
         {label:"Money Gained Lost",get:row=>row.type==="BET"?(row.net||0):0},
         {label:"Currency",get:row=>row.currency||""},
@@ -662,7 +825,7 @@
 
     if (!route){
       const backupIndex = ROUTES.findIndex(row=>row.key==="backup");
-      route = {key:"roulette",label:"THE ROULETTE",nix:"10",render:renderRouletteV2};
+      route = {key:"roulette",label:"THE ROULETTE",nix:"10",render:renderRouletteV3};
 
       if (backupIndex>=0) ROUTES.splice(backupIndex,0,route);
       else ROUTES.push(route);
@@ -670,7 +833,7 @@
       ROUTES.forEach((row,index)=>row.nix=String(index+1).padStart(2,"0"));
     } else {
       route.label = "THE ROULETTE";
-      route.render = renderRouletteV2;
+      route.render = renderRouletteV3;
     }
   }
 
@@ -695,27 +858,27 @@
     transform:translateY(-50%);
   }
 
-  .pn-r2-content{
+  .pn-r3-content{
     position:relative;
     isolation:isolate;
   }
 
-  .pn-r2-content:before{
+  .pn-r3-content:before{
     content:"";
     position:absolute;
     inset:0;
     z-index:-1;
     pointer-events:none;
     background:
-      radial-gradient(circle at 17% 8%,rgba(172,27,95,.10),transparent 30%),
-      radial-gradient(circle at 83% 15%,rgba(110,35,173,.11),transparent 29%),
+      radial-gradient(circle at 17% 8%,rgba(172,27,95,.11),transparent 30%),
+      radial-gradient(circle at 83% 15%,rgba(110,35,173,.12),transparent 29%),
       repeating-linear-gradient(0deg,transparent 0 3px,rgba(255,255,255,.008) 4px);
   }
 
-  .pn-r2-header{
-    border:1px solid rgba(177,66,225,.48);
+  .pn-r3-header{
+    border:1px solid rgba(177,66,225,.52);
     border-left:3px solid #ff315f;
-    background:linear-gradient(110deg,rgba(80,10,34,.30),rgba(34,11,51,.32),rgba(12,9,16,.74));
+    background:linear-gradient(110deg,rgba(80,10,34,.31),rgba(34,11,51,.33),rgba(12,9,16,.76));
     padding:14px 16px;
     margin-bottom:14px;
     display:grid;
@@ -724,61 +887,107 @@
     gap:14px;
   }
 
-  .pn-r2-header span,
-  .pn-r2-header small{
+  .pn-r3-header span,
+  .pn-r3-header small{
     font-size:9px;
     font-weight:900;
     letter-spacing:.10em;
   }
 
-  .pn-r2-header span{color:#ff9bb4}
-  .pn-r2-header small{color:var(--muted);text-align:right}
-  .pn-r2-header b{font-size:16px;letter-spacing:.05em}
+  .pn-r3-header span{color:#ff9bb4}
+  .pn-r3-header small{color:var(--muted);text-align:right}
+  .pn-r3-header b{font-size:16px;letter-spacing:.05em}
 
-  .pn-r2-stats{
+  .pn-r3-stats{
     display:grid;
     grid-template-columns:1fr 1fr;
+    border:1px solid rgba(147,92,193,.52);
+    background:rgba(12,9,16,.84);
     margin-bottom:14px;
-    border:1px solid rgba(147,92,193,.48);
-    background:rgba(12,9,16,.80);
   }
 
-  .pn-r2-stats>div{
-    min-height:82px;
-    padding:14px 18px;
+  .pn-r3-stats>div{
+    min-height:102px;
+    padding:15px 20px;
     display:flex;
     flex-direction:column;
     justify-content:center;
-    gap:7px;
-    border-right:1px solid rgba(147,92,193,.42);
+    gap:8px;
+    border-right:1px solid rgba(147,92,193,.45);
   }
 
-  .pn-r2-stats>div:last-child{border-right:0}
+  .pn-r3-stats>div:last-child{border-right:0}
 
-  .pn-r2-stats span{
+  .pn-r3-stats span{
     color:var(--muted);
     font-size:9px;
     font-weight:900;
     letter-spacing:.10em;
   }
 
-  .pn-r2-stats b{
+  .pn-r3-stats b{
     font-family:var(--mono);
-    font-size:22px;
+    font-size:25px;
   }
 
-  .pn-r2-stats b.pos{color:var(--green)}
-  .pn-r2-stats b.neg{color:var(--red)}
+  .pn-r3-net b{
+    font-size:clamp(28px,3vw,42px);
+    letter-spacing:-.04em;
+  }
 
-  .pn-r2-tabs{
+  .pn-r3-stats b.pos{color:var(--green)}
+  .pn-r3-stats b.neg{color:var(--red)}
+  .pn-r3-stats b.zero{color:#c36cf1}
+
+  .pn-r3-stage-strip{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    border:1px solid rgba(147,92,193,.45);
+    background:rgba(12,9,16,.72);
+    margin-bottom:14px;
+  }
+
+  .pn-r3-stage-strip>div{
+    min-height:38px;
+    padding:8px 11px;
+    display:flex;
+    align-items:center;
+    gap:7px;
+    border-right:1px solid rgba(147,92,193,.36);
+    color:#67606d;
+  }
+
+  .pn-r3-stage-strip>div:last-child{border-right:0}
+
+  .pn-r3-stage-strip span{
+    width:16px;
+    height:16px;
+    display:grid;
+    place-items:center;
+    font-family:var(--mono);
+    font-size:8px;
+    border:1px solid currentColor;
+    border-radius:50%;
+  }
+
+  .pn-r3-stage-strip b{
+    font-size:8px;
+    letter-spacing:.08em;
+  }
+
+  .pn-r3-stage-strip .done{color:var(--green)}
+  .pn-r3-stage-strip .current{color:#d770ff;background:rgba(118,35,151,.12)}
+  .pn-r3-stage-strip .blocked{color:#413b45}
+
+  .pn-r3-tabs{
     display:flex;
     margin-bottom:14px;
   }
 
-  .pn-r2-tabs button{
+  .pn-r3-tabs button{
     min-width:150px;
     padding:10px 16px;
-    border:1px solid rgba(147,92,193,.45);
+    border:1px solid rgba(147,92,193,.48);
     border-right:0;
     background:rgba(14,10,20,.86);
     color:var(--muted);
@@ -789,73 +998,78 @@
     cursor:pointer;
   }
 
-  .pn-r2-tabs button:last-child{border-right:1px solid rgba(147,92,193,.45)}
+  .pn-r3-tabs button:last-child{border-right:1px solid rgba(147,92,193,.48)}
 
-  .pn-r2-tabs button.active{
+  .pn-r3-tabs button.active{
     color:#f0ccff;
     background:rgba(126,36,161,.22);
     box-shadow:inset 0 -2px 0 #bd42ff;
   }
 
-  .pn-r2-controls{
+  .pn-r3-controls{
     display:grid;
     grid-template-columns:minmax(260px,1fr) 180px;
     gap:12px;
     margin-bottom:14px;
   }
 
-  .pn-r2-controls label,
-  .pn-r2-result-entry label{
+  .pn-r3-controls label,
+  .pn-r3-result-form label{
     display:flex;
     flex-direction:column;
     gap:6px;
   }
 
-  .pn-r2-controls label>span,
-  .pn-r2-result-entry label>span{
+  .pn-r3-controls label>span,
+  .pn-r3-result-form label>span{
     color:var(--muted);
     font-size:8px;
     font-weight:900;
     letter-spacing:.08em;
   }
 
-  .pn-r2-controls input,
-  .pn-r2-controls select,
-  .pn-r2-result-entry input,
-  .pn-r2-result-entry select{
+  .pn-r3-controls input,
+  .pn-r3-controls select,
+  .pn-r3-result-form input,
+  .pn-r3-result-form select{
     min-height:38px;
-    border:1px solid rgba(147,92,193,.45);
-    background:rgba(11,8,15,.92);
+    border:1px solid rgba(147,92,193,.48);
+    background:rgba(11,8,15,.94);
     color:var(--text);
     padding:8px 10px;
     font:inherit;
     font-family:var(--mono);
   }
 
-  .pn-r2-wheel-grid{
+  .pn-r3-controls input:disabled,
+  .pn-r3-controls select:disabled{
+    opacity:.50;
+  }
+
+  .pn-r3-wheel-grid{
     display:grid;
     grid-template-columns:1fr 1fr;
     gap:16px;
     margin-bottom:16px;
   }
 
-  .pn-r2-panel{
-    border-color:rgba(147,92,193,.50);
-    background:rgba(12,9,16,.82);
+  .pn-r3-panel{
+    border-color:rgba(147,92,193,.52);
+    background:rgba(12,9,16,.84);
   }
 
-  .pn-r2-panel .panel-head{
-    border-bottom:1px solid rgba(147,92,193,.42);
+  .pn-r3-panel .panel-head{
+    border-bottom:1px solid rgba(147,92,193,.44);
   }
 
-  .pn-r2-state{
+  .pn-r3-state{
     color:#a865cf;
     font-family:var(--mono);
     font-size:8px;
     letter-spacing:.08em;
   }
 
-  .pn-r2-stage{
+  .pn-r3-stage{
     min-height:470px;
     display:flex;
     flex-direction:column;
@@ -865,7 +1079,7 @@
     padding-top:18px;
   }
 
-  .pn-r2-wheel-shell{
+  .pn-r3-wheel-shell{
     position:relative;
     width:min(330px,82vw);
     aspect-ratio:1;
@@ -873,7 +1087,7 @@
     place-items:center;
   }
 
-  .pn-r2-pointer{
+  .pn-r3-pointer{
     position:absolute;
     top:-4px;
     left:50%;
@@ -883,25 +1097,24 @@
     height:0;
     border-left:14px solid transparent;
     border-right:14px solid transparent;
-    border-top:0;
     border-bottom:26px solid #f2dcff;
     filter:drop-shadow(0 0 7px rgba(213,132,255,.48));
   }
 
-  .pn-r2-wheel{
+  .pn-r3-wheel{
     position:relative;
     width:100%;
     height:100%;
     border-radius:50%;
-    border:4px solid rgba(174,105,213,.72);
+    border:4px solid rgba(174,105,213,.75);
     box-shadow:
       0 0 0 2px rgba(43,29,50,.95),
-      0 0 26px rgba(146,41,183,.18),
-      inset 0 0 36px rgba(0,0,0,.52);
+      0 0 28px rgba(146,41,183,.20),
+      inset 0 0 36px rgba(0,0,0,.54);
     transition:transform 3.3s cubic-bezier(.12,.67,.09,1);
   }
 
-  .pn-r2-verdict-wheel{
+  .pn-r3-verdict-wheel{
     background:
       conic-gradient(
         #ae153f 0deg 120deg,
@@ -910,29 +1123,27 @@
       );
   }
 
-  .pn-r2-wager-wheel{
+  .pn-r3-wager-wheel{
     background:
       conic-gradient(
-        #6d152d 0deg 51.428deg,
-        #18161d 51.428deg 102.856deg,
-        #8b1b39 102.856deg 154.284deg,
-        #242029 154.284deg 205.712deg,
-        #392041 205.712deg 257.140deg,
-        #5a1830 257.140deg 308.568deg,
-        #27202f 308.568deg 360deg
+        #8e1735 0deg 51.428deg,
+        #16151a 51.428deg 102.856deg,
+        #c1274d 102.856deg 154.284deg,
+        #27232b 154.284deg 205.712deg,
+        #4c205c 205.712deg 257.140deg,
+        #8c245e 257.140deg 308.568deg,
+        #342044 308.568deg 360deg
       );
   }
 
-  .pn-r2-wheel-label{
+  .pn-r3-wheel-label{
     position:absolute;
     z-index:2;
     left:50%;
     top:50%;
     width:42%;
     transform-origin:0 0;
-    transform:
-      rotate(var(--a))
-      translate(34%,-50%);
+    transform:rotate(var(--a)) translate(34%,-50%);
     color:#f4eafa;
     font-size:9px;
     font-weight:900;
@@ -940,9 +1151,7 @@
     text-shadow:0 1px 3px #000;
   }
 
-  .pn-r2-wheel-label::first-line{}
-
-  .pn-r2-core{
+  .pn-r3-core{
     position:absolute;
     left:50%;
     top:50%;
@@ -953,27 +1162,27 @@
     display:grid;
     place-items:center;
     background:radial-gradient(circle,#36113f,#0d0a11 68%);
-    border:2px solid rgba(203,132,240,.72);
+    border:2px solid rgba(203,132,240,.74);
     color:#dba5f8;
     font-family:var(--mono);
     font-size:14px;
     font-weight:900;
-    box-shadow:0 0 20px rgba(181,55,227,.20);
+    box-shadow:0 0 20px rgba(181,55,227,.22);
   }
 
-  .pn-r2-spin{
+  .pn-r3-spin{
     min-width:210px;
     min-height:42px;
   }
 
-  .pn-r2-legend{
+  .pn-r3-legend{
     color:var(--muted);
     font-size:8px;
     font-weight:900;
     letter-spacing:.08em;
   }
 
-  .pn-r2-protocol-key{
+  .pn-r3-protocol-key{
     display:grid;
     grid-template-columns:repeat(2,minmax(0,1fr));
     width:100%;
@@ -981,131 +1190,179 @@
     padding:0 10px;
   }
 
-  .pn-r2-protocol-key span{
+  .pn-r3-protocol-key span{
     color:var(--muted);
     font-size:7.5px;
     white-space:nowrap;
   }
 
-  .pn-r2-protocol-key b{
-    color:#d5a1f0;
-  }
+  .pn-r3-protocol-key b{color:#d5a1f0}
 
-  .pn-r2-dormant{
-    opacity:.42;
+  .pn-r3-dormant{
+    opacity:.40;
     filter:saturate(.55);
   }
 
-  .pn-r2-result-zone{
-    border:1px solid rgba(147,92,193,.48);
-    background:rgba(12,9,16,.82);
-    padding:15px 16px;
+  .pn-r3-locked-wheel{
+    opacity:.70;
+  }
+
+  .pn-r3-result-zone{
+    border:1px solid rgba(147,92,193,.52);
+    background:rgba(12,9,16,.84);
+    padding:16px;
     margin-bottom:16px;
     display:flex;
     align-items:center;
-    justify-content:space-between;
-    gap:14px;
+    gap:16px;
   }
 
-  .pn-r2-terminal{
+  .pn-r3-terminal{
     display:flex;
     flex-direction:column;
     gap:4px;
   }
 
-  .pn-r2-terminal span{
+  .pn-r3-terminal span,
+  .pn-r3-protocol-title span{
     color:var(--muted);
     font-size:8px;
     font-weight:900;
     letter-spacing:.08em;
   }
 
-  .pn-r2-terminal b{
+  .pn-r3-terminal b{
     font-family:var(--mono);
     font-size:24px;
     color:#d16eff;
   }
 
-  .pn-r2-terminal small{
+  .pn-r3-terminal small,
+  .pn-r3-protocol-title small{
     color:var(--muted);
     font-size:8px;
   }
 
-  .pn-r2-terminal.bet b{color:#ff416b}
-  .pn-r2-terminal.save b{color:var(--green)}
-  .pn-r2-terminal.retreat b{color:#c5bbc9}
+  .pn-r3-terminal.bet b{color:#ff416b}
+  .pn-r3-terminal.save b{color:var(--green)}
+  .pn-r3-terminal.retreat b{color:#c5bbc9}
 
-  .pn-r2-wager-result{
-    display:flex;
-    flex-direction:column;
-    gap:4px;
-    margin-left:auto;
-    padding-left:18px;
-    border-left:1px solid rgba(147,92,193,.42);
+  .pn-r3-protocol-terminal{
+    flex:1;
+    display:grid;
+    grid-template-columns:minmax(190px,.75fr) minmax(0,1.25fr);
+    gap:18px;
+    align-items:center;
   }
 
-  .pn-r2-wager-result span{
+  .pn-r3-protocol-title{
+    display:flex;
+    flex-direction:column;
+    gap:5px;
+  }
+
+  .pn-r3-protocol-title b{
+    color:#f3b3ff;
+    font-family:var(--mono);
+    font-size:25px;
+  }
+
+  .pn-r3-split,
+  .pn-r3-awaiting-split{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    border:1px solid rgba(147,92,193,.46);
+  }
+
+  .pn-r3-split>div,
+  .pn-r3-awaiting-split>div{
+    padding:11px 13px;
+    display:flex;
+    flex-direction:column;
+    gap:5px;
+    border-right:1px solid rgba(147,92,193,.42);
+  }
+
+  .pn-r3-split>div:last-child,
+  .pn-r3-awaiting-split>div:last-child{border-right:0}
+
+  .pn-r3-split span,
+  .pn-r3-awaiting-split span{
+    color:var(--muted);
+    font-size:8px;
+    font-weight:900;
+  }
+
+  .pn-r3-split b,
+  .pn-r3-awaiting-split b{
+    color:#f2d5ff;
+    font-family:var(--mono);
+    font-size:15px;
+  }
+
+  .pn-r3-actions{
+    margin-left:auto;
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+
+  .pn-r3-commit{
+    box-shadow:0 0 18px rgba(180,53,239,.14);
+  }
+
+  .pn-r3-defy{
+    color:#bdb4c2;
+  }
+
+  .pn-r3-awaiting{
+    margin-bottom:16px;
+    border-color:rgba(187,63,240,.62);
+    box-shadow:0 0 28px rgba(151,40,197,.10);
+  }
+
+  .pn-r3-awaiting-head{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+    margin-bottom:12px;
+  }
+
+  .pn-r3-awaiting-head>div{
+    border:1px solid rgba(147,92,193,.46);
+    padding:12px 14px;
+    display:flex;
+    flex-direction:column;
+    gap:5px;
+  }
+
+  .pn-r3-awaiting-head span{
     color:var(--muted);
     font-size:8px;
     font-weight:900;
     letter-spacing:.08em;
   }
 
-  .pn-r2-wager-result b{
-    color:#f4c4ff;
+  .pn-r3-awaiting-head b{
     font-family:var(--mono);
-    font-size:18px;
+    font-size:17px;
   }
 
-  .pn-r2-round-actions{
-    margin-left:auto;
-  }
-
-  .pn-r2-pending-panel{
-    margin-bottom:16px;
-  }
-
-  .pn-r2-pending{
-    min-height:82px;
-    padding:12px 14px;
+  .pn-r3-result-form{
     display:grid;
-    grid-template-columns:minmax(180px,.7fr) minmax(0,1.5fr);
-    gap:18px;
-    align-items:center;
-    border-bottom:1px solid rgba(147,92,193,.34);
+    grid-template-columns:170px minmax(220px,1fr) auto;
+    gap:10px;
+    align-items:end;
+    margin-top:14px;
   }
 
-  .pn-r2-pending:last-child{border-bottom:0}
-
-  .pn-r2-pending.focused{
-    background:rgba(112,36,144,.11);
-    box-shadow:inset 3px 0 0 #bd42ff;
-  }
-
-  .pn-r2-pending-copy{
-    display:flex;
-    flex-direction:column;
-    gap:4px;
-  }
-
-  .pn-r2-pending-copy span,
-  .pn-r2-pending-copy small{
+  .pn-r3-result-hint{
+    margin-top:9px;
     color:var(--muted);
     font-size:8px;
   }
 
-  .pn-r2-pending-copy b{
-    font-size:12px;
-  }
-
-  .pn-r2-result-entry{
-    display:grid;
-    grid-template-columns:150px minmax(190px,1fr) auto;
-    gap:10px;
-    align-items:end;
-  }
-
-  .pn-r2-notice{
+  .pn-r3-notice{
     margin-bottom:12px;
     padding:9px 12px;
     border:1px solid rgba(147,92,193,.44);
@@ -1115,78 +1372,71 @@
     font-size:9px;
   }
 
-  .pn-r2-notice.ok{
+  .pn-r3-notice.ok{
     border-color:rgba(52,200,117,.35);
     color:var(--green);
     background:var(--green-wash);
   }
 
-  .pn-r2-notice.err{
+  .pn-r3-notice.err{
     border-color:rgba(255,67,91,.38);
     color:var(--red);
     background:var(--red-wash);
   }
 
-  .pn-r2-empty{
-    min-height:70px;
-    display:grid;
-    place-items:center;
-    color:var(--muted);
-    font-size:9px;
-    font-weight:900;
-    letter-spacing:.08em;
-  }
-
   @media(max-width:1050px){
-    .pn-r2-wheel-grid{
-      grid-template-columns:1fr;
-    }
-
-    .pn-r2-stage{
-      min-height:440px;
-    }
+    .pn-r3-wheel-grid{grid-template-columns:1fr}
+    .pn-r3-stage{min-height:440px}
   }
 
   @media(max-width:760px){
-    .pn-r2-header{
+    .pn-r3-header,
+    .pn-r3-stats,
+    .pn-r3-controls,
+    .pn-r3-protocol-terminal,
+    .pn-r3-awaiting-head,
+    .pn-r3-result-form{
       grid-template-columns:1fr;
     }
 
-    .pn-r2-header small{text-align:left}
+    .pn-r3-header small{text-align:left}
 
-    .pn-r2-stats,
-    .pn-r2-controls,
-    .pn-r2-pending{
+    .pn-r3-stage-strip{
       grid-template-columns:1fr;
     }
 
-    .pn-r2-stats>div{
+    .pn-r3-stage-strip>div{
       border-right:0;
-      border-bottom:1px solid rgba(147,92,193,.42);
+      border-bottom:1px solid rgba(147,92,193,.36);
     }
 
-    .pn-r2-stats>div:last-child{border-bottom:0}
-
-    .pn-r2-result-entry{
-      grid-template-columns:1fr;
+    .pn-r3-stats>div{
+      border-right:0;
+      border-bottom:1px solid rgba(147,92,193,.45);
     }
 
-    .pn-r2-result-zone{
+    .pn-r3-stats>div:last-child{border-bottom:0}
+
+    .pn-r3-result-zone{
       align-items:flex-start;
       flex-direction:column;
     }
 
-    .pn-r2-wager-result{
-      margin-left:0;
-      padding-left:0;
-      border-left:0;
-      padding-top:10px;
-      border-top:1px solid rgba(147,92,193,.42);
+    .pn-r3-actions{margin-left:0}
+
+    .pn-r3-split,
+    .pn-r3-awaiting-split{
+      grid-template-columns:1fr;
     }
 
-    .pn-r2-round-actions{
-      margin-left:0;
+    .pn-r3-split>div,
+    .pn-r3-awaiting-split>div{
+      border-right:0;
+      border-bottom:1px solid rgba(147,92,193,.42);
     }
+
+    .pn-r3-split>div:last-child,
+    .pn-r3-awaiting-split>div:last-child{border-bottom:0}
   }
   `;
 
