@@ -42,7 +42,7 @@ renderSales = function(){
     const d = saleDerived(sale);
     const type = saleTypeResolved(sale);
     return '<tr class="clickable" data-open-entity="sale" data-id="'+sale.id+'">'+
-      '<td><b>'+escHtml(sale.itemName)+'</b> <span class="chip '+saleTypeChip(type)+'">'+escHtml(type)+'</span></td>'+
+      '<td><span class="sale-item-with-type"><b>'+escHtml(sale.itemName)+'</b><span class="chip '+saleTypeChip(type)+'">'+escHtml(type)+'</span></span></td>'+
       '<td class="mono">'+fmtDate(sale.saleDate)+'</td>'+
       '<td class="num">'+money(sale.buyerPrice,sale.currency)+'</td>'+
       '<td class="num">'+money(d.totalCost,sale.currency)+'</td>'+
@@ -73,6 +73,18 @@ if (typeof ROUTES !== "undefined") {
   const pnSalesRoute = ROUTES.find(route => route.key === "sales");
   if (pnSalesRoute) pnSalesRoute.render = renderSales;
 }
+
+/* Keep the sale type badge visually separate from the rig name. */
+const pnSaleTypeStyle = document.createElement("style");
+pnSaleTypeStyle.textContent = `
+.sale-item-with-type{
+  display:inline-flex;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+}
+`;
+document.head.appendChild(pnSaleTypeStyle);
 /* Dashboard counts: projects and RIG BUILD sales are PCs sold, not components. */
 const PNCoreDashboardStatsSaleTypes = dashboardStats;
 dashboardStats = function(currency){
