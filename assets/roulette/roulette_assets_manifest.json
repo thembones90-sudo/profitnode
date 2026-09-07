@@ -1,0 +1,52 @@
+{
+    "pack":  "PROFITNODE_THE_ROULETTE",
+    "version":  2,
+    "basePath":  "assets/roulette",
+    "installedAt":  "2026-09-07T15:20:07",
+    "files":  {
+                  "judgement_core_chassis.png":  {
+                                                     "file":  "judgement_core_chassis.png",
+                                                     "sha256":  "D2509ABA2E4FC830F9A56B4DC1C62F6CF1D57FA199774F99D9AE4E3154F0BD5D",
+                                                     "bytes":  506060
+                                                 },
+                  "wager_core_chassis.png":  {
+                                                 "file":  "wager_core_chassis.png",
+                                                 "sha256":  "52ECDA628B34A4C9ACFB6BB0E5AD74FD9E25AE36D8A5E042D678E3E8D88CEA65",
+                                                 "bytes":  486647
+                                             },
+                  "roulette_hub.png":  {
+                                           "file":  "roulette_hub.png",
+                                           "sha256":  "EA2A38649C9B693E90F344CDB6685D4131E526D151801D17D753627A5FD8CB8A",
+                                           "bytes":  200755
+                                       },
+                  "roulette_pointer.png":  {
+                                               "file":  "roulette_pointer.png",
+                                               "sha256":  "E5A45467022B7A210E5EE237FAABEECB1D741BC59A3A5698B4C47DE08827C1FD",
+                                               "bytes":  117193
+                                           },
+                  "roulette_crest.png":  {
+                                             "file":  "roulette_crest.png",
+                                             "sha256":  "D2F99D106BA5EE5216DAC28403B311D7E6139B08418C0D55D322C21C3E8A3793",
+                                             "bytes":  185223
+                                         },
+                  "roulette_background_overlay.png":  {
+                                                          "file":  "roulette_background_overlay.png",
+                                                          "sha256":  "4908FFE8D949E1DE8FC672C83977B6FF94D78D8BE12E6844F083ADAD07C82E11",
+                                                          "bytes":  524478
+                                                      },
+                  "roulette_result_altar.png":  {
+                                                    "file":  "roulette_result_altar.png",
+                                                    "sha256":  "B14B27E3216FBA76645B7FA01EC996B39289304494DEC29722CB0BB415CD25A8",
+                                                    "bytes":  323125
+                                                }
+              },
+    "roles":  {
+                  "judgementCoreChassis":  "judgement_core_chassis.png",
+                  "wagerCoreChassis":  "wager_core_chassis.png",
+                  "hub":  "roulette_hub.png",
+                  "pointer":  "roulette_pointer.png",
+                  "crest":  "roulette_crest.png",
+                  "backgroundOverlay":  "roulette_background_overlay.png",
+                  "resultAltar":  "roulette_result_altar.png"
+              }
+}
