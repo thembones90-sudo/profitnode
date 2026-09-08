@@ -50,7 +50,7 @@ checks.push(['mobile media query detaches content from the fixed-height shell',
 
 // --- Sandbox probe: post-load global state ---
 const meta = env.run(sandbox, `(() => ({
-  routes: ROUTES.map(r => r.key + '|' + r.nix + '|' + r.label),
+  routes: ROUTES.map(r => r.key + '|' + r.label),
   csvKeys: Object.keys(CSV_EXPORTS),
   saleTypes: Array.isArray(PN_SALE_TYPES) ? PN_SALE_TYPES.join(',') : null,
   curren: (typeof CURRENCIES !== 'undefined' ? CURRENCIES.join(',') : null),
@@ -64,12 +64,12 @@ checks.push(['no Build Planner route', !routeKeys.includes('planner')]);
 checks.push(['roulette route present', routeKeys.includes('roulette')]);
 checks.push(['backup route still present', routeKeys.includes('backup')]);
 const expectedSeq = [
-  ['dashboard','01','COMMAND'], ['analytics','02','INTEL'], ['rigbuild','03','RIG BENCH'],
-  ['projects','04','BUILDS'], ['inventory','05','PARTS VAULT'], ['repairs','06','REPAIR BAY'],
-  ['deals','07','THE HUNT'], ['sales','08','LEDGER'], ['history','09','ARCHIVE'],
-  ['roulette','10','THE ROULETTE'], ['backup','11','BLACKBOX']
+  ['dashboard','COMMAND'], ['analytics','INTEL'], ['rigbuild','RIG BENCH'],
+  ['projects','BUILDS'], ['inventory','PARTS VAULT'], ['repairs','REPAIR BAY'],
+  ['deals','THE HUNT'], ['sales','LEDGER'], ['history','ARCHIVE'],
+  ['roulette','THE ROULETTE'], ['backup','BLACKBOX']
 ];
-checks.push(['nav order/nix/labels match terminal rename + roulette insert',
+checks.push(['nav order/labels match terminal rename + roulette insert',
   routes.map(r => r.join('|')).join(',') === expectedSeq.map(r => r.join('|')).join(',')]);
 checks.push(['plans CSV export retired', !meta.csvKeys.includes('plans')]);
 checks.push(['roulette ledger CSV export registered', meta.csvKeys.includes('rouletteLedger')]);

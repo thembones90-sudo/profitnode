@@ -14,10 +14,6 @@
     for (let i = ROUTES.length - 1; i >= 0; i--){
       if (ROUTES[i].key === "planner") ROUTES.splice(i,1);
     }
-
-    ROUTES.forEach((route,index)=>{
-      route.nix = String(index + 1).padStart(2,"0");
-    });
   }
 
   if (typeof state !== "undefined"){

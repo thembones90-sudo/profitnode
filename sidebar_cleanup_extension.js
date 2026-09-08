@@ -1,20 +1,8 @@
 "use strict";
 
 (function () {
-  const KNOWN_LABELS = [
-    "COMMAND", "INTEL", "RIG BENCH", "BUILDS", "PARTS VAULT",
-    "REPAIR BAY", "THE HUNT", "LEDGER", "ARCHIVE", "THE ROULETTE",
-    "BLACKBOX", "DASHBOARD", "ANALYTICS", "PROJECTS", "INVENTORY",
-    "REPAIRS", "DEALS", "SALES", "HISTORY", "BACKUP"
-  ];
-
   function normalizeText(value) {
     return String(value || "").replace(/\s+/g, " ").trim();
-  }
-
-  function hasKnownLabel(text) {
-    const upper = normalizeText(text).toUpperCase();
-    return KNOWN_LABELS.some(label => upper.includes(label));
   }
 
   function findSidebar() {
@@ -81,48 +69,6 @@
     }
   }
 
-  function cleanNavItem(item) {
-    if (!hasKnownLabel(item.textContent)) return;
-
-    Array.from(item.children).forEach(child => {
-      const text = normalizeText(child.textContent);
-      if (/^\d{1,2}$/.test(text)) {
-        hideElement(child);
-      }
-    });
-
-    Array.from(item.childNodes).forEach(node => {
-      if (node.nodeType === Node.TEXT_NODE) {
-        node.textContent = node.textContent.replace(/^\s*\d{1,2}\s+/, "");
-      }
-    });
-
-    if (item.children.length === 1) {
-      const child = item.children[0];
-      const childText = child.textContent || "";
-      const updatedChildText = childText.replace(/^\s*\d{1,2}\s+/, "");
-      if (updatedChildText !== childText) {
-        child.textContent = updatedChildText;
-      }
-    } else if (item.children.length === 0) {
-      const itemText = item.textContent || "";
-      const updatedItemText = itemText.replace(/^\s*\d{1,2}\s+/, "");
-      if (updatedItemText !== itemText) {
-        item.textContent = updatedItemText;
-      }
-    }
-
-    item.style.setProperty("gap", "0.55rem");
-  }
-
-  function removeNavNumbers(sidebar) {
-    const navItems = Array.from(
-      sidebar.querySelectorAll("a, button, li, [role='button'], .nav-item, .menu-item, .sidebar-item")
-    );
-
-    navItems.forEach(cleanNavItem);
-  }
-
   function injectStyles() {
     if (document.getElementById("pn-sidebar-cleanup-style")) return;
 
@@ -144,7 +90,6 @@
     const sidebar = findSidebar();
     if (!sidebar) return;
     removeShopIdentity(sidebar);
-    removeNavNumbers(sidebar);
   }
 
   if (document.readyState === "loading") {

@@ -985,12 +985,11 @@ function rouletteChamber(){
 
     if (!route){
       const backupIndex = ROUTES.findIndex(row=>row.key==="backup");
-      route = {key:"roulette",label:"THE ROULETTE",nix:"10",render:renderRouletteV3};
+      route = {key:"roulette",label:"THE ROULETTE",render:renderRouletteV3};
 
       if (backupIndex>=0) ROUTES.splice(backupIndex,0,route);
       else ROUTES.push(route);
 
-      ROUTES.forEach((row,index)=>row.nix=String(index+1).padStart(2,"0"));
     } else {
       route.label = "THE ROULETTE";
       route.render = renderRouletteV3;
