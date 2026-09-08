@@ -336,7 +336,9 @@ if (Actions && Actions.addSale){
   };
 }
 
-/* Restore a part when the sale that retired it is deleted. */
+/* Restore a part when the sale that retired it is deleted. The part is
+   only revived if it is still SOLD — if it was manually re-purposed since
+   the sale, that re-purpose wins and is left untouched. */
 if (Actions && Actions.removeSale){
   const PNCoreRemoveSaleLedger = Actions.removeSale.bind(Actions);
 
@@ -470,15 +472,17 @@ function salesComponentMatches(query){
   return out;
 }
 
-function renderSaleComponentResults(query, active){
-  const matches = salesComponentMatches(query);
-  if (!matches.length){
-    return '<div class="rig-catalog-help pn-sale-empty">'+(pnNorm(query).length < 2
+/* Render a pre-computed match array. The input handler computes the
+   matches once per keystroke; arrow-key navigation re-renders from the
+   cache instead of re-running the search every press. */
+function renderSaleComponentOptions(matches, query, active){
+  if (!matches || !matches.length){
+    return '<div class="rig-catalog-help pn-sale-empty">'+(pnNorm(query||"").length < 2
       ? "Type at least 2 characters to search inventory and the catalog…"
       : "No match — keep typing to record this component manually.")+'</div>';
   }
   return matches.map((m,i)=>
-    '<button type="button" role="option" aria-selected="'+(i===active ? "true" : "false")+'" class="rig-catalog-option'+(i===active ? " pn-active" : "")+'" data-sale-component-pick="'+i+'">'+
+    '<button type="button" id="pn-sale-opt-'+i+'" role="option" aria-selected="'+(i===active ? "true" : "false")+'" class="rig-catalog-option'+(i===active ? " pn-active" : "")+'" data-sale-component-pick="'+i+'">'+
       '<span class="rig-option-name">'+escHtml(m.label)+'</span>'+
       '<span class="pn-result-badges">'+
         '<span class="pn-result-rating pn-cat-label '+categoryColorClass(m.cat)+'">'+escHtml(m.cat)+'</span>'+
@@ -488,6 +492,10 @@ function renderSaleComponentResults(query, active){
       '</span>'+
     '</button>'
   ).join("");
+}
+
+function renderSaleComponentResults(query, active){
+  return renderSaleComponentOptions(salesComponentMatches(query), query, active);
 }
 
 function renderSaleItemField(field, record){
@@ -518,6 +526,8 @@ document.addEventListener("input",function(event){
   if (pnNorm(q).length < 2){
     window.__pnSaleComponentMatches = null;
     window.__pnSaleComponentActive = 0;
+    input.setAttribute("aria-expanded","false");
+    input.setAttribute("aria-activedescendant","");
     res.style.display = "none";
     res.innerHTML = "";
     return;
@@ -525,11 +535,20 @@ document.addEventListener("input",function(event){
   clearTimeout(window.__pnSaleSearchTimer);
   window.__pnSaleSearchTimer = setTimeout(function(){
     if (input.value !== q || !res) return;
+    /* Debounce race guard: never write results into a closed modal. */
+    if (!(state.modal && state.modal.entityType === "sale")) return;
     const matches = salesComponentMatches(q);
     window.__pnSaleComponentMatches = matches;
     window.__pnSaleComponentActive = 0;
     res.style.display = "";
-    res.innerHTML = renderSaleComponentResults(q, 0);
+    res.innerHTML = renderSaleComponentOptions(matches, q, 0);
+    if (matches.length){
+      input.setAttribute("aria-expanded","true");
+      input.setAttribute("aria-activedescendant","pn-sale-opt-0");
+    } else {
+      input.setAttribute("aria-expanded","false");
+      input.setAttribute("aria-activedescendant","");
+    }
   }, 120);
 });
 
@@ -613,7 +632,8 @@ document.addEventListener("keydown",function(event){
     event.preventDefault();
     const active = window.__pnSaleComponentActive || 0;
     window.__pnSaleComponentActive = (active + (event.key === "ArrowDown" ? 1 : -1) + matches.length) % matches.length;
-    res.innerHTML = renderSaleComponentResults(input.value, window.__pnSaleComponentActive);
+    res.innerHTML = renderSaleComponentOptions(matches, input.value, window.__pnSaleComponentActive);
+    input.setAttribute("aria-activedescendant", "pn-sale-opt-"+window.__pnSaleComponentActive);
     const btn = res.querySelector('[data-sale-component-pick="'+window.__pnSaleComponentActive+'"]');
     if (btn && btn.scrollIntoView) btn.scrollIntoView({ block: "nearest" });
     return;
@@ -628,6 +648,8 @@ document.addEventListener("keydown",function(event){
     res.innerHTML = "";
     window.__pnSaleComponentMatches = null;
     window.__pnSaleComponentActive = 0;
+    input.setAttribute("aria-expanded","false");
+    input.setAttribute("aria-activedescendant","");
   }
 });
 

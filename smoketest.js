@@ -165,6 +165,186 @@ const probe = `
 `;
 const results = env.run(sandbox, probe);
 
+// --- Volume / integrity probe on its OWN sandbox so the ~270-part fixture
+//     never pollutes the main ledger used by later probes. ---
+const volumeProbe = `
+(function(){
+  const out = [];
+  const log = (name, ok) => out.push([name, !!ok]);
+  Store.load();
+
+  log('delete-sale restore never clobbers a manually re-purposed part', (function(){
+    const re = Actions.addInventory({category:'PSU',manufacturer:'Corsair',model:'CV650',purchaseDate:'2026-03-01',purchasePrice:9000,currency:'RSD',estimatedMarketValue:12000,source:'OTHER',condition:'WORKING',status:'IN_STORAGE',notes:''});
+    const reSale = Actions.addSale({inventoryItemId:re.id,itemName:'Corsair CV650',saleDate:'2026-04-01',buyerPrice:11000,originalInvestment:9000,additionalCosts:0,currency:'RSD',saleType:'COMPONENT',category:'PSU'});
+    Store.update('inventory', re.id, {status:'LISTED'});
+    Actions.removeSale(reSale.id);
+    return Store.get('inventory', re.id).status === 'LISTED' && !Store.get('sales', reSale.id);
+  })());
+
+  log('volume render equalizes the memoized repair path and per-group sums', (function(){
+    (CATEGORIES||[]).forEach(cat => {
+      for (let i = 0; i < 30; i++){
+        Actions.addInventory({category:cat,manufacturer:'VOL',model:cat+' Part Bat '+(i+1),purchaseDate:'2026-01-01',purchasePrice:1000+i*10,currency:i%2?'EUR':'RSD',estimatedMarketValue:1500+i*10,source:'OTHER',condition:'WORKING',status:'IN_STORAGE',notes:''});
+      }
+    });
+    Store.all('inventory').filter(it => it.category === 'GPU').slice(0,20).forEach((it,idx) => {
+      Actions.addRepair({inventoryItemId:it.id,cost:500+idx*5,currency:idx%2?'EUR':'RSD',description:'volume repair',date:'2026-01-15'});
+    });
+    const rep = repairsByItem();
+    let repOk = true;
+    Object.keys(rep).forEach(id => {
+      const part = Store.get('inventory', id);
+      if (!part) return;
+      const cur = part.currency || 'RSD';
+      const sum = rep[id].reduce((t,q) => t + convert(q.cost || 0, q.currency, cur), 0);
+      if (rep[id].length !== Store.all('repairs').filter(r => r.inventoryItemId === id).length) repOk = false;
+      if (Math.abs(sum - repairCostForItem(id, cur)) > 0.001) repOk = false;
+    });
+    const volHtml = renderInventory();
+    const counts = {};
+    Store.all('inventory').forEach(it => { counts[it.category] = (counts[it.category]||0) + 1; });
+    const badgeNums = [];
+    const badgeRe = /pn-inv-group-count">\\d+ ITEM(S)?/g;
+    let bm; while ((bm = badgeRe.exec(volHtml))){ badgeNums.push(Number(bm[0].match(/\\d+/)[0])); }
+    const expected = INVENTORY_GROUP_ORDER.map(g => counts[g]).filter(n => n);
+    const cur = displayCurrency();
+    let valOk = true;
+    INVENTORY_GROUP_ORDER.forEach(g => {
+      const items = Store.all('inventory').filter(it => it.category === g);
+      if (!items.length) return;
+      const sum = items.reduce((t,i) => t + convert(i.estimatedMarketValue||0, i.currency, cur), 0);
+      if (!volHtml.includes('pn-inv-group-val">EST. VALUE ' + money(sum, cur))) valOk = false;
+    });
+    return repOk && badgeNums.join(',') === expected.join(',') && valOk;
+  })());
+
+  return out;
+})()
+`;
+const volSandbox = env.createSandbox();
+env.loadAll(volSandbox, DIR);
+const volumeResults = env.run(volSandbox, volumeProbe);
+
+// --- Behavioral interaction probe: dispatches REAL listeners against a
+//     hand-built NEW SALE form tree via the harness fake DOM. ---
+const interaction = `
+(function(){
+  const out = [];
+  const listeners = window.__pnDocListeners;
+  function fire(ev, node, key){
+    const evObj = { type: ev, target: node, key: key || null,
+      _prevented:false, preventDefault(){ this._prevented = true; }, stopPropagation(){} };
+    (listeners[ev] || []).slice().forEach(fn => fn(evObj));
+    return evObj;
+  }
+
+  const compC = Actions.addInventory({category:'MOTHERBOARD',manufacturer:'ASUS',model:'Prime B450M-A',purchaseDate:'2026-02-11',purchasePrice:10500,currency:'RSD',estimatedMarketValue:14000,source:'OTHER',condition:'WORKING',status:'IN_STORAGE',notes:''});
+
+  const form = __pnEl({ tag:'form', attrs:{ 'data-entity-form':'sale' } });
+  const label = __pnEl({ tag:'label', className:'field' });
+  form.appendChild(label);
+  const search = __pnEl({ tag:'input', name:'itemName', type:'text', className:'part-search-input', attrs:{ 'data-sale-component-search':'' }, value:'' });
+  label.appendChild(search);
+  const resBox = __pnEl({ tag:'div', className:'rig-catalog-results', attrs:{ 'data-sale-component-results':'' } });
+  resBox.style.display = 'none';
+  label.appendChild(resBox);
+  const hidden = __pnEl({ tag:'input', name:'inventoryItemId', type:'hidden', value:'' });
+  label.appendChild(hidden);
+  const category = __pnEl({ tag:'select', name:'category', value:'' });
+  const refStart = __pnEl({ tag:'input', name:'referenceStartDate', value:'' });
+  const currency = __pnEl({ tag:'select', name:'currency', value:'RSD' });
+  const invest = __pnEl({ tag:'input', name:'originalInvestment', value:'' });
+  const extra = __pnEl({ tag:'input', name:'additionalCosts', value:'' });
+  const notes = __pnEl({ tag:'textarea', name:'notes', value:'' });
+  const price = __pnEl({ tag:'input', name:'buyerPrice', value:'' });
+  [category, refStart, currency, invest, extra, notes, price].forEach(el => form.appendChild(el));
+  window.__pnTree.push(form);
+
+  openForm('sale');
+  delete window.__pnSaleComponentPickedLabel;
+  window.__pnSaleComponentMatches = null;
+
+  search.value = 'b450';
+  fire('input', search);
+  __pnFlushTimers();
+
+  out.push(['typing fires a debounced render with the owned match rendered',
+    window.__pnSaleComponentMatches && window.__pnSaleComponentMatches.length >= 2 &&
+    resBox.style.display !== 'none' &&
+    resBox.innerHTML.indexOf('B450 Tomahawk') > -1 &&
+    resBox.innerHTML.indexOf('data-sale-component-pick="0"') > -1]);
+
+  out.push(['dropdown options expose stable ids + combobox aria',
+    resBox.innerHTML.indexOf('id="pn-sale-opt-0"') > -1 &&
+    search.getAttribute('aria-expanded') === 'true' &&
+    search.getAttribute('aria-activedescendant') === 'pn-sale-opt-0']);
+
+  out.push(['ArrowDown cycles the active highlight without re-running the query',
+    (function(){
+      const before = search.value;
+      fire('keydown', search, 'ArrowDown');
+      return search.value === before && window.__pnSaleComponentActive === 1 &&
+        resBox.innerHTML.indexOf('pn-active') > -1 &&
+        resBox.innerHTML.indexOf('id="pn-sale-opt-1"') > -1 &&
+        search.getAttribute('aria-activedescendant') === 'pn-sale-opt-1';
+    })()]);
+
+  out.push(['Enter picks the highlighted match and pre-fills the form fields',
+    (function(){
+      fire('keydown', search, 'Enter');
+      return hidden.value === compC.id &&
+        search.value === 'ASUS Prime B450M-A' &&
+        category.value === 'MOTHERBOARD' &&
+        refStart.value === '2026-02-11' &&
+        currency.value === 'RSD' &&
+        invest.value === '10500' &&
+        state.modal.live && state.modal.live.inventoryItemId === compC.id &&
+        resBox.style.display === 'none' &&
+        price.focused === true;
+    })()]);
+
+  out.push(['typing a stale query clears the hidden link from a previous pick',
+    (function(){
+      search.value = 'something else entirely';
+      fire('input', search);
+      __pnFlushTimers();
+      return hidden.value === '' && !(state.modal.live && state.modal.live.inventoryItemId);
+    })()]);
+
+  search.value = 'b450';
+  fire('input', search);
+  __pnFlushTimers();
+  const optBtn = __pnEl({ tag:'button', className:'rig-catalog-option', attrs:{ 'data-sale-component-pick':'1' } });
+  fire('click', optBtn);
+  out.push(['mouse click on an option delegates through the shared picker',
+    hidden.value === compC.id && window.__pnSaleComponentPickedLabel === 'ASUS Prime B450M-A']);
+
+  out.push(['Escape dismisses the dropdown and clears the a11y pointers',
+    (function(){
+      search.value = '3060';
+      fire('input', search);
+      __pnFlushTimers();
+      fire('keydown', search, 'Escape');
+      return resBox.style.display === 'none' && window.__pnSaleComponentMatches === null &&
+        search.getAttribute('aria-expanded') === 'false' &&
+        search.getAttribute('aria-activedescendant') === '';
+    })()]);
+
+  out.push(['debounce race guard never writes into a closed modal',
+    (function(){
+      const before = resBox.innerHTML;
+      search.value = 'b450';
+      fire('input', search);
+      state.modal = null;
+      __pnFlushTimers();
+      return resBox.innerHTML === before && window.__pnSaleComponentMatches === null;
+    })()]);
+
+  return out;
+})()
+`;
+const interactionResults = env.run(sandbox, interaction);
+
 // --- Roulette doctrine (permanent judgement rules) ---
 const doctrineProbe = `
 (function(){
@@ -479,7 +659,7 @@ const enclosureProbe = `
 `;
 const enclosureResults = env.run(sandbox, enclosureProbe);
 
-const all = checks.concat(results).concat(rigResults).concat(doctrineResults).concat(enclosureResults);
+const all = checks.concat(results).concat(interactionResults).concat(volumeResults).concat(rigResults).concat(doctrineResults).concat(enclosureResults);
 let fail = 0;
 for (const [name, ok] of all){
   console.log((ok ? 'PASS' : 'FAIL') + ' - ' + name);
