@@ -100,6 +100,8 @@ const probe = `
   const saleSchema = FORM_SCHEMAS.sale(null);
   log('NEW SALE item field uses the component search type', saleSchema.fields[0].type === 'componentSearch');
   log('NEW SALE schema carries a Category select', saleSchema.fields.some(f=>f.key==='category' && f.options === CATEGORIES));
+  log('INVENTORY_GROUP_ORDER is a permutation of CATEGORIES', INVENTORY_GROUP_ORDER.length === CATEGORIES.length && INVENTORY_GROUP_ORDER.slice().sort().join(',') === CATEGORIES.slice().sort().join(','));
+  log('component pick keyboard helper is exposed', typeof pnSaleComponentPick === 'function');
 
   log('catalogEntriesForSlot(PSU) delegates to HardwareCatalog.psus', catalogEntriesForSlot('PSU') === (HardwareCatalog.psus || []));
   log('gpuPsuRequirement and psuResolvedWattage exist', typeof gpuPsuRequirement === 'function' && typeof psuResolvedWattage === 'function');
@@ -131,7 +133,14 @@ const probe = `
   log('component search ranks owned inventory before catalog', compMatches2.length > 0 && compMatches2[0].kind === 'inventory');
   const linked = Actions.addSale({inventoryItemId:compB.id,itemName:'MSI B450 Tomahawk',saleDate:'2026-03-01',buyerPrice:15000,originalInvestment:12000,additionalCosts:0,currency:'RSD',saleType:'COMPONENT',category:'MOTHERBOARD',notes:''});
   log('linked component sale retires the part as SOLD', linked && Store.get('inventory', compB.id).status === 'SOLD');
-  Store.remove('sales', linked.id);
+  log('new linked sale snapshots the pre-sale status', linked && linked.inventorySnapshot && linked.inventorySnapshot.priorStatus === 'IN_STORAGE');
+  Actions.removeSale(linked.id);
+  log('deleting a linked component sale restores the part status', Store.get('inventory', compB.id).status === 'IN_STORAGE');
+  const linked2 = Actions.addSale({inventoryItemId:compB.id,itemName:'MSI B450 Tomahawk',saleDate:'2026-03-01',buyerPrice:15000,originalInvestment:12000,additionalCosts:0,currency:'RSD',saleType:'COMPONENT',category:'MOTHERBOARD'});
+  log('re-link retires the part again', linked2 && Store.get('inventory', compB.id).status === 'SOLD');
+  Actions.updateSale(linked2.id, {itemName:'MSI B450 Tomahawk',saleDate:'2026-03-01',buyerPrice:15000,originalInvestment:12000,additionalCosts:0,currency:'RSD',saleType:'COMPONENT',category:'MOTHERBOARD',inventoryItemId:''});
+  log('unlinking a sale via updateSale restores the part', Store.get('inventory', compB.id).status === 'IN_STORAGE');
+  Actions.removeSale(linked2.id);
   const invHtml = renderInventory();
   log('inventory groups by category sections', typeof invHtml === 'string' && invHtml.includes('pn-inv-group'));
   log('inventory group headers show count and est value', invHtml.includes('pn-inv-group-count') && invHtml.includes('pn-inv-group-val'));

@@ -315,7 +315,8 @@ if (Actions && Actions.finalizeProjectSale){
   };
 }
 
-/* New manual sales explicitly carry MANUAL provenance. */
+/* New manual sales explicitly carry MANUAL provenance. Linked parts get a
+   status snapshot so the retirement can be revoked by edits or deletes. */
 if (Actions && Actions.addSale){
   const PNCoreAddSaleLedger = Actions.addSale.bind(Actions);
 
@@ -323,17 +324,64 @@ if (Actions && Actions.addSale){
     const payload = Object.assign({},data,{
       saleSource:data.saleSource || "MANUAL"
     });
+    if (data && data.inventoryItemId){
+      const item = Store.get("inventory", data.inventoryItemId);
+      payload.inventorySnapshot = {
+        id: data.inventoryItemId,
+        priorStatus: item ? item.status : null,
+        priorAssignedRigId: item ? item.assignedRigId || null : null
+      };
+    }
     return PNCoreAddSaleLedger(payload);
   };
 }
 
-/* Linking a sale to a physical inventory part retires it — SOLD. */
+/* Restore a part when the sale that retired it is deleted. */
+if (Actions && Actions.removeSale){
+  const PNCoreRemoveSaleLedger = Actions.removeSale.bind(Actions);
+
+  Actions.removeSale = function(id){
+    const sale = Store.get("sales", id);
+    const result = PNCoreRemoveSaleLedger(id);
+    if (sale && sale.inventoryItemId && sale.inventorySnapshot){
+      const part = Store.get("inventory", sale.inventoryItemId);
+      if (part && part.status === "SOLD"){
+        Store.update("inventory", part.id, {
+          status: sale.inventorySnapshot.priorStatus || "IN_STORAGE",
+          assignedRigId: sale.inventorySnapshot.priorAssignedRigId || null
+        });
+      }
+    }
+    return result;
+  };
+}
+
+/* Linking a sale retires the part SOLD; changing/clearing the link restores it. */
 if (Actions && Actions.updateSale){
   const PNCoreUpdateSaleLedger = Actions.updateSale.bind(Actions);
 
   Actions.updateSale = function(id, data){
+    const sale = Store.get("sales", id);
+    const next = data && String(data.inventoryItemId || "");
+    if (sale && sale.inventoryItemId && next !== sale.inventoryItemId){
+      const part = Store.get("inventory", sale.inventoryItemId);
+      if (part && part.status === "SOLD" && sale.inventorySnapshot){
+        Store.update("inventory", part.id, {
+          status: sale.inventorySnapshot.priorStatus || "IN_STORAGE",
+          assignedRigId: sale.inventorySnapshot.priorAssignedRigId || null
+        });
+      }
+    }
     if (data && data.inventoryItemId){
       const item = Store.get("inventory", data.inventoryItemId);
+      if (!data.inventorySnapshot){
+        const same = sale && data.inventoryItemId === sale.inventoryItemId;
+        data.inventorySnapshot = same && sale.inventorySnapshot || {
+          id: data.inventoryItemId,
+          priorStatus: item ? item.status : null,
+          priorAssignedRigId: item ? item.assignedRigId || null : null
+        };
+      }
       if (item) Store.update("inventory", item.id, {status:"SOLD"});
     }
     return PNCoreUpdateSaleLedger(id, data);
@@ -405,7 +453,7 @@ function salesComponentMatches(query){
     (b.item.purchaseDate||"").localeCompare(a.item.purchaseDate||""));
 
   const out = matches.slice(0,7);
-  out.forEach(m=>seen.add(m.cat+":"+pnNorm(m.label)));
+  matches.forEach(m=>seen.add(m.cat+":"+pnNorm(m.label)));
   catalogSearchAll(query).forEach(m=>{
     if (out.length >= 10) return;
     const key = m.cat+":"+pnNorm((m.item.brand||"")+" "+(m.item.model||""));
@@ -422,7 +470,7 @@ function salesComponentMatches(query){
   return out;
 }
 
-function renderSaleComponentResults(query){
+function renderSaleComponentResults(query, active){
   const matches = salesComponentMatches(query);
   if (!matches.length){
     return '<div class="rig-catalog-help pn-sale-empty">'+(pnNorm(query).length < 2
@@ -430,7 +478,7 @@ function renderSaleComponentResults(query){
       : "No match — keep typing to record this component manually.")+'</div>';
   }
   return matches.map((m,i)=>
-    '<button type="button" class="rig-catalog-option" data-sale-component-pick="'+i+'">'+
+    '<button type="button" role="option" aria-selected="'+(i===active ? "true" : "false")+'" class="rig-catalog-option'+(i===active ? " pn-active" : "")+'" data-sale-component-pick="'+i+'">'+
       '<span class="rig-option-name">'+escHtml(m.label)+'</span>'+
       '<span class="pn-result-badges">'+
         '<span class="pn-result-rating pn-cat-label '+categoryColorClass(m.cat)+'">'+escHtml(m.cat)+'</span>'+
@@ -449,7 +497,7 @@ function renderSaleItemField(field, record){
   return '<label class="field" style="flex:1 1 100%;position:relative">'+
     '<span class="req">Item / Component Name</span>'+
     '<input type="text" name="itemName" class="part-search-input" data-sale-component-search autocomplete="off" placeholder="Type a component name — owned inventory first, catalog fallback…" value="'+escAttr(record && record.itemName || "")+'" required>'+
-    '<div class="rig-catalog-results" data-sale-component-results style="display:none"></div>'+
+    '<div class="rig-catalog-results" data-sale-component-results role="listbox" style="display:none"></div>'+
     '<input type="hidden" name="inventoryItemId" value="'+escAttr(record && record.inventoryItemId || "")+'">'+
     '<p class="hint" style="margin:4px 0 0">Type to search. Picking a part pre-fills held-since, cost basis, currency and links the sale to the physical part. Any manual name still submits as a free-text component.</p>'+
   '</label>';
@@ -460,18 +508,29 @@ document.addEventListener("input",function(event){
   if (!input) return;
   const wrap = input.closest(".part-search-field") || input.closest(".field");
   const res = wrap && wrap.querySelector("[data-sale-component-results]");
+  const hidden = wrap && wrap.querySelector('[name="inventoryItemId"]');
   if (!res) return;
+  if (input.value.trim() !== (window.__pnSaleComponentPickedLabel || "")){
+    if (hidden && hidden.value) hidden.value = "";
+    if (state.modal && state.modal.live) delete state.modal.live.inventoryItemId;
+  }
   const q = input.value;
   if (pnNorm(q).length < 2){
     window.__pnSaleComponentMatches = null;
+    window.__pnSaleComponentActive = 0;
     res.style.display = "none";
     res.innerHTML = "";
     return;
   }
-  const matches = salesComponentMatches(q);
-  window.__pnSaleComponentMatches = matches;
-  res.style.display = "";
-  res.innerHTML = renderSaleComponentResults(q);
+  clearTimeout(window.__pnSaleSearchTimer);
+  window.__pnSaleSearchTimer = setTimeout(function(){
+    if (input.value !== q || !res) return;
+    const matches = salesComponentMatches(q);
+    window.__pnSaleComponentMatches = matches;
+    window.__pnSaleComponentActive = 0;
+    res.style.display = "";
+    res.innerHTML = renderSaleComponentResults(q, 0);
+  }, 120);
 });
 
 document.addEventListener("change",function(event){
@@ -486,13 +545,14 @@ document.addEventListener("change",function(event){
   render();
 });
 
-document.addEventListener("click",function(event){
-  const pick = event.target.closest("[data-sale-component-pick]");
-  if (!pick || !state.modal || state.modal.entityType !== "sale") return;
-  const match = (window.__pnSaleComponentMatches || [])[Number(pick.dataset.saleComponentPick)];
-  if (!match) return;
-  const form = pick.closest("form[data-entity-form='sale']");
-  if (!form) return;
+/* One shared picker for mouse clicks and keyboard (Enter) — owns the
+   form-fill rules, the retirement link, and the live-state sync. */
+function pnSaleComponentPick(matchIdx){
+  if (!state.modal || state.modal.entityType !== "sale") return false;
+  const match = (window.__pnSaleComponentMatches || [])[matchIdx];
+  if (!match) return false;
+  const form = document.querySelector("form[data-entity-form='sale']");
+  if (!form) return false;
   const set = (name, value)=>{
     const el = form.querySelector('[name="'+name+'"]');
     if (el) el.value = value;
@@ -515,8 +575,60 @@ document.addEventListener("click",function(event){
   const res = form.querySelector("[data-sale-component-results]");
   if (res){ res.style.display="none"; res.innerHTML=""; }
   window.__pnSaleComponentMatches = null;
+  window.__pnSaleComponentActive = 0;
+  window.__pnSaleComponentPickedLabel = match.label;
+  const live = Object.assign({}, state.modal.live || {});
+  live.itemName = match.label;
+  live.category = match.cat;
+  if (match.kind === "inventory"){
+    live.referenceStartDate = match.item.purchaseDate || "";
+    live.currency = match.cur;
+    live.originalInvestment = String(match.price || 0);
+    live.additionalCosts = String(repairCostForItem(match.item.id, match.cur) || 0);
+    live.inventoryItemId = match.item.id;
+  } else {
+    delete live.inventoryItemId;
+  }
+  state.modal.live = live;
   const price = form.querySelector('[name="buyerPrice"]');
   if (price) price.focus();
+  return true;
+}
+
+document.addEventListener("click",function(event){
+  const pick = event.target.closest("[data-sale-component-pick]");
+  if (!pick) return;
+  pnSaleComponentPick(Number(pick.dataset.saleComponentPick));
+});
+
+document.addEventListener("keydown",function(event){
+  const input = event.target.closest("input[data-sale-component-search]");
+  if (!input) return;
+  const wrap = input.closest(".part-search-field") || input.closest(".field");
+  const res = wrap && wrap.querySelector("[data-sale-component-results]");
+  const open = res && res.style.display !== "none";
+  const matches = window.__pnSaleComponentMatches || [];
+  if (event.key === "ArrowDown" || event.key === "ArrowUp"){
+    if (!open || !matches.length) return;
+    event.preventDefault();
+    const active = window.__pnSaleComponentActive || 0;
+    window.__pnSaleComponentActive = (active + (event.key === "ArrowDown" ? 1 : -1) + matches.length) % matches.length;
+    res.innerHTML = renderSaleComponentResults(input.value, window.__pnSaleComponentActive);
+    const btn = res.querySelector('[data-sale-component-pick="'+window.__pnSaleComponentActive+'"]');
+    if (btn && btn.scrollIntoView) btn.scrollIntoView({ block: "nearest" });
+    return;
+  }
+  if (event.key === "Enter" && open && matches.length){
+    event.preventDefault();
+    pnSaleComponentPick(window.__pnSaleComponentActive || 0);
+    return;
+  }
+  if (event.key === "Escape" && res){
+    res.style.display = "none";
+    res.innerHTML = "";
+    window.__pnSaleComponentMatches = null;
+    window.__pnSaleComponentActive = 0;
+  }
 });
 
 /* Sales ledger visual language. */
@@ -628,6 +740,11 @@ pnSalesLedgerStyle.textContent = `
 .pn-result-rating.pn-sale-match-state{
   color:var(--text-mute);
   border-color:var(--border-strong);
+  background:var(--panel-2);
+}
+.rig-catalog-option.pn-active{
+  outline:1px solid var(--accent);
+  outline-offset:-1px;
   background:var(--panel-2);
 }
 .pn-sale-empty{
