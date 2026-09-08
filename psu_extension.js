@@ -333,7 +333,7 @@ renderRigSlotRow = function(slotKey,rig){
   return '<div class="rig-slot-row"><div class="rig-slot-label">PSU</div><div class="rig-slot-control">'+modeSelect+
     '<div class="rig-slot-detail">'+detail+'</div></div>'+
     '<div class="rig-slot-price" data-label="PAID PRICE">'+priceInput("cost","Paid price")+'</div>'+
-    '<div class="rig-slot-price" data-label="ORIGINAL PRICE">'+priceInput("originalPrice","Original price")+'</div>'+
+    '<div class="rig-slot-price is-secondary" data-label="ORIGINAL PRICE">'+priceInput("originalPrice","Original price")+'</div>'+
     '<div class="rig-slot-actions">'+copyBtn+'</div></div>';
 };
 

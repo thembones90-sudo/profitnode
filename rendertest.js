@@ -129,6 +129,9 @@ const probe = `
   out.push(['rig editor shows an apply-suggested-price affordance once a target margin is set', htmlEditor2.includes('data-rig-apply-suggested-price=')]);
   out.push(['rig editor shows the build-cost meter bar (score-row-bar/score-row-fill)', htmlEditor2.includes('score-row-bar') && htmlEditor2.includes('score-row-fill')]);
   out.push(['rig editor shows the copy-slot-to-family action', htmlEditor2.includes('data-rig-copy-slot-to-family="CPU"') && htmlEditor2.includes('FAMILY')]);
+  out.push(['original-price slot inputs are demoted to secondary styling', htmlEditor2.includes('rig-slot-price is-secondary" data-label="ORIGINAL PRICE"') && htmlEditor2.includes('rig-slot-price" data-label="PAID PRICE"')]);
+  out.push(['editor surfaces the variant family standing in the header', htmlEditor2.includes('FAMILY STANDING') && htmlEditor2.includes('ACTIVE VARIANT')]);
+  out.push(['best-margin variant of the same family is flagged as BEST MARGIN IN FAMILY', (function(){const d=JSON.parse(JSON.stringify(Store.get('rigs', dup.id)));d.expectedSalePrice=(Store.get('rigs', dup.id).expectedSalePrice||0)+250000;Store.update('rigs', d.id, d);state.rigDraft=JSON.parse(JSON.stringify(Store.get('rigs', dup.id)));const h=renderRigBuild();return h.includes('FAMILY STANDING')&&h.includes('BEST MARGIN IN FAMILY')})()]);
 
   state.rigFamilyView = 'REVENANT III';
   state.rigDraft = null;
