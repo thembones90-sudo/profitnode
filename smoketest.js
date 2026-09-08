@@ -218,6 +218,12 @@ const volumeProbe = `
     return repOk && badgeNums.join(',') === expected.join(',') && valOk;
   })());
 
+  log('volume render stays under the single-pass budget', (function(){
+    const t0 = Date.now();
+    renderInventory();
+    return (Date.now() - t0) < 400;
+  })());
+
   return out;
 })()
 `;
@@ -237,6 +243,8 @@ const interaction = `
     (listeners[ev] || []).slice().forEach(fn => fn(evObj));
     return evObj;
   }
+
+  (listeners.DOMContentLoaded || []).slice().forEach(fn => fn());
 
   const compC = Actions.addInventory({category:'MOTHERBOARD',manufacturer:'ASUS',model:'Prime B450M-A',purchaseDate:'2026-02-11',purchasePrice:10500,currency:'RSD',estimatedMarketValue:14000,source:'OTHER',condition:'WORKING',status:'IN_STORAGE',notes:''});
 
@@ -338,6 +346,58 @@ const interaction = `
       state.modal = null;
       __pnFlushTimers();
       return resBox.innerHTML === before && window.__pnSaleComponentMatches === null;
+    })()]);
+
+  const partForm = __pnEl({ tag:'form' });
+  const partWrap = __pnEl({ tag:'div', className:'part-search-field' });
+  partForm.appendChild(partWrap);
+  const psInput = __pnEl({ tag:'input', attrs:{ 'data-part-search':'' }, value:'3060' });
+  partWrap.appendChild(psInput);
+  const psRes = __pnEl({ tag:'div', attrs:{ 'data-part-search-results':'' } });
+  psRes.style.display = 'none';
+  partWrap.appendChild(psRes);
+  const psCat = __pnEl({ tag:'select', name:'category', value:'' });
+  const psMfr = __pnEl({ tag:'input', name:'manufacturer', value:'' });
+  const psModel = __pnEl({ tag:'input', name:'model', value:'' });
+  const psPrice = __pnEl({ tag:'input', name:'purchasePrice', value:'' });
+  [psCat, psMfr, psModel, psPrice].forEach(el => partForm.appendChild(el));
+  window.__pnTree.push(partForm);
+
+  out.push(['New Inventory part search fills results synchronously',
+    (function(){
+      HardwareCatalog.gpus = [{ brand:'MSI', model:'RTX 3060' }];
+      const root = document.getElementById('root');
+      window.__pnRootErr = null;
+      try { root.dispatchEvent({ type:'input', target: psInput, preventDefault(){}, stopPropagation(){} }); }
+      catch(err){ window.__pnRootErr = err && err.message; }
+      return !window.__pnRootErr && (window.__pnPartMatches || []).length >= 1 &&
+        psRes.style.display !== 'none' && psRes.innerHTML.indexOf('data-part-search-pick') > -1;
+    })()]);
+
+  out.push(['part search pick hydrates category/manufacturer/model',
+    (function(){
+      const pickBtn = __pnEl({ tag:'button', attrs:{ 'data-part-search-pick':'0' } });
+      partWrap.appendChild(pickBtn);
+      const root = document.getElementById('root');
+      window.__pnRootErr = null;
+      try { root.dispatchEvent({ type:'click', target: pickBtn, preventDefault(){}, stopPropagation(){} }); }
+      catch(err){ window.__pnRootErr = err && err.message; }
+      return !window.__pnRootErr && psCat.value === 'GPU' && psMfr.value === 'MSI' &&
+        psModel.value === 'RTX 3060' && psInput.value === 'MSI RTX 3060' && psPrice.focused === true;
+    })()]);
+
+  out.push(['saleType change rehydrates live state and drops the component link',
+    (function(){
+      const tsel = __pnEl({ tag:'select', name:'saleType', value:'RIG' });
+      form.appendChild(tsel);
+      openForm('sale');
+      state.modal.live = { saleType:'COMPONENT', inventoryItemId:'some-part-id', itemName: search.value };
+      window.__pnRootErr = null;
+      try { fire('change', tsel); } catch(err){ window.__pnRootErr = err && err.message; }
+      return !window.__pnRootErr && state.modal.live &&
+        state.modal.live.saleType === 'RIG' &&
+        !('inventoryItemId' in state.modal.live) &&
+        state.modal.live.itemName === search.value;
     })()]);
 
   return out;

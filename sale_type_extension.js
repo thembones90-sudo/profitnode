@@ -505,7 +505,7 @@ function renderSaleItemField(field, record){
   return '<label class="field" style="flex:1 1 100%;position:relative">'+
     '<span class="req">Item / Component Name</span>'+
     '<input type="text" name="itemName" class="part-search-input" data-sale-component-search autocomplete="off" placeholder="Type a component name — owned inventory first, catalog fallback…" value="'+escAttr(record && record.itemName || "")+'" required>'+
-    '<div class="rig-catalog-results" data-sale-component-results role="listbox" style="display:none"></div>'+
+    '<div class="rig-catalog-results" data-sale-component-results role="listbox" aria-live="polite" style="display:none"></div>'+
     '<input type="hidden" name="inventoryItemId" value="'+escAttr(record && record.inventoryItemId || "")+'">'+
     '<p class="hint" style="margin:4px 0 0">Type to search. Picking a part pre-fills held-since, cost basis, currency and links the sale to the physical part. Any manual name still submits as a free-text component.</p>'+
   '</label>';

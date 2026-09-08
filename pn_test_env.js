@@ -98,17 +98,19 @@ function matchesEl(el, compound){
 }
 
 function matchesSel(el, sel){
-  const chain = sel.trim().split(/\s+/).map(parseCompound).filter(c => c.tag || c.id || c.classes.length || c.attrs.length);
-  if (chain.length === 0) return false;
-  if (chain.length === 1) return matchesEl(el, chain[0]);
-  if (!matchesEl(el, chain[chain.length - 1])) return false;
-  let idx = chain.length - 2;
-  let cur = el.parentNode;
-  while (cur && idx >= 0){
-    if (matchesEl(cur, chain[idx])) idx--;
-    cur = cur.parentNode;
-  }
-  return idx < 0;
+  return String(sel).split(',').some(part => {
+    const chain = part.trim().split(/\s+/).map(parseCompound).filter(c => c.tag || c.id || c.classes.length || c.attrs.length);
+    if (chain.length === 0) return false;
+    if (chain.length === 1) return matchesEl(el, chain[0]);
+    if (!matchesEl(el, chain[chain.length - 1])) return false;
+    let idx = chain.length - 2;
+    let cur = el.parentNode;
+    while (cur && idx >= 0){
+      if (matchesEl(cur, chain[idx])) idx--;
+      cur = cur.parentNode;
+    }
+    return idx < 0;
+  });
 }
 
 function collect(node, sel, out){
@@ -158,6 +160,8 @@ function makeEl(props){
     }
     if (k === 'class' || k === 'className'){ node.className = v; node.classList = makeKlass(v.split(/\\s+/).filter(Boolean)); }
     if (k === 'id') node.id = v;
+    if (k === 'name') node.name = v;
+    if (k === 'type') node.type = v;
   };
   node.getAttribute = function(k){ return getAttr(node, k); };
   node.hasAttribute = function(k){ return getAttr(node, k) !== null; };
