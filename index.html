@@ -475,6 +475,21 @@ tbody tr.clickable[data-open-rig-family]:hover td:last-child::before{opacity:1}
 .pn-rank-chip.is-cheapest{color:var(--performance);border-color:rgba(69,215,255,.4);background:var(--performance-wash)}
 .pn-rank-chip.is-fastest{color:var(--sem-structure);border-color:rgba(216,222,232,.36);background:rgba(216,222,232,.07)}
 .pn-rank-chip.is-margin{color:var(--sem-positive);border-color:var(--green-dim);background:var(--green-wash)}
+.pn-family-rec{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;margin-bottom:14px;padding:10px 12px;border:1px solid var(--border);border-left:3px solid var(--sem-neutral);background:rgba(13,10,17,.36)}
+.pn-family-rec.is-ready{border-left-color:var(--sem-positive)}
+.pn-family-rec-label{font-family:var(--stamp);font-size:9px;letter-spacing:.1em;color:var(--text-mute);white-space:nowrap;display:flex;align-items:center;gap:10px}
+.pn-family-rec b{font-family:var(--mono);font-size:10.5px;color:var(--text)}
+.pn-family-rec .mono{font-family:var(--mono);font-size:10px;color:var(--text-dim)}
+.pn-rec-chip{padding:2px 6px;border:1px solid var(--green-dim);border-radius:2px;background:var(--green-wash);color:var(--sem-positive);font-family:var(--mono);font-size:8px;letter-spacing:.06em}
+.pn-family-rec-mini{margin-top:4px;font-family:var(--mono);font-size:9px;letter-spacing:.04em;color:var(--sem-positive)}
+.pn-var-read{display:inline-flex;margin-left:6px;padding:1px 5px;border:1px solid var(--border-strong);border-radius:2px;font-family:var(--mono);font-size:7.5px;letter-spacing:.06em;color:var(--sem-neutral)}
+.pn-var-read.is-ready{color:var(--sem-positive);border-color:var(--green-dim);background:var(--green-wash)}
+.pn-var-read.is-review{color:var(--sem-warning);border-color:var(--amber-dim);background:var(--amber-wash)}
+.pn-var-read.is-hold{color:var(--sem-fail);border-color:var(--red-dim);background:var(--red-wash)}
+.pn-var-read.is-verify{color:var(--sem-neutral);border-color:var(--border-strong);background:var(--panel-2)}
+.pn-variant-row.is-recommended td{box-shadow:inset 3px 0 0 var(--sem-positive)}
+.pn-variant-col.is-recommended{border-top:3px solid var(--sem-positive);background:rgba(62,207,126,.05)}
+.pn-rec-dot{margin-left:6px;color:var(--sem-positive);font-size:10px}
 @media(max-width:1180px){.pn-rig-results-primary,.pn-rig-secondary .kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 /* ---------- deal score preview (auto deal engine) ---------- */

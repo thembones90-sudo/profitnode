@@ -41,12 +41,15 @@ const probe = `
   state.rigFamilyView = 'REVENANT III';
   const html4 = renderRigBuild();
   out.push(['family view renders variant row', html4.includes('V1')]);
+  out.push(['family view surfaces the qualifying strip when nothing clears', html4.includes('NO CLEAR ASSEMBLY CANDIDATE')]);
+  out.push(['family view qualifies each variant with an operational chip', html4.includes('pn-var-read is-review') && html4.includes('REVIEW')]);
 
   // duplicate + compare
   const dup = Actions.duplicateRig(id, 'V2');
   state.rigCompareIds = [id, dup.id];
   const html5 = renderRigBuild();
   out.push(['compare table renders with 2 variants', html5.includes('Total Cost') && html5.includes('V2')]);
+  out.push(['compare columns carry the recommended-variant hook', html5.includes('pn-variant-col') && !html5.includes('is-recommended')]);
 
   // open editor on saved rig (assembled state variant)
   state.rigFamilyView = null;

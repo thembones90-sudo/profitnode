@@ -187,6 +187,13 @@ const results = env.run(sandbox, `(() => {
   const familyRanks=rigVariantRankings([valueRig,performanceRig]);
   out.push(['family ranking identifies active, cheapest, fastest and best-margin variants', familyRanks.activeId==='VALUE'&&familyRanks.cheapestId==='VALUE'&&familyRanks.fastestId==='PERFORMANCE'&&familyRanks.bestMarginId==='PERFORMANCE']);
   out.push(['family ranking badges expose the decision hierarchy', rigRankBadges(valueRig,familyRanks).includes('ACTIVE')&&rigRankBadges(valueRig,familyRanks).includes('CHEAPEST')&&rigRankBadges(performanceRig,familyRanks).includes('BEST PERFORMANCE')&&rigRankBadges(performanceRig,familyRanks).includes('BEST MARGIN')]);
+  const weakRig=goodRig();weakRig.id='WEAK';weakRig.status='TEST_BUILD';weakRig.slots.CPU.cost=20000;weakRig.expectedSalePrice=15000;
+  const healthy=goodRig();healthy.id='HEALTHY';healthy.slots.CPU.cost=20000;healthy.expectedSalePrice=120000;
+  const recCheck=rigFamilyRecommendation([weakRig,healthy]);
+  out.push(['family recommendation skips a weak deal and names the viable variant', !!(recCheck&&recCheck.id==='HEALTHY')]);
+  out.push(['family recommendation prefers an assembled selling candidate', (function(){const a=JSON.parse(JSON.stringify(healthy));a.id='ASSEMBLED_BUILD';a.status='ASSEMBLED';const p=goodRig();p.id='PLANNED_HIGHER';p.slots.CPU.cost=20000;p.expectedSalePrice=160000;const r=rigFamilyRecommendation([p,a]);return !!(r&&r.id==='ASSEMBLED_BUILD')})()]);
+  out.push(['all-fail family produces no clear assembly candidate', rigFamilyRecommendation([weakRig,JSON.parse(JSON.stringify(weakRig))])===null]);
+  out.push(['qualification chips expose the per-variant operational read', rigReadChip(healthy).includes('READY')&&rigReadChip(clash).includes('HOLD')&&rigReadChip(plain).includes('VERIFY')&&rigReadChip(viable).includes('READY')]);
 
   HardwareCatalog.cases = [];
   HardwareCatalog.coolers = [];
