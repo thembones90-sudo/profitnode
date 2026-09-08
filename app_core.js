@@ -204,6 +204,38 @@ function rigReserveWarnings(rig){if(!rig||!["PLANNED","TEST_BUILD"].includes(rig
 ;others.forEach(other=>{const conflictSlot=RIG_SLOTS.find(k=>{const os=other.slots[k];return os&&"INVENTORY"===os.kind&&os.inventoryItemId===slot.inventoryItemId})
 ;conflictSlot&&out.push("This "+RIG_SLOT_LABELS[slotKey]+" is also planned for "+other.family+" / "+other.variantName+" — you can only physically build one of these.")})})
 ;return out}
+function bcShort(t,n){t=String(t||"");return t.length>n&&n>0?t.slice(0,n-1)+"…":t}
+function bcIcon(status){return status==="PASS"?"▪":status==="FAIL"?"✖":"◆"}
+function bcTone(level,tv){return level==="FAIL"?"var(--red-wash)":level==="WARN"||tv===1?"var(--amber-wash)":level==="PASS"?"var(--green-wash)":"var(--bg-alt)"}
+function bcColor(level){return level==="FAIL"?"var(--red)":level==="WARN"?"var(--amber)":level==="PASS"?"var(--green)":"#9fa6b2"}
+function bcChip(label,txt,level){return'<span class="pn-bc-chip" style="background:'+bcTone(level)+";color:"+bcColor(level)+';border-color:'+(level==="PASS"?"var(--green-dim)":level==="FAIL"?"var(--red-dim)":level==="WARN"?"var(--amber-dim)":"var(--border-strong)")+'">'+label+" <b>"+txt+"</b></span>"}
+function bcDetailText(c){const t=bcShort(c.detail,120),d=t.indexOf(" — ");let body=d>=0?t.slice(d+3):t;const up=String(c.label||"").toUpperCase();body.startsWith(up)&&(body=body.slice(up.length).replace(/^[\s:—]+/,""));return body||t}
+function renderBuildCheck(){const rig=state.rigDraft;if(!rig)return""
+;const cur=rig.currency||"RSD",psuR=rigSlotResolved(rig.slots.PSU,cur,"PSU")
+;const enc=typeof window!=="undefined"&&window.__pnEnclosure||null,integrity=enc&&enc.integrity?enc.integrity(rig):null,pmp=typeof psuMatchProfile!=="undefined"?psuMatchProfile(rig):null
+;const fails=rigWarnings(rig).concat(rigReserveWarnings(rig)),checks=integrity&&integrity.checks||[],psuChecks=[]
+;if(psuR&&pmp){const p=pmp,lvl=p.final==="NOT APPROVED"?"WARN":"PASS"
+;psuChecks.push({id:"PSU_WATTAGE",status:lvl,label:"PSU wattage",detail:p.watts?String(p.watts)+"W selected"+(p.final==="NOT APPROVED"?" — "+bcShort((p.warnings[0]||"review the PSU choice."),90):""):"No wattage read from the PSU."})
+;psuChecks.push({id:"PSU_QUALITY",status:lvl,label:"PSU quality",detail:p.qualityScore==null?"No catalog grade":String(p.qualityScore)+" / 100 · "+String(p.qualityClass||"—")})
+;psuChecks.push({id:"PSU_SAFETY",status:p.safety==="REJECT"?"WARN":p.safety==="APPROVED"?"PASS":"UNVERIFIED",label:"PSU safety",detail:String(p.safety||"UNVERIFIED")+" — wattage doesn't equal quality."})
+;psuChecks.push({id:"PSU_CONNECTORS",status:!p.connectorStatus||p.connectorStatus==="UNVERIFIED"?"UNVERIFIED":"PASS",label:"GPU power connectors",detail:bcShort(p.connectorStatus||"Unverified",80)})}
+;const failN=fails.length,warnN=checks.filter(c=>c.status==="WARN").length,unvN=checks.filter(c=>c.status==="UNVERIFIED").length,passN=checks.filter(c=>c.status==="PASS").length
+;const scope=!!(integrity&&typeof rigEnclosureScope!=="undefined"?rigEnclosureScope(rig):rig.slots.CASE||rig.slots.COOLER||rig.slots.PSU||(integrity&&integrity.checks&&integrity.checks.length))
+;const verdict=failN?"FAIL":warnN?"WARNING":integrity&&integrity.state==="EXCELLENT"?"EXCELLENT":integrity&&integrity.state==="SOUND"?"SOUND":scope?"UNVERIFIED":"UNVERIFIED"
+;function bcTile(label,txt,word,level){return'<div class="pn-bc-tile"><div class="pn-bc-tile-line"><span class="pn-bc-tile-label">'+label+'</span><span class="pn-bc-chip pn-bc-status" style="background:'+bcTone(level,0)+";color:"+bcColor(level)+';border-color:'+(level==="FAIL"?"var(--red-dim)":level==="WARN"?"var(--amber-dim)":level==="PASS"?"var(--green-dim)":"var(--border-strong)")+'">'+word+"</span></div></div>"}
+;const byId=id=>checks.filter(c=>c.id===id);const worst=list=>{let l="PASS",ri=null;list.forEach(c=>{const r=c.status==="FAIL"?3:c.status==="WARN"?2:c.status==="UNVERIFIED"?1:0;if(r>=l){l=r;ri=c}});return{l:l===3?"FAIL":l===2?"WARN":l===1?"UNVERIFIED":"PASS",c:ri}}
+;const tileValue=c=>{const w=worst([c]);return w.c?bcShort(bcDetailText(w.c),26):"—"};const tileWord=list=>{const w=worst(list);return list.length?(w.l==="WARN"?"WARNING":w.l==="FAIL"?"FAIL":w.l==="UNVERIFIED"?"CHECK":"OK"):"NONE"}
+;const gpu=byId("GPU_CLEARANCE")[0],coolH=byId("COOLER_HEIGHT")[0],rad=byId("RADIATOR_FIT")[0],mobo=byId("MOBO_FORM_FACTOR")[0],psuFF=byId("PSU_FORM_FACTOR")[0],air=byId("AIRFLOW")[0]
+;const coolerChecks=[byId("COOLER_SUFFICIENCY")[0],byId("CPU_SOCKET")[0],byId("RAM_CLEARANCE")[0],byId("MISSING_COOLER")[0]].filter(Boolean)
+;const fitChecks=[gpu,coolH,rad].filter(Boolean);const caseChecks=[mobo,psuFF,air].filter(Boolean)
+;const it=integrity&&integrity.state||"",itTone=!(integrity&&integrity.checks&&integrity.checks.length)?"UNVERIFIED":it==="EXCELLENT"||it==="SOUND"?"PASS":"WARN"
+;const need=failN+warnN+unvN+psuChecks.length
+;const details=need?fails.map(w=>({id:"CORE",status:"FAIL",label:"Compatibility",detail:w})).concat(checks.filter(c=>c.status!=="PASS").map(c=>({id:c.id,status:c.status,label:c.label,detail:c.detail}))).concat(psuChecks):[]
+;const rows=details.length?details.map(c=>'<div class="pn-integrity-row is-'+(c.status==="FAIL"?"fail":c.status.toLowerCase())+'"><b>'+escHtml(bcShort(String(c.label).toUpperCase(),24))+'</b><span>'+escHtml(c.detail)+"</span></div>").join(""):'<div class="pn-integrity-row is-unverified"><b>UNVERIFIED</b><span>Add a case, cooler or PSU to begin a build compatibility assessment.</span></div>'
+;return'<div class="panel pn-build-check"><div class="panel-head pn-bc-head"><h2>Build Check</h2><span class="pn-bc-verdict" style="background:'+bcTone(verdict,verdict==="WARNING"?1:0)+";color:"+bcColor(verdict)+';border-color:'+(verdict==="FAIL"?"var(--red-dim)":verdict==="WARNING"?"var(--amber-dim)":verdict==="EXCELLENT"?"var(--green-dim)":"var(--border-strong)")+'">'+bcIcon(verdict)+" "+verdict+"</span></div>"+
+'<div class="pn-bc-chips">'+bcChip("HARD FAIL",failN,failN?"FAIL":"PASS")+bcChip("WARNINGS",warnN,warnN?"WARN":"PASS")+bcChip("UNVERIFIED",unvN,unvN?"UNVERIFIED":"PASS")+bcChip("VERIFIED",passN,passN?"PASS":"UNVERIFIED")+"</div>"+
+'<div class="pn-bc-tiles">'+bcTile("Build Integrity",bcShort(it||"—",18),it,itTone)+bcTile("PSU &amp; Wattage",psuR?bcShort(pmp&&pmp.watts?String(pmp.watts)+"W":"—",18):"—",psuR?(pmp&&pmp.final==="NOT APPROVED"?"WARNING":pmp&&pmp.final==="EXCELLENT"?"EXCELLENT":"CHECK"):"NONE",psuR?(pmp&&pmp.final==="NOT APPROVED"?"WARN":pmp?"UNVERIFIED":"UNVERIFIED"):"UNVERIFIED")+bcTile("Cooling",coolerChecks.length?tileValue(coolerChecks[0]):"—",tileWord(coolerChecks),worst(coolerChecks).l)+bcTile("Fit &amp; Clearances",fitChecks.length?tileValue(fitChecks[0]):"—",tileWord(fitChecks),worst(fitChecks).l)+bcTile("Case / Form Factor",caseChecks.length?tileValue(caseChecks[0]):"—",tileWord(caseChecks),worst(caseChecks).l)+"</div>"+
+'<details class="pn-bc-details"'+(failN||warnN?' open':"")+"><summary>SHOW DETAILS ("+need+")</summary><div class='pn-integrity-list pn-bc-details-list'>"+rows+"</div></details></div>"}
 function rigFamilies(){const e=Store.all("rigs"),t={};e.forEach(e=>{(t[e.family]=t[e.family]||[]).push(e)})
 ;return Object.keys(t).sort().map(e=>({family:e,variants:t[e].sort((e,t)=>(t.updatedAt||t.createdAt||"").localeCompare(e.updatedAt||e.createdAt||""))}))}
 function newRigDraft(e){return{id:null,family:e||"",variantName:"MAIN",status:"PLANNED",currency:displayCurrency(),slots:emptyRigSlots(),estimatedMarketValue:0,
@@ -570,7 +602,7 @@ else if("PLANNED"===n)o='<input type="text" placeholder="Part name" data-rig-slo
 ;return'<div class="rig-slot-row"><div class="rig-slot-label pn-cat-label '+categoryColorClass(r)+'">'+RIG_SLOT_LABELS[e]+'</div><div class="rig-slot-control">'+l+'<div class="rig-slot-detail">'+o+'</div></div><div class="rig-slot-price" data-label="PAID PRICE">'+priceInput("cost","Paid price")+'</div><div class="rig-slot-price" data-label="ORIGINAL PRICE">'+priceInput("originalPrice","Original price")+'</div><div class="rig-slot-actions">'+copyBtn+"</div></div>"}
 function renderRigEditor(){const e=state.rigDraft,t=rigDerived(e),a=rigWarnings(e).concat(rigReserveWarnings(e)),r=!e.id,n="ASSEMBLED"===e.status||"SOLD"===e.status
 ;const storageKeys=STORAGE_SLOT_KEYS.filter((t,a)=>0===a||e.slots[t]),visibleSlots=RIG_SLOTS.filter(t=>!isStorageSlot(t)||storageKeys.includes(t)),nextStorage=STORAGE_SLOT_KEYS.find((t,a)=>a>0&&!e.slots[t]),s=visibleSlots.map(t=>renderRigSlotRow(t,e)).join("")+(nextStorage&&!n?'<button type="button" class="btn btn-sm rig-add-storage" data-rig-add-storage="'+nextStorage+'">+ ADD STORAGE DRIVE</button>':"")
-;const l=a.length?'<div class="panel" style="margin-top:16px;border-color:var(--red-dim)"><div class="panel-head"><h2 style="color:var(--red)">Compatibility Warnings</h2></div><div class="panel-body"><ul class="warn-list">'+a.map(e=>"<li>"+escHtml(e)+"</li>").join("")+"</ul></div></div>":""
+;const l=renderBuildCheck()
 ;const partsOutVal=rigPartsOutValue(e),partsOutDelta=partsOutVal-(e.expectedSalePrice||0)
 ;const costMeterPct=e.expectedSalePrice>0?clamp(t.totalCost/e.expectedSalePrice*100,0,100):(t.totalCost>0?100:0),costMeterColor=t.totalCost<=(e.expectedSalePrice||0)?"var(--green)":"var(--red)"
 ;const hasTarget=e.targetMarginPct>0&&e.targetMarginPct<100,suggestedPrice=hasTarget?suggestedSalePrice(t.totalCost,e.targetMarginPct):null

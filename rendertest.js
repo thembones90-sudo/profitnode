@@ -123,7 +123,7 @@ const probe = `
   out.push(['rig editor shows a Parts-Out Value tile', htmlEditor2.includes('Parts-Out Value')]);
   out.push(['rig editor shows parts value and margin tiles', htmlEditor2.includes('Original Parts Value') && htmlEditor2.includes('Parts Margin')]);
   out.push(['rig performance and tier summaries use distinct color hooks', typeof PNCoreRenderRigEditor === 'function' && PNCoreRenderRigEditor.toString().includes('pn-performance-text') && PNCoreRenderRigEditor.toString().includes('pn-tier-text ')]);
-  out.push(['rig editor wraps the core renderer in the PSU extension', renderRigEditor.toString() !== PNCoreRenderRigEditor.toString()]);
+  out.push(['rig editor renders the unified Build Check panel', renderRigEditor().includes('pn-build-check') && renderRigEditor().includes('Build Check')]);
   out.push(['rig editor shows an apply-suggested-price affordance once a target margin is set', htmlEditor2.includes('data-rig-apply-suggested-price=')]);
   out.push(['rig editor shows the build-cost meter bar (score-row-bar/score-row-fill)', htmlEditor2.includes('score-row-bar') && htmlEditor2.includes('score-row-fill')]);
   out.push(['rig editor shows the copy-slot-to-family action', htmlEditor2.includes('data-rig-copy-slot-to-family="CPU"') && htmlEditor2.includes('FAMILY')]);

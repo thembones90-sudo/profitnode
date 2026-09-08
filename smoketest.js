@@ -685,7 +685,7 @@ const enclosureProbe = `
   const coolerHtml = renderRigSlotRow('COOLER', single);
   out.push(['COOLER slot renders generic profile + cap editor + search box', coolerHtml.includes('data-rig-generic="COOLER"') && coolerHtml.includes('data-rig-cap-field="COOLER.coolingClass"') && coolerHtml.includes('data-rig-catalog-item="COOLER"')]);
   state.rigDraft = single;
-  out.push(['RIG BENCH editor injects the BUILD INTEGRITY panel', renderRigEditor().includes('BUILD INTEGRITY') && renderRigEditor().includes('pn-integrity-grid')]);
+  out.push(['RIG BENCH editor renders the unified Build Check panel', renderRigEditor().includes('pn-build-check') && renderRigEditor().includes('Build Check') && renderRigEditor().includes('SHOW DETAILS (') && !renderRigEditor().includes('pn-integrity-grid')]);
 
   const unknown = baseRig();
   unknown.slots.CASE = {kind:'PLANNED', label:'Generic steel case', cost:0, originalPrice:0, currency:'RSD'};

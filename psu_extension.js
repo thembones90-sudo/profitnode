@@ -337,32 +337,11 @@ renderRigSlotRow = function(slotKey,rig){
     '<div class="rig-slot-actions">'+copyBtn+'</div></div>';
 };
 
-function psuMatchPanel(rig){
-  const p=psuMatchProfile(rig);
-  const finalTone=p.final==="EXCELLENT"?"pos":p.final==="NOT APPROVED"?"neg":p.final==="GOOD"?"amber":"";
-  const safetyTone=p.safety==="REJECT"?"neg":p.safety==="APPROVED"?"pos":p.safety==="CAUTION"?"amber":"";
-  const watts=p.watts?p.watts+"W":"—";
-  const req=p.requirement;
-  const zone=req?req.reference_minimum_psu_w+"W min · "+req.pn_suggested_psu_min_w+"–"+req.pn_suggested_psu_max_w+"W PN zone":"No GPU baseline";
-  return '<div class="psu-match-grid">'+
-    '<div class="kpi"><div class="kpi-label">PSU Match</div><div class="kpi-value '+finalTone+'">'+escHtml(p.final)+'</div><div class="kpi-sub">'+escHtml(zone)+'</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Wattage</div><div class="kpi-value">'+escHtml(watts)+'</div><div class="kpi-sub">'+escHtml(p.wattageStatus)+'</div></div>'+
-    '<div class="kpi"><div class="kpi-label">PSU Quality</div><div class="kpi-value">'+(p.qualityScore==null?"—":p.qualityScore+" / 100")+'</div><div class="kpi-sub">'+escHtml(p.qualityClass)+'</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Safety</div><div class="kpi-value '+safetyTone+'">'+escHtml(p.safety)+'</div><div class="kpi-sub">Wattage ≠ quality</div></div>'+
-    '<div class="kpi"><div class="kpi-label">GPU Power Connectors</div><div class="kpi-value">'+escHtml(p.connectorStatus)+'</div><div class="kpi-sub">'+escHtml(p.headroom+" headroom")+'</div></div>'+
-    '</div>';
-}
-
 const PNCoreRenderRigEditor = renderRigEditor;
-renderRigEditor = function(){
-  const html=PNCoreRenderRigEditor();
-  const marker='<div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-top:10px">';
-  return html.replace(marker,psuMatchPanel(state.rigDraft)+marker);
-};
+renderRigEditor=PNCoreRenderRigEditor;
 
 const psuStyle=document.createElement("style");
 psuStyle.textContent=`
-.psu-match-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin:10px 0}
 .pn-psu-quality{border-color:rgba(69,215,255,.45);background:var(--performance-wash)}
 .pn-psu-quality span,.pn-psu-quality b{color:var(--performance)}
 .pn-psu-approved{border-color:var(--green-dim);background:var(--green-wash)}.pn-psu-approved b{color:var(--green)}
@@ -373,7 +352,5 @@ psuStyle.textContent=`
 .pn-psu-result-acceptable{--tier-color:var(--amber);--tier-border:var(--amber-dim);--tier-wash:var(--amber-wash)}
 .pn-psu-result-caution{--tier-color:#f59e0b;--tier-border:#b45309;--tier-wash:rgba(180,83,9,.14)}
 .pn-psu-result-reject{--tier-color:var(--red);--tier-border:var(--red-dim);--tier-wash:var(--red-wash)}
-@media(max-width:1180px){.psu-match-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:640px){.psu-match-grid{grid-template-columns:1fr}}
 `;
 document.head.appendChild(psuStyle);

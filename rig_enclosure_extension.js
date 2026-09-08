@@ -683,44 +683,8 @@ renderRigSlotRow=function(slotKey,rig){
     '<div class="rig-slot-actions">'+copyBtn+'</div></div>';
 };
 
-function integrityPanel(rig){
-  if(!rig) return "";
-  const it=rigIntegrity(rig);
-  const tone=it.state==="EXCELLENT"||it.state==="SOUND"?"pos":it.state==="MARGINAL"?"amber":"";
-  const capLabel=(s,f)=>s&&s.label?s.label:(s?"(inventory part)":"—");
-  const caseLabel=capLabel(rig.slots.CASE);
-  const coolerLabel=capLabel(rig.slots.COOLER);
-  const caseCap=caseCapabilities(rig.slots.CASE);
-  const coolerCap=coolerCapabilities(rig.slots.COOLER);
-  const warnCount=it.checks.filter(c=>c.status==="WARN").length;
-  const unvCount=it.checks.filter(c=>c.status==="UNVERIFIED").length;
-  const passCount=it.checks.filter(c=>c.status==="PASS").length;
-  const clearanceNotes=[];
-  const short=(v,n)=>{v=String(v||"");return v.length>n?v.slice(0,n-1)+"…":v};
-  const gpuCh=it.checks.find(c=>c.id==="GPU_CLEARANCE"),hgtCh=it.checks.find(c=>c.id==="COOLER_HEIGHT"),psuFF=it.checks.find(c=>c.id==="PSU_FORM_FACTOR");
-  if(gpuCh) clearanceNotes.push(short(gpuCh.detail,34));
-  if(hgtCh) clearanceNotes.push(short(hgtCh.detail,34));
-  if(psuFF) clearanceNotes.push(short(psuFF.detail,34));
-  const airflowCh=it.checks.find(c=>c.id==="AIRFLOW");
-  const coolerCoverCh=it.checks.find(c=>c.id==="COOLER_SUFFICIENCY");
-  return '<div class="pn-integrity-grid">'+
-    '<div class="kpi"><div class="kpi-label">BUILD INTEGRITY</div><div class="kpi-value '+tone+'">'+escHtml(it.state)+'</div><div class="kpi-sub">'+warnCount+' warning · '+unvCount+' unverified · '+passCount+' verified</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Case</div><div class="kpi-value">'+escHtml(short(caseLabel,18))+'</div><div class="kpi-sub">'+escHtml(caseCap?short(caseCapsText(caseCap),40):"NO CAPABILITY PROFILE")+'</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Cooling</div><div class="kpi-value">'+escHtml(short(coolerLabel,18))+'</div><div class="kpi-sub">'+(coolerCoverCh?escHtml(short(coolerCoverCh.detail,40)):"")+'</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Clearances</div><div class="kpi-value">'+(clearanceNotes.length?escHtml(clearanceNotes.join(" · ")):"—")+'</div><div class="kpi-sub">GPU / cooler / PSU envelope</div></div>'+
-    '<div class="kpi"><div class="kpi-label">Airflow</div><div class="kpi-value">'+escHtml(airflowCh?short(airflowCh.detail,30):caseCap&&caseCap.airflow||"—")+'</div><div class="kpi-sub">'+escHtml(caseCap?caseCap.airflow||"AIRFLOW UNKNOWN":"NO CASE")+'</div></div>'+
-    '</div>'+
-    '<div class="pn-integrity-list">'+
-      (it.checks.length?it.checks.map(c=>'<div class="pn-integrity-row is-'+c.status.toLowerCase()+'"><b>'+escHtml(c.label.toUpperCase())+'</b><span>'+escHtml(c.detail)+'</span></div>').join(""):'<div class="pn-integrity-row"><b>NO DATA</b><span>Add a case, cooler or PSU to begin a build-integrity assessment.</span></div>')+
-    '</div>';
-}
-
 const PNEnclosureCoreRenderRigEditor=renderRigEditor;
-renderRigEditor=function(){
-  const html=PNEnclosureCoreRenderRigEditor();
-  const marker='<div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);margin-top:10px">';
-  return html.replace(marker,integrityPanel(state.rigDraft)+marker);
-};
+renderRigEditor=PNEnclosureCoreRenderRigEditor;
 
 document.addEventListener("click",function(e){
   const choice=e.target.closest("[data-rig-catalog-choice]");
@@ -852,7 +816,6 @@ enclosureStyle.textContent=`
 .pn-cap-check i{font-style:normal;color:var(--muted)}
 .pn-cap-source{border-color:var(--performance-dim);background:var(--performance-wash)}
 .pn-cap-source b{color:var(--performance)}
-.pn-integrity-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin:10px 0}
 .pn-integrity-list{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
 .pn-integrity-row{display:flex;gap:10px;align-items:baseline;border-left:2px solid var(--border);border-radius:0 var(--radius) var(--radius) 0;padding:5px 9px;background:rgba(13,10,17,.55)}
 .pn-integrity-row b{color:var(--muted);font-size:8px;letter-spacing:.06em;white-space:nowrap;min-width:92px}
@@ -862,7 +825,6 @@ enclosureStyle.textContent=`
 .pn-integrity-row.is-warn{border-left-color:var(--amber)}
 .pn-integrity-row.is-warn b,.pn-integrity-row.is-warn span{color:var(--amber)}
 .pn-integrity-row.is-unverified{border-left-color:var(--muted)}
-@media(max-width:1180px){.pn-integrity-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:640px){.pn-integrity-grid,.pn-cap-grid{grid-template-columns:1fr}}
+@media(max-width:640px){.pn-cap-grid{grid-template-columns:1fr}}
 `;
 document.head.appendChild(enclosureStyle);
