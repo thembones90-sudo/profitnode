@@ -32,10 +32,9 @@ checks.push(['every manifest entry maps to a real file on disk',
 const appJs = fs.readFileSync(path.join(DIR, 'app.js'), 'utf8');
 checks.push(['app.js loader streams the manifest via document.write',
   /document\.write\(/.test(appJs) && /window\.__PN_SCRIPTS/.test(appJs)]);
-checks.push(['index.html loads pn_scripts.js before app.js',
-  (fs.readFileSync(path.join(DIR, 'index.html'), 'utf8').match(/<script src="pn_scripts\.js"><\/script>/g) || []).length === 1]);
-
 const indexCss = fs.readFileSync(path.join(DIR, 'index.html'), 'utf8');
+checks.push(['index.html loads pn_scripts.js before app.js',
+  /<script src="pn_scripts\.js(?:\?[^" ]+)?"><\/script>/.test(indexCss) && indexCss.indexOf('pn_scripts.js') < indexCss.indexOf('app.js')]);
 checks.push(['page-mount layer bridges .main into a bounded flex column (content is the scroll layer)',
   indexCss.includes('#page-mount{flex:1;min-height:0;display:flex;flex-direction:column}')]);
 checks.push(['app shell keeps height:100vh on .main with overflow:hidden (no doc-level scroll)',
@@ -76,6 +75,16 @@ checks.push(['roulette ledger CSV export registered', meta.csvKeys.includes('rou
 checks.push(['PN_SALE_TYPES = RIG,COMPONENT,OTHER', meta.saleTypes === 'RIG,COMPONENT,OTHER']);
 checks.push(['currencies remain RSD,EUR', meta.curren === 'RSD,EUR']);
 checks.push(['manifest still declares 15 scripts in sandbox', meta.manifestLen === 15]);
+const sidebarCleanup = env.run(sandbox, `(() => {
+  const aside=document.createElement('aside');aside.setAttribute('class','sidebar');
+  const shop=document.createElement('div');shop.setAttribute('class','brand-shop');shop.textContent='Shadezy Repair Shop';
+  aside.appendChild(shop);document.body.appendChild(aside);
+  const applied=window.__pnSidebarCleanup();
+  return {applied,attr:shop.getAttribute('data-pn-sidebar-cleanup'),display:shop.style.getPropertyValue('display')};
+})()`);
+checks.push(['sidebar cleanup directly hides the legacy shop label', sidebarCleanup.applied && sidebarCleanup.attr === 'hidden' && sidebarCleanup.display === 'none']);
+const sidebarSource = fs.readFileSync(path.join(DIR, 'sidebar_cleanup_extension.js'), 'utf8');
+checks.push(['sidebar cleanup has no retry interval or mutation observer', !/setInterval|MutationObserver/.test(sidebarSource)]);
 
 // --- Functional probe (Store/Actions + extensions wiring) ---
 const probe = `
@@ -712,7 +721,7 @@ const enclosureProbe = `
   bad.slots.GPU = cat('GPU','NVIDIA RTX 3080 500mm');
   const b = E.integrity(bad);
   out.push(['GPU over the case limit drops integrity to MARGINAL', b.state === 'MARGINAL' && b.checks.some(c => c.id === 'GPU_CLEARANCE' && c.status === 'WARN')]);
-  out.push(['integrity warnings append into rigWarnings', rigWarnings(bad).some(w => w.includes('GPU EXCEEDS CASE CLEARANCE'))]);
+  out.push(['integrity findings stay out of core rigWarnings', !rigWarnings(bad).some(w => w.includes('GPU EXCEEDS CASE CLEARANCE'))]);
 
   return out;
 })()

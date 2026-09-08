@@ -122,6 +122,8 @@ const probe = `
   out.push(['rig editor shows a Target Margin % field', htmlEditor2.includes('data-rig-field="targetMarginPct"')]);
   out.push(['rig editor shows a Parts-Out Value tile', htmlEditor2.includes('Parts-Out Value')]);
   out.push(['rig editor shows parts value and margin tiles', htmlEditor2.includes('Original Parts Value') && htmlEditor2.includes('Parts Margin')]);
+  out.push(['rig editor promotes primary decisions and collapses secondary values', htmlEditor2.includes('pn-rig-results-primary') && htmlEditor2.includes('<details class="pn-rig-secondary">') && !htmlEditor2.includes('<details class="pn-rig-secondary" open')]);
+  out.push(['rig editor renders an evidence-based SHOP READ', htmlEditor2.includes('data-shop-read=') && htmlEditor2.includes('SHOP READ')]);
   out.push(['rig performance and tier summaries use distinct color hooks', typeof PNCoreRenderRigEditor === 'function' && PNCoreRenderRigEditor.toString().includes('pn-performance-text') && PNCoreRenderRigEditor.toString().includes('pn-tier-text ')]);
   out.push(['rig editor renders the unified Build Check panel', renderRigEditor().includes('pn-build-check') && renderRigEditor().includes('Build Check')]);
   out.push(['rig editor shows an apply-suggested-price affordance once a target margin is set', htmlEditor2.includes('data-rig-apply-suggested-price=')]);
@@ -134,6 +136,12 @@ const probe = `
   out.push(['compare table renders a profit hbar (hbar-track/hbar-fill)', htmlCompare.includes('hbar-track') && htmlCompare.includes('hbar-fill')]);
   out.push(['compare table falls back to the empty-slot placeholder for a blank slot', htmlCompare.includes('rig-empty-slot')]);
   out.push(['assembled variant row/column gets an amber left border', htmlCompare.includes('border-left:3px solid var(--amber)')]);
+  out.push(['family view marks active and comparison-selected variants', htmlCompare.includes('pn-rank-chip is-active') && htmlCompare.includes('pn-variant-row is-active is-selected')]);
+  out.push(['family view exposes cheapest and best-margin ranking badges', htmlCompare.includes('CHEAPEST') && htmlCompare.includes('BEST MARGIN')]);
+
+  const soldDraft = JSON.parse(JSON.stringify(Store.get('rigs', id))); soldDraft.status='SOLD'; state.rigDraft=soldDraft; state.rigFamilyView=null;
+  const soldHtml=renderRigBuild();
+  out.push(['sold rig renders a closed operational conclusion', soldHtml.includes('data-shop-read="SALE CLOSED"') && !soldHtml.includes('>ASSEMBLE<')]);
 
   out.push(['RIG_STATUS_META.DISASSEMBLED uses chip-blue-outline', RIG_STATUS_META.DISASSEMBLED.chip === 'chip-blue-outline']);
 

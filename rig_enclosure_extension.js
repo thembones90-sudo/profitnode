@@ -501,7 +501,7 @@ loadHardwareCatalog=async function(){
 
 const PNEnclosureCoreRigWarnings=rigWarnings;
 rigWarnings=function(rig){
-  return PNEnclosureCoreRigWarnings(rig).concat(rigIntegrity(rig).warnings);
+  return PNEnclosureCoreRigWarnings(rig);
 };
 
 function enclosureHelpText(slotKey,label){
@@ -518,8 +518,8 @@ function renderCaseCapsEditor(caps){
     return '<option value="">—</option>'+list.map(o=>'<option value="'+o.replace(/"/g,"&quot;")+'"'+(String(current||"")===o?" selected":"")+'>'+escHtml(o)+'</option>').join("");
   };
   const radSel=(pos)=>'<label><span>'+pos+' radiator</span><select data-rig-cap-field="CASE.radiator.'+pos+'">'+opt(PN_ENCLOSURE_RADIATOR,(caps.radiator||{})[pos]||"")+'</select></label>';
-  return '<details class="pn-cap-details"'+(ff.length||caps.airflow||caps.maxGpuLengthMm||caps.maxCoolerHeightMm?"":" open")+'>'+
-    '<summary>MANUAL CAPABILITIES</summary>'+
+  return '<details class="pn-cap-details">'+
+    '<summary>CASE CAPABILITIES / ADVANCED</summary>'+
     '<div class="pn-cap-grid">'+
       '<label class="pn-cap-check">'+PN_ENCLOSURE_FORM_FACTORS.map(f=>'<span><input type="checkbox" data-rig-cap-field="CASE.formFactor.'+f+'"'+(ff.includes(f)?" checked":"")+'><i>'+PN_ENCLOSURE_FF_LABELS[f]+'</i></span>').join("")+'</label>'+
       '<label><span>Max GPU length mm</span><input type="number" min="0" placeholder="?" data-rig-cap-field="CASE.maxGpuLengthMm" value="'+escAttr(caps.maxGpuLengthMm==null?"":caps.maxGpuLengthMm)+'"></label>'+
@@ -822,8 +822,8 @@ enclosureStyle.textContent=`
 .pn-integrity-row span{font-family:var(--mono);font-size:9px;color:var(--text)}
 .pn-integrity-row.is-pass{border-left-color:var(--green-dim)}
 .pn-integrity-row.is-pass b{color:var(--green)}
-.pn-integrity-row.is-warn{border-left-color:var(--amber)}
-.pn-integrity-row.is-warn b,.pn-integrity-row.is-warn span{color:var(--amber)}
+.pn-integrity-row.is-warn{border-left-color:var(--sem-warning)}
+.pn-integrity-row.is-warn b,.pn-integrity-row.is-warn span{color:var(--sem-warning)}
 .pn-integrity-row.is-unverified{border-left-color:var(--muted)}
 @media(max-width:640px){.pn-cap-grid{grid-template-columns:1fr}}
 `;

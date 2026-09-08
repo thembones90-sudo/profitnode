@@ -12,6 +12,7 @@ const ram = JSON.parse(fs.readFileSync(path.join(DIR, 'profitnode_ram_catalog_v1
 const storage = JSON.parse(fs.readFileSync(path.join(DIR, 'profitnode_storage_catalog_v1.json'), 'utf8'));
 const cases = JSON.parse(fs.readFileSync(path.join(DIR, 'profitnode_case_catalog_v1.json'), 'utf8'));
 const coolers = JSON.parse(fs.readFileSync(path.join(DIR, 'profitnode_cooler_catalog_v1.json'), 'utf8'));
+const gpuPsu = JSON.parse(fs.readFileSync(path.join(DIR, 'profitnode_gpu_psu_requirements_v1.json'), 'utf8'));
 
 sandbox.canonicalHardware = hardware;
 sandbox.canonicalBoards = motherboards;
@@ -19,6 +20,7 @@ sandbox.canonicalRam = ram;
 sandbox.canonicalStorage = storage;
 sandbox.canonicalCases = cases;
 sandbox.canonicalCoolers = coolers;
+sandbox.canonicalGpuPsu = gpuPsu;
 
 env.loadAll(sandbox, DIR);
 
@@ -30,6 +32,7 @@ const results = env.run(sandbox, `(() => {
   HardwareCatalog.ramSupported = canonicalRam.supported;
   HardwareCatalog.storage = canonicalStorage.entries.map(e=>Object.assign({overall:e.overall_score},e));
   HardwareCatalog.status = 'ready';
+  HardwareCatalog.gpuPsuRequirements = canonicalGpuPsu.gpus;
   const out=[];
   out.push(['canonical CPU count is 221', HardwareCatalog.cpus.length===221]);
   out.push(['canonical GPU count is 123', HardwareCatalog.gpus.length===123]);
@@ -113,13 +116,14 @@ const results = env.run(sandbox, `(() => {
   function cat2(type,label){ return {kind:'CATALOG',catalogType:type,label,cost:0,originalPrice:0,currency:'RSD'}; }
   function goodRig(){
     const r = newRigDraft('INTG');
-    r.slots.CPU = cat2('CPU','AMD Ryzen 7 5800X3D');
-    r.slots.GPU = cat2('GPU','NVIDIA RTX 3080 280mm');
-    r.slots.MOBO = cat2('MOBO','Gigabyte B550 AORUS ATX');
-    r.slots.RAM = {kind:'PLANNED',label:'2x8GB DDR4 dual channel',cost:0,originalPrice:0,currency:'RSD'};
+    r.slots.CPU = cat2('CPU','AMD Ryzen 5 3600');
+    r.slots.GPU = cat2('GPU','NVIDIA GTX 1650 4GB GDDR5 280mm');
+    r.slots.MOBO = cat2('MOBO','ASRock B450M-HDV mATX');
+    r.slots.RAM = {kind:'PLANNED',catalogType:'RAM',label:'DDR4 test kit',cost:0,originalPrice:0,currency:'RSD',ram:{moduleCount:2,perModuleCapacity:8,totalCapacity:16,speed:3200,casLatency:16}};
     r.slots.CASE = {kind:'CATALOG',catalogType:'CASE',label:'Fractal Design Meshify 2',cost:0,originalPrice:0,currency:'RSD'};
     r.slots.COOLER = {kind:'PLANNED',catalogType:'COOLER',label:'Noctua NH-D15',cost:0,originalPrice:0,currency:'RSD',caps:{type:'DUAL TOWER',radiator:null,heightMm:160,sockets:['AM4','AM5','LGA1200','LGA1700'],coolingClass:'EXTREME',fanCount:2,noiseClass:'NORMAL',tdpClass:'EXTREME',ramClearance:'NO',notes:''}};
     r.slots.PSU = cat2('PSU','BeQuiet Pure Power 750W');
+    r.slots.STORAGE = {kind:'PLANNED',label:'NVMe SSD 1TB',cost:0,originalPrice:0,currency:'RSD'};
     return r;
   }
   HardwareCatalog.psus = [{brand:'BeQuiet',model:'Pure Power 750W',wattage_w:750,quality_score:90,quality_class:'GOLD',safety_status:'ACCEPTABLE',connector_data_confidence:'OFFICIAL',pcie_6_2_connectors:6,pcie_16pin_connectors:0,atx_spec:'ATX'}];
@@ -127,7 +131,7 @@ const results = env.run(sandbox, `(() => {
   out.push(['fully-characterized build judges BUILD INTEGRITY EXCELLENT', perfectIt.state === 'EXCELLENT']);
   out.push(['EXCELLENT build has every present check PASS', perfectIt.checks.every(c => c.status === 'PASS') && perfectIt.warnings.length === 0]);
   const oversized = goodRig();
-  oversized.slots.GPU = cat2('GPU','NVIDIA RTX 3080 500mm');
+  oversized.slots.GPU = cat2('GPU','NVIDIA RTX 3080 10GB 500mm');
   const marginalIt = rigIntegrity(oversized);
   out.push(['GPU beyond the case envelope judges MARGINAL with a clearance WARN', marginalIt.state === 'MARGINAL' && marginalIt.checks.some(c => c.id === 'GPU_CLEARANCE' && c.status === 'WARN')]);
   const plain = goodRig();
@@ -142,7 +146,38 @@ const results = env.run(sandbox, `(() => {
   dec.slots.COOLER = {kind:'PLANNED',label:'Tower cooler',cost:0,originalPrice:0,currency:'RSD',caps:{type:'SINGLE TOWER',radiator:null,heightMm:155,sockets:[],coolingClass:'STANDARD',fanCount:1,noiseClass:'NORMAL',tdpClass:'STANDARD',ramClearance:'NO',notes:''}};
   dec.slots.PSU = {kind:'PLANNED',label:'Corsair 750W',cost:0,originalPrice:0,currency:'RSD'};
   out.push(['MARGINAL enclosure profile never changes the CPU/GPU/MOBO performance score', rigHardwareProfile(dec).performance === perfBefore && rigIntegrity(dec).state === 'MARGINAL']);
-  out.push(['integrity warnings append into rigWarnings', rigWarnings(oversized).some(w => w.includes('GPU EXCEEDS CASE CLEARANCE'))]);
+  out.push(['integrity findings no longer duplicate into rigWarnings', !rigWarnings(oversized).some(w => w.includes('GPU EXCEEDS CASE CLEARANCE'))]);
+  const passModel=buildCheckModel(goodRig());
+  out.push(['Build Check PASS-only build resolves PASS', passModel.verdict==='PASS'&&passModel.counts.PASS>0&&passModel.counts.UNVERIFIED===0&&passModel.counts.WARN===0&&passModel.counts.FAIL===0]);
+  const unverifiedModel=buildCheckModel(plain);
+  out.push(['Build Check PASS + UNVERIFIED resolves UNVERIFIED', unverifiedModel.verdict==='UNVERIFIED'&&unverifiedModel.counts.PASS>0&&unverifiedModel.counts.UNVERIFIED>0&&unverifiedModel.counts.FAIL===0]);
+  const warningRig=goodRig();warningRig.slots.CASE={kind:'PLANNED',catalogType:'CASE',label:'Airflow test case',cost:0,originalPrice:0,currency:'RSD',caps:{formFactors:['MATX','ATX'],maxGpuLengthMm:400,maxCoolerHeightMm:180,psuSupport:'ATX',radiator:{front:'360',top:'280',rear:'120'},airflow:'POOR',buildQuality:'SOLID',sidePanel:'mesh',notes:''}};
+  const warningModel=buildCheckModel(warningRig);
+  out.push(['Build Check PASS + WARNING resolves WARNING', warningModel.verdict==='WARNING'&&warningModel.counts.WARN>0&&warningModel.counts.FAIL===0]);
+  const failModel=buildCheckModel(oversized);
+  out.push(['Build Check confirmed incompatibility resolves FAIL', failModel.verdict==='FAIL'&&failModel.counts.FAIL>0]);
+  const mixedRig=goodRig();mixedRig.slots.GPU=cat2('GPU','NVIDIA RTX 3080 10GB 500mm');mixedRig.slots.PSU={kind:'PLANNED',catalogType:'PSU',label:'Unknown 750W PSU',cost:0,originalPrice:0,currency:'RSD'};
+  const mixedModel=buildCheckModel(mixedRig);
+  out.push(['Build Check mixed FAIL + UNVERIFIED stays FAIL', mixedModel.verdict==='FAIL'&&mixedModel.counts.FAIL>0&&mixedModel.counts.UNVERIFIED>0]);
+  out.push(['Build Check prevents duplicate messages', new Set(failModel.findings.map(f=>pnNorm(f.id+' '+f.detail))).size===failModel.findings.length]);
+  state.rigDraft=oversized;const failHtml=renderBuildCheck();
+  out.push(['Build Check tile severity matches FAIL detail severity', failHtml.includes('data-build-check-verdict="FAIL"')&&failHtml.includes('data-bc-level="FAIL"')&&failHtml.includes('is-fail')]);
+  state.rigDraft=plain;const unverifiedHtml=renderBuildCheck();
+  out.push(['PASS/UNVERIFIED Build Check details default collapsed', !/<details class="pn-bc-details" open/.test(unverifiedHtml)]);
+  out.push(['case advanced capabilities default collapsed', caseSlotHtml.includes('<summary>CASE CAPABILITIES / ADVANCED</summary>')&&!caseSlotHtml.includes('<details class="pn-cap-details" open>')]);
+  const scenarios=[['PASS',goodRig()],['UNVERIFIED',plain],['WARNING',warningRig],['FAIL',oversized]];
+  out.push(['complete Build Check scenario matrix renders the same overall state as its model', scenarios.every(([expected,rig])=>{state.rigDraft=rig;const model=buildCheckModel(rig),html=renderBuildCheck();return model.verdict===expected&&html.includes('data-build-check-verdict="'+expected+'"')} )]);
+  out.push(['contradictory Build Check severity states are impossible', scenarios.every(([,rig])=>{const model=buildCheckModel(rig),max=Math.max(...model.findings.map(f=>BC_SEVERITY[bcStatus(f.status)]),0),expected=max===3?'FAIL':max===2?'WARNING':max===1?'UNVERIFIED':'PASS';return model.verdict===expected} )]);
+  const viable=goodRig();viable.expectedSalePrice=100000;
+  const shopStates=[rigOperatorRead(viable,rigDerived(viable),buildCheckModel(viable)).title,rigOperatorRead(plain,rigDerived(plain),buildCheckModel(plain)).title,rigOperatorRead(warningRig,rigDerived(warningRig),buildCheckModel(warningRig)).title,rigOperatorRead(oversized,rigDerived(oversized),buildCheckModel(oversized)).title];
+  out.push(['SHOP READ explains good, unknown, warning and incompatible complete states', shopStates.join('|')==='ASSEMBLY CANDIDATE|VERIFY BEFORE ASSEMBLY|REVIEW BEFORE ASSEMBLY|HOLD BUILD']);
+  const assembled=JSON.parse(JSON.stringify(viable));assembled.status='ASSEMBLED';const sold=JSON.parse(JSON.stringify(viable));sold.status='SOLD';
+  out.push(['SHOP READ covers assembled and sold operational states', rigOperatorRead(assembled,rigDerived(assembled),buildCheckModel(assembled)).title==='SELLING CANDIDATE'&&rigOperatorRead(sold,rigDerived(sold),buildCheckModel(sold)).title==='SALE CLOSED']);
+  const valueRig=goodRig();valueRig.id='VALUE';valueRig.status='TEST_BUILD';valueRig.slots.CPU.cost=20000;valueRig.expectedSalePrice=50000;
+  const performanceRig=goodRig();performanceRig.id='PERFORMANCE';performanceRig.slots.CPU=cat2('CPU','AMD Ryzen 7 5800X3D');performanceRig.slots.CPU.cost=30000;performanceRig.expectedSalePrice=100000;
+  const familyRanks=rigVariantRankings([valueRig,performanceRig]);
+  out.push(['family ranking identifies active, cheapest, fastest and best-margin variants', familyRanks.activeId==='VALUE'&&familyRanks.cheapestId==='VALUE'&&familyRanks.fastestId==='PERFORMANCE'&&familyRanks.bestMarginId==='PERFORMANCE']);
+  out.push(['family ranking badges expose the decision hierarchy', rigRankBadges(valueRig,familyRanks).includes('ACTIVE')&&rigRankBadges(valueRig,familyRanks).includes('CHEAPEST')&&rigRankBadges(performanceRig,familyRanks).includes('BEST PERFORMANCE')&&rigRankBadges(performanceRig,familyRanks).includes('BEST MARGIN')]);
 
   HardwareCatalog.cases = [];
   HardwareCatalog.coolers = [];
