@@ -679,7 +679,7 @@ const enclosureProbe = `
   out.push(['catalog label hydrates case caps and stamps CATALOG source', cc && cc.maxGpuLengthMm === 355 && caseSlot.source === 'CATALOG' && caseSlot.catalogKey === 'CASE:FRACTAL DESIGN MESHIFY 2']);
   const coolerSlot = {kind:'PLANNED', catalogType:'COOLER', label:'Noctua NH-D15', cost:0, originalPrice:0, currency:'RSD'};
   const kc = E.coolerCapabilities(coolerSlot, 'Noctua NH-D15');
-  out.push(['catalog label hydrates cooler caps and stamps COOLER source', kc && kc.coolingClass === 'EXTREME' && coolerSlot.source === 'CATALOG']);
+  out.push(['catalog label hydrates compact cooler caps and stamps COOLER source', kc && kc.type === 'AIR' && kc.coolingClass === 'HIGH' && coolerSlot.source === 'CATALOG']);
 
   out.push(['catalogSearchAll now covers CASE and COOLER', catalogSearchAll('Meshify').some(m => m.cat === 'CASE') && catalogSearchAll('NH-D15').some(m => m.cat === 'COOLER')]);
 
@@ -692,7 +692,7 @@ const enclosureProbe = `
   out.push(['CASE slot renders generic profile + cap editor + search box', caseHtml.includes('data-rig-generic="CASE"') && caseHtml.includes('data-rig-cap-field="CASE.maxGpuLengthMm"') && caseHtml.includes('data-rig-catalog-item="CASE"')]);
   single.slots.COOLER = {kind:'PLANNED', catalogType:'COOLER', label:'Noctua NH-D15', cost:0, originalPrice:0, currency:'RSD'};
   const coolerHtml = renderRigSlotRow('COOLER', single);
-  out.push(['COOLER slot renders generic profile + cap editor + search box', coolerHtml.includes('data-rig-generic="COOLER"') && coolerHtml.includes('data-rig-cap-field="COOLER.coolingClass"') && coolerHtml.includes('data-rig-catalog-item="COOLER"')]);
+  out.push(['COOLER slot renders compact cap editor + search box', coolerHtml.includes('COOLER DETAILS / ADVANCED') && coolerHtml.includes('data-rig-cap-field="COOLER.coolingClass"') && coolerHtml.includes('data-rig-catalog-item="COOLER"') && !coolerHtml.includes('data-rig-generic="COOLER"')]);
   state.rigDraft = single;
   out.push(['RIG BENCH editor renders the unified Build Check panel', renderRigEditor().includes('pn-build-check') && renderRigEditor().includes('Build Check') && renderRigEditor().includes('SHOW DETAILS (') && !renderRigEditor().includes('pn-integrity-grid')]);
 

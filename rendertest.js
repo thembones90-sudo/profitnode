@@ -42,7 +42,7 @@ const probe = `
   const html4 = renderRigBuild();
   out.push(['family view renders variant row', html4.includes('V1')]);
   out.push(['family view surfaces the qualifying strip when nothing clears', html4.includes('NO CLEAR ASSEMBLY CANDIDATE')]);
-  out.push(['family view qualifies each variant with an operational chip', html4.includes('pn-var-read is-review') && html4.includes('REVIEW')]);
+  out.push(['family view qualifies each incomplete variant with an operational chip', html4.includes('pn-var-read is-verify') && html4.includes('INCOMPLETE')]);
 
   // duplicate + compare
   const dup = Actions.duplicateRig(id, 'V2');

@@ -111,7 +111,9 @@ const results = env.run(sandbox, `(() => {
   const caseSlotHtml = renderRigSlotRow('CASE',encRig);
   out.push(['CASE slot renders the enclosure editor', caseSlotHtml.includes('data-rig-generic="CASE"') && caseSlotHtml.includes('data-rig-cap-field="CASE.maxGpuLengthMm"') && caseSlotHtml.includes('data-rig-catalog-item="CASE"')]);
   const coolerSlotHtml = renderRigSlotRow('COOLER',encRig);
-  out.push(['COOLER slot renders the enclosure editor', coolerSlotHtml.includes('data-rig-generic="COOLER"') && coolerSlotHtml.includes('data-rig-cap-field="COOLER.coolingClass"') && coolerSlotHtml.includes('data-rig-catalog-item="COOLER"')]);
+  out.push(['COOLER slot renders the compact final component editor', coolerSlotHtml.includes('COOLER DETAILS / ADVANCED') && coolerSlotHtml.includes('data-rig-cap-field="COOLER.coolingClass"') && coolerSlotHtml.includes('data-rig-catalog-item="COOLER"') && coolerSlotHtml.includes('FIT:')]);
+  out.push(['COOLER UI omits nonessential technical fields', !/TDP class|Fan count|Noise class|RAM clearance|Heatpipe|Pump speed/i.test(coolerSlotHtml)]);
+  out.push(['legacy cooler catalog values normalize to AIR and BASIC/MID/HIGH', (function(){const c=normalizeCoolerCaps({type:'DUAL TOWER',coolingClass:'EXTREME'});return c.type==='AIR'&&c.coolingClass==='HIGH'})()]);
 
   function cat2(type,label){ return {kind:'CATALOG',catalogType:type,label,cost:0,originalPrice:0,currency:'RSD'}; }
   function goodRig(){
@@ -130,6 +132,22 @@ const results = env.run(sandbox, `(() => {
   const perfectIt = rigIntegrity(goodRig());
   out.push(['fully-characterized build judges BUILD INTEGRITY EXCELLENT', perfectIt.state === 'EXCELLENT']);
   out.push(['EXCELLENT build has every present check PASS', perfectIt.checks.every(c => c.status === 'PASS') && perfectIt.warnings.length === 0]);
+  const socketFail=goodRig();socketFail.slots.COOLER.caps.sockets=['LGA1700'];
+  out.push(['incompatible cooler socket is a confirmed FAIL', rigIntegrity(socketFail).checks.some(c=>c.id==='CPU_SOCKET'&&c.status==='FAIL')]);
+  const weakCooler=goodRig();weakCooler.slots.CPU=cat2('CPU','AMD Ryzen 7 5800X3D');weakCooler.slots.COOLER.caps.coolingClass='BASIC';
+  out.push(['obviously inadequate cooler is a WARNING, not a compatibility FAIL', rigIntegrity(weakCooler).checks.some(c=>c.id==='COOLER_SUFFICIENCY'&&c.status==='WARN')]);
+  const noRequiredCooler=goodRig();noRequiredCooler.slots.CPU=cat2('CPU','AMD Ryzen 7 5800X3D');noRequiredCooler.slots.COOLER=null;
+  out.push(['missing cooler for a CPU that requires one is a confirmed FAIL', rigIntegrity(noRequiredCooler).checks.some(c=>c.id==='MISSING_COOLER'&&c.status==='FAIL')&&buildCheckModel(noRequiredCooler).verdict==='FAIL']);
+  const bundledStock=goodRig();bundledStock.slots.COOLER=null;
+  out.push(['adequate bundled stock cooling is accepted without an aftermarket cooler', rigIntegrity(bundledStock).checks.some(c=>c.id==='MISSING_COOLER'&&c.status==='PASS')]);
+  const tallAir=goodRig();tallAir.slots.COOLER.caps.heightMm=220;
+  out.push(['air cooler over the case height limit is a confirmed FAIL', rigIntegrity(tallAir).checks.some(c=>c.id==='COOLER_HEIGHT'&&c.status==='FAIL')]);
+  const badAio=goodRig();badAio.slots.CASE.caps={formFactors:['MATX','ATX'],maxGpuLengthMm:400,maxCoolerHeightMm:180,psuSupport:'ATX',radiator:{front:'240',top:'240',rear:'120'},airflow:'GOOD'};badAio.slots.COOLER.caps={type:'AIO',radiator:'360',heightMm:null,sockets:['AM4'],coolingClass:'HIGH'};
+  out.push(['unsupported AIO radiator size is a confirmed FAIL', rigIntegrity(badAio).checks.some(c=>c.id==='RADIATOR_FIT'&&c.status==='FAIL')]);
+  const stronger=goodRig();stronger.slots.CPU=cat2('CPU','AMD Ryzen 3 3100');stronger.slots.COOLER.caps.coolingClass='HIGH';
+  out.push(['stronger cooling than required passes without warning', rigIntegrity(stronger).checks.some(c=>c.id==='COOLER_SUFFICIENCY'&&c.status==='PASS')&&!rigIntegrity(stronger).checks.some(c=>c.id==='COOLER_SUFFICIENCY'&&c.status==='WARN')]);
+  const coolerTierA=goodRig(),coolerTierB=goodRig();coolerTierA.slots.COOLER.caps.coolingClass='BASIC';coolerTierB.slots.COOLER.caps.coolingClass='HIGH';
+  out.push(['cooler strength cannot promote rig performance or Gear Tier', rigHardwareProfile(coolerTierA).performance===rigHardwareProfile(coolerTierB).performance&&rigHardwareProfile(coolerTierA).tier===rigHardwareProfile(coolerTierB).tier]);
   const oversized = goodRig();
   oversized.slots.GPU = cat2('GPU','NVIDIA RTX 3080 10GB 500mm');
   const marginalIt = rigIntegrity(oversized);
