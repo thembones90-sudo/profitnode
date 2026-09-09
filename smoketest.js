@@ -76,6 +76,28 @@ checks.push(['roulette ledger CSV export registered', meta.csvKeys.includes('rou
 checks.push(['PN_SALE_TYPES = RIG,COMPONENT,OTHER', meta.saleTypes === 'RIG,COMPONENT,OTHER']);
 checks.push(['currencies remain RSD,EUR', meta.curren === 'RSD,EUR']);
 checks.push(['manifest declares 16 scripts in sandbox', meta.manifestLen === 16]);
+const migrationProbe = env.run(sandbox, `(() => {
+  const legacy={meta:{seeded:true},inventory:[
+    {id:'healthy',category:'STORAGE',driveHealthPercent:120,catalogOverride:'  Samsung 970 EVO Plus 1TB  '},
+    {id:'dead',category:'STORAGE',driveHealthPercent:-4}
+  ],treasury:{balances:[]}};
+  const migrated=migrateLedger(legacy);
+  return {
+    version:PN_LEDGER_SCHEMA_VERSION,
+    from:migrated.fromVersion,to:migrated.toVersion,changed:migrated.changed,
+    meta:migrated.ledger.meta.schemaVersion,
+    high:migrated.ledger.inventory[0].driveHealthPercent,
+    low:migrated.ledger.inventory[1].driveHealthPercent,
+    override:migrated.ledger.inventory[0].catalogOverride,
+    collections:Array.isArray(migrated.ledger.rigs)&&Array.isArray(migrated.ledger.sales),
+    blankVersion:emptyLedger().meta.schemaVersion
+  };
+})()`);
+checks.push(['ledger migrations upgrade legacy data to schema v2', migrationProbe.version===2&&migrationProbe.from===0&&migrationProbe.to===2&&migrationProbe.changed&&migrationProbe.meta===2&&migrationProbe.blankVersion===2]);
+checks.push(['storage health migration clamps values and trims catalog overrides', migrationProbe.high===100&&migrationProbe.low===0&&migrationProbe.override==='Samsung 970 EVO Plus 1TB']);
+checks.push(['ledger migration restores canonical collection arrays', migrationProbe.collections]);
+const futureMigration = env.run(sandbox, `migrateLedger({meta:{schemaVersion:9},inventory:[]})`);
+checks.push(['ledger migration never silently downgrades a future schema', futureMigration.toVersion===9&&futureMigration.ledger.meta.schemaVersion===9&&!futureMigration.changed]);
 const sidebarCleanup = env.run(sandbox, `(() => {
   const aside=document.createElement('aside');aside.setAttribute('class','sidebar');
   const shop=document.createElement('div');shop.setAttribute('class','brand-shop');shop.textContent='Shadezy Repair Shop';
@@ -158,6 +180,9 @@ const probe = `
   log('NEW SALE schema carries a Category select', saleSchema.fields.some(f=>f.key==='category' && f.options === CATEGORIES));
   log('INVENTORY_GROUP_ORDER is a permutation of CATEGORIES', INVENTORY_GROUP_ORDER.length === CATEGORIES.length && INVENTORY_GROUP_ORDER.slice().sort().join(',') === CATEGORIES.slice().sort().join(','));
   log('component pick keyboard helper is exposed', typeof pnSaleComponentPick === 'function');
+  const inventorySchema = FORM_SCHEMAS.inventory(null);
+  const healthField = inventorySchema.fields.find(f=>f.key==='driveHealthPercent');
+  log('inventory schema has bounded storage-only drive health', !!healthField&&healthField.storageOnly===true&&healthField.min===0&&healthField.max===100);
 
   log('catalogEntriesForSlot(PSU) delegates to HardwareCatalog.psus', catalogEntriesForSlot('PSU') === (HardwareCatalog.psus || []));
   log('gpuPsuRequirement and psuResolvedWattage exist', typeof gpuPsuRequirement === 'function' && typeof psuResolvedWattage === 'function');

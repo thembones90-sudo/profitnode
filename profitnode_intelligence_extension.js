@@ -23,15 +23,35 @@ function pnPartTierCatalogKey(category){
   return category==="MOTHERBOARD"?"MOBO":category==="COOLING"?"COOLER":category;
 }
 
-function pnPartCatalogMatch(item){
+function pnPartCatalogIdentity(value,category){
+  let text=pnNorm(value);
+  if(category==="GPU") text=text.replace(/\b\d+ GB\b/g,"").replace(/\bGDDR\dX?\b/g,"");
+  return text.replace(/\b(?:OC|EDITION|GRAPHICS|CARD)\b/g,"").replace(/\s+/g," ").trim();
+}
+
+function pnPartCatalogResolution(item){
   const category=pnPartTierCategory(item&&item.category),key=pnPartTierCatalogKey(category);
   const list=typeof catalogEntriesForSlot==="function"?(catalogEntriesForSlot(key)||[]):[];
-  const full=pnNorm(((item&&item.manufacturer)||"")+" "+((item&&item.model)||"")),model=pnNorm(item&&item.model);
-  if(!model) return null;
-  return list.find(row=>pnNorm((row.brand||"")+" "+(row.model||row.series||""))===full)||list.find(row=>{
-    const candidate=pnNorm(row.model||row.series||"");
-    return candidate===model||candidate.includes(model)||model.includes(candidate);
-  })||null;
+  const override=pnNorm(item&&item.catalogOverride),full=pnNorm(((item&&item.manufacturer)||"")+" "+((item&&item.model)||"")),model=pnNorm(item&&item.model);
+  const rowFull=row=>pnNorm((row.brand||"")+" "+(row.model||row.series||"")),rowModel=row=>pnNorm(row.model||row.series||"");
+  if(override){
+    const manual=list.find(row=>rowFull(row)===override||rowModel(row)===override);
+    return manual?{item:manual,confidence:"MANUAL",reason:"Manual canonical catalog link"}:{item:null,confidence:"UNRESOLVED",reason:"Manual catalog link did not resolve"};
+  }
+  if(!model) return {item:null,confidence:"NONE",reason:"No model recorded"};
+  let match=list.find(row=>rowFull(row)===full);
+  if(match) return {item:match,confidence:"EXACT",reason:"Exact brand and model match"};
+  match=list.find(row=>rowModel(row)===model);
+  if(match) return {item:match,confidence:"MODEL",reason:"Exact model match"};
+  const normalized=pnPartCatalogIdentity(model,category);
+  match=list.find(row=>pnPartCatalogIdentity(rowModel(row),category)===normalized);
+  if(match) return {item:match,confidence:"NORMALIZED",reason:"Normalized model match"};
+  match=normalized.length>=3?list.find(row=>{const candidate=pnPartCatalogIdentity(rowModel(row),category);return candidate.length>=5&&(candidate.includes(normalized)||normalized.includes(candidate));}):null;
+  return match?{item:match,confidence:"FAMILY",reason:"Closest catalog family match"}:{item:null,confidence:"NONE",reason:"Category heuristic — no canonical match"};
+}
+
+function pnPartCatalogMatch(item){
+  return pnPartCatalogResolution(item).item;
 }
 
 function pnPartTierFromScore(score,thresholds){
@@ -106,7 +126,9 @@ function pnPsuNameTier(text,catalog){
 }
 
 function pnStorageNameTier(item,text,catalog){
-  const health=Number(item&&(item.driveHealthPercent||item.healthPercent||item.health))||Number((text.match(/(?:HEALTH|LIFE)\s*(\d{1,3})/)||[])[1])||null;
+  const healthRaw=item&&[item.driveHealthPercent,item.healthPercent,item.health].find(v=>v!==null&&v!==undefined&&v!=="");
+  const parsedHealth=healthRaw!==undefined?Number(healthRaw):Number((text.match(/(?:HEALTH|LIFE)\s*(\d{1,3})/)||[])[1]);
+  const health=Number.isFinite(parsedHealth)?Math.max(0,Math.min(100,parsedHealth)):null;
   if(item&&["DEAD","FAULTY"].includes(item.condition)||health!==null&&health<60) return 1;
   const capacity=pnPartCapacityGb(text,catalog),type=pnNorm(catalog&&catalog.drive_type||text);
   let tier;
@@ -140,15 +162,26 @@ function pnCaseNameTier(text,catalog){
 }
 
 function pnPartNameTier(item){
-  const category=pnPartTierCategory(item&&item.category),catalog=pnPartCatalogMatch(item||{}),text=pnPartText(item,catalog);
+  const category=pnPartTierCategory(item&&item.category),resolution=pnPartCatalogResolution(item||{}),catalog=resolution.item,text=pnPartText(item,catalog);
   let tier=category==="CPU"?pnCpuNameTier(text,catalog):category==="GPU"?pnGpuNameTier(text,catalog):category==="MOTHERBOARD"?pnMotherboardNameTier(text,catalog):category==="RAM"?pnRamNameTier(text):category==="PSU"?pnPsuNameTier(text,catalog):category==="STORAGE"?pnStorageNameTier(item,text,catalog):category==="COOLING"?pnCoolerNameTier(text,catalog):category==="CASE"?pnCaseNameTier(text,catalog):3;
   tier=Math.max(1,Math.min(5,Number(tier)||3));
-  return Object.assign({tier: tier,source:catalog?"catalog":"heuristic",category:category},PN_PART_NAME_TIERS[tier]);
+  return Object.assign({tier:tier,source:catalog?"catalog":"heuristic",category:category,matchConfidence:resolution.confidence,reason:catalog?"Canonical "+category.toLowerCase()+" evidence · "+resolution.reason:resolution.reason},PN_PART_NAME_TIERS[tier]);
 }
 
 function pnPartNameHtml(item){
   const visual=pnPartNameTier(item),category=pnPartTierCategory(item&&item.category),name=((item&&item.manufacturer)||"")+(((item&&item.manufacturer)&&(item&&item.model))?" ":"")+((item&&item.model)||"");
   return '<span class="pn-part-name '+visual.className+(category==="COOLING"||category==="CASE"?' pn-part-name-subtle':'')+'" data-pn-part-tier="'+visual.key+'" title="PROFITNODE visual tier: '+visual.key+' — '+visual.label+'">'+escHtml(name)+'</span>';
+}
+
+function pnPartTierReadHtml(item){
+  const visual=pnPartNameTier(item||{}),hasName=item&&(item.manufacturer||item.model);
+  return hasName?'<span class="pn-part-tier-swatch '+visual.className+'">'+visual.key+' · '+escHtml(visual.label)+'</span><span>'+escHtml(visual.reason)+' · '+escHtml(visual.matchConfidence)+'</span>':'<span>Enter a part name to calculate its category-relative tier.</span>';
+}
+
+function pnPartTierExplanationHtml(item){
+  const override=item&&item.catalogOverride||"";
+  return '<div class="pn-part-tier-inspector" data-pn-tier-inspector><div class="pn-part-tier-read">'+pnPartTierReadHtml(item)+'</div>'+
+    '<details class="pn-catalog-override"><summary>CATALOG LINK / ADVANCED</summary><label class="field"><span>Canonical model override</span><input type="text" name="catalogOverride" value="'+escAttr(override)+'" placeholder="e.g. NVIDIA GTX 1070 8GB"><small>Leave blank for automatic matching. An unresolved override falls back safely to category rules.</small></label></details></div>';
 }
 
 /*
@@ -850,6 +883,31 @@ function pnPartNameHtml(item){
   .pn-part-name-t4{color:#e5e9ed}
   .pn-part-name-t5{color:#d4b866}
   .pn-part-name-subtle{filter:saturate(.78);opacity:.94}
+
+  .pn-part-tier-inspector{
+    flex:1 1 100%;
+    margin-top:3px;
+    border:1px solid var(--border);
+    border-left:2px solid rgba(199,204,210,.38);
+    background:rgba(14,11,18,.34);
+  }
+
+  .pn-part-tier-read{
+    min-height:34px;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:7px 10px;
+    font-family:var(--mono);
+    font-size:9px;
+    color:var(--text-mute);
+  }
+
+  .pn-part-tier-swatch{font-weight:800;white-space:nowrap}
+  .pn-catalog-override{border-top:1px solid var(--border)}
+  .pn-catalog-override>summary{cursor:pointer;padding:6px 10px;font-family:var(--stamp);font-size:8px;letter-spacing:.09em;color:var(--text-mute)}
+  .pn-catalog-override .field{padding:3px 10px 9px}
+  .pn-catalog-override small{display:block;margin-top:4px;color:var(--text-mute);font-family:var(--mono);font-size:8px}
 
   .pn-intel-strip{
     display:grid;
