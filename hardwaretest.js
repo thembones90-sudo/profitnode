@@ -48,6 +48,14 @@ const results = env.run(sandbox, `(() => {
   out.push(['catalog suggestions wait for 2 characters', catalogSearch('MOBO','B').length===0]);
   out.push(['catalog suggestions are capped at 12', catalogSearch('MOBO','B5').length<=12]);
   out.push(['Deal Score remains a separate 0-10 system', DealScore.auto({purchasePrice:50,estimatedMarketValue:100,condition:'WORKING',category:'GPU'}).score<=10]);
+  out.push(['PARTS VAULT visual tiers are a separate five-level system', Object.keys(PN_PART_NAME_TIERS).join('>')==='1>2>3>4>5'&&PN_PART_NAME_TIERS[5].label==='Restrained Gold']);
+  out.push(['GPU visual tiers follow the strict category examples', pnPartNameTier({category:'GPU',manufacturer:'NVIDIA',model:'GTX 1070 Hercules'}).key==='T3'&&pnPartNameTier({category:'GPU',manufacturer:'AMD',model:'RX 6600'}).key==='T4'&&pnPartNameTier({category:'GPU',manufacturer:'NVIDIA',model:'RTX 3080'}).key==='T5']);
+  out.push(['CPU visual tiers follow the category examples', pnPartNameTier({category:'CPU',manufacturer:'AMD',model:'Ryzen 5 3600'}).key==='T3'&&pnPartNameTier({category:'CPU',manufacturer:'AMD',model:'Ryzen 5 5600'}).key==='T4'&&pnPartNameTier({category:'CPU',manufacturer:'AMD',model:'Ryzen 7 5800X3D'}).key==='T5']);
+  out.push(['unknown X570 is not promoted to gold by chipset alone', pnPartNameTier({category:'MOTHERBOARD',manufacturer:'Mystery',model:'X570 Board'}).key==='T3']);
+  out.push(['RAM configuration drives category-relative visual tier', pnPartNameTier({category:'RAM',manufacturer:'Kingston',model:'8GB DDR4 single channel'}).key==='T1'&&pnPartNameTier({category:'RAM',manufacturer:'G.Skill',model:'32GB DDR5 6000MHz CL30'}).key==='T5']);
+  out.push(['PSU reputation outweighs wattage in visual tiering', pnPartNameTier({category:'PSU',manufacturer:'Generic',model:'1000W PSU'}).key==='T1'&&pnPartNameTier({category:'PSU',manufacturer:'Corsair',model:'RMx 750W'}).key==='T5']);
+  out.push(['storage type/capacity and health affect its visual tier', pnPartNameTier({category:'STORAGE',manufacturer:'Samsung',model:'990 Pro 2TB NVMe',condition:'WORKING'}).key==='T5'&&pnPartNameTier({category:'STORAGE',manufacturer:'Samsung',model:'990 Pro 2TB NVMe',condition:'WORKING',healthPercent:72}).key==='T2']);
+  out.push(['purchase price never changes the visual tier', pnPartNameTier({category:'GPU',manufacturer:'AMD',model:'RX 6600',purchasePrice:1}).key===pnPartNameTier({category:'GPU',manufacturer:'AMD',model:'RX 6600',purchasePrice:999999}).key]);
 
   function cat(type,label,cost=0){ return {kind:'CATALOG',catalogType:type,label,cost,currency:'RSD'}; }
   function example(cpu,gpu,board){ const r=newRigDraft('FOUNDATION'); r.slots.CPU=cat('CPU',cpu); r.slots.GPU=cat('GPU',gpu); r.slots.MOBO=cat('MOBO',board); r.slots.RAM={kind:'PLANNED',label:'2x8GB DDR4 dual channel',cost:0,currency:'RSD'}; r.slots.PSU={kind:'PLANNED',label:'Corsair 750W',cost:0,currency:'RSD'}; r.slots.STORAGE={kind:'PLANNED',label:'NVMe SSD 1TB',cost:0,currency:'RSD'}; r.slots.COOLER={kind:'PLANNED',label:'Tower cooler',cost:0,currency:'RSD'}; return r; }
@@ -102,6 +110,7 @@ const results = env.run(sandbox, `(() => {
   out.push(['canonical cooler catalog is loaded with 24 entries', HardwareCatalog.coolers.length === 24]);
   out.push(['case catalog searches brand + model', catalogSearch('CASE','Lancool 216').some(e => e.brand === 'Lian Li' && e.model === 'Lancool 216')]);
   out.push(['cooler catalog searches brand + model', catalogSearch('COOLER','NH-D15').some(e => e.brand === 'Noctua' && e.caps.type === 'DUAL TOWER')]);
+  out.push(['cooler and case names receive restrained category-aware tiers', pnPartNameTier({category:'COOLING',manufacturer:'Noctua',model:'NH-D15'}).key==='T5'&&pnPartNameTier({category:'CASE',manufacturer:'Lian Li',model:'Lancool 216'}).key==='T4'&&pnPartNameHtml({category:'COOLING',manufacturer:'Noctua',model:'NH-D15'}).includes('pn-part-name-subtle')]);
   const hydCase = {kind:'PLANNED',catalogType:'CASE',catalogKey:null,label:'Fractal Design Meshify 2',cost:0,currency:'RSD'};
   const hydCC = caseCapabilities(hydCase,'Fractal Design Meshify 2');
   out.push(['case capabilities hydrate from the canonical catalog', hydCC && hydCC.maxGpuLengthMm === 355 && hydCC.airflow === 'EXCELLENT' && hydCase.source === 'CATALOG' && hydCase.catalogKey === 'CASE:FRACTAL DESIGN MESHIFY 2']);

@@ -1,5 +1,156 @@
 "use strict";
 
+const PN_PART_NAME_TIERS = Object.freeze({
+  1:{key:"T1",label:"Dark Bronze",className:"pn-part-name-t1"},
+  2:{key:"T2",label:"Light Bronze / Champagne",className:"pn-part-name-t2"},
+  3:{key:"T3",label:"Soft Silver",className:"pn-part-name-t3"},
+  4:{key:"T4",label:"Airy Bright Silver",className:"pn-part-name-t4"},
+  5:{key:"T5",label:"Restrained Gold",className:"pn-part-name-t5"}
+});
+
+const PN_PART_NAME_RULES = Object.freeze({
+  CPU:{scores:[35,50,65,85]},GPU:{scores:[8,17,24,44]},
+  MOTHERBOARD:{scores:[45,55,72,88]},PSU:{scores:[45,62,78,90]},
+  STORAGE:{scores:[48,62,75,88]}
+});
+
+function pnPartTierCategory(category){
+  const key=String(category||"OTHER").toUpperCase();
+  return key==="MOBO"?"MOTHERBOARD":key==="COOLER"?"COOLING":key;
+}
+
+function pnPartTierCatalogKey(category){
+  return category==="MOTHERBOARD"?"MOBO":category==="COOLING"?"COOLER":category;
+}
+
+function pnPartCatalogMatch(item){
+  const category=pnPartTierCategory(item&&item.category),key=pnPartTierCatalogKey(category);
+  const list=typeof catalogEntriesForSlot==="function"?(catalogEntriesForSlot(key)||[]):[];
+  const full=pnNorm(((item&&item.manufacturer)||"")+" "+((item&&item.model)||"")),model=pnNorm(item&&item.model);
+  if(!model) return null;
+  return list.find(row=>pnNorm((row.brand||"")+" "+(row.model||row.series||""))===full)||list.find(row=>{
+    const candidate=pnNorm(row.model||row.series||"");
+    return candidate===model||candidate.includes(model)||model.includes(candidate);
+  })||null;
+}
+
+function pnPartTierFromScore(score,thresholds){
+  if(score===null||score===undefined||score==="") return null;
+  const value=Number(score);
+  if(!Number.isFinite(value)) return null;
+  let tier=1;
+  thresholds.forEach(limit=>{if(value>=limit) tier++;});
+  return tier;
+}
+
+function pnPartText(item,catalog){
+  return pnNorm([item&&item.manufacturer,item&&item.model,item&&item.notes,catalog&&catalog.brand,catalog&&(catalog.model||catalog.series)].filter(Boolean).join(" "));
+}
+
+function pnPartCapacityGb(text,catalog){
+  if(catalog&&Number(catalog.capacity_gb)) return Number(catalog.capacity_gb);
+  const source=String(text||"").toUpperCase(),kit=source.match(/(\d+)\s*X\s*(\d+)\s*GB/);
+  if(kit) return Number(kit[1])*Number(kit[2]);
+  const values=Array.from(source.matchAll(/(\d+(?:\.\d+)?)\s*(TB|GB)/g)).map(m=>Number(m[1])*(m[2]==="TB"?1000:1));
+  return values.length?Math.max.apply(null,values):null;
+}
+
+function pnCpuNameTier(text,catalog){
+  if(/5800X3D|5700X3D|7[68]00X3D|7950X3D|RYZEN 9|CORE (?:ULTRA )?9|\bI9\b/.test(text)) return 5;
+  if(/RYZEN (?:5 5600X?|7 (?:3700X|5700X|5800X))|CORE (?:ULTRA )?7|\bI7 (?:10700|11700|12700|13700|14700)/.test(text)) return 4;
+  if(/RYZEN 5 (?:2600X|3500X|3600X?|3600XT|5500)|\bI5 (?:8400|9400|10400|11400|12400)/.test(text)) return 3;
+  if(/RYZEN (?:3 (?:3100|4100)|5 (?:1600|2600))/.test(text)) return 2;
+  return pnPartTierFromScore(catalog&&catalog.overall,PN_PART_NAME_RULES.CPU.scores)||(/ATHLON|CELERON|PENTIUM|RYZEN 3/.test(text)?1:2);
+}
+
+function pnGpuNameTier(text,catalog){
+  if(/RTX (?:3080|3080 TI|3090|4080|4090|4070 TI|5070 TI|5080|5090)|RX (?:6800 XT|6900 XT|6950 XT|7900)/.test(text)) return 5;
+  if(/RTX (?:2070 SUPER|3060(?: TI)?|3070(?: TI)?|4070)|RX (?:6600(?: XT)?|6700 XT|6750 XT|7600)/.test(text)) return 4;
+  if(/GTX (?:1070(?: TI)?|1660(?: SUPER| TI)?)|RTX 2060(?: SUPER)?|RX (?:5600 XT|5700(?: XT)?)/.test(text)) return 3;
+  if(/GTX 1060|RX (?:470|480|570|580)|RX 5500 XT/.test(text)) return 2;
+  if(/GTX (?:1050(?: TI)?|1630)|RX (?:460|560|6400)/.test(text)) return 1;
+  return pnPartTierFromScore(catalog&&catalog.overall,PN_PART_NAME_RULES.GPU.scores)||2;
+}
+
+function pnMotherboardNameTier(text,catalog){
+  if(catalog) return pnPartTierFromScore(catalog.overall,PN_PART_NAME_RULES.MOTHERBOARD.scores);
+  if(/A320|A520|\bH\d{3}/.test(text)) return 1;
+  if(/CROSSHAIR|MAXIMUS|GODLIKE|AORUS (?:MASTER|XTREME)|TAICHI/.test(text)) return 4;
+  if(/X570|X670|X870/.test(text)) return 3;
+  if(/B450|B550|B650/.test(text)) return /TOMAHAWK|MORTAR|AORUS (?:PRO|ELITE)|ROG STRIX/.test(text)?3:2;
+  return 2;
+}
+
+function pnRamNameTier(text){
+  const capacity=pnPartCapacityGb(text,null),speed=Number((text.match(/(?:DDR[45]\s*)?(\d{4,5})\s*(?:MT S|MHZ)?/)||[])[1])||0;
+  const ddr5=/DDR5/.test(text),single=/SINGLE(?: CHANNEL)?|1\s*X\s*\d+\s*GB/.test(text),dual=/DUAL(?: CHANNEL)?|2\s*X\s*\d+\s*GB/.test(text);
+  if(ddr5&&capacity>=32&&speed>=6000) return 5;
+  if(ddr5&&capacity>=32||capacity>=32&&speed>=3200&&!single) return 4;
+  if(capacity>=32||capacity>=16&&(speed>=3000||dual)) return 3;
+  if(capacity>=16) return 2;
+  if(capacity&&capacity<=8||single) return 1;
+  return 2;
+}
+
+function pnPsuNameTier(text,catalog){
+  if(catalog){
+    if(String(catalog.safety_status||"").toUpperCase()==="REJECT") return 1;
+    const tier=pnPartTierFromScore(catalog.quality_score,PN_PART_NAME_RULES.PSU.scores);
+    return String(catalog.safety_status||"").toUpperCase()==="CAUTION"?Math.min(tier,2):tier;
+  }
+  if(/GENERIC|NO NAME|UNKNOWN|REPLACEMENT REQUIRED/.test(text)) return 1;
+  if(/RMX|SEASONIC (?:PRIME|VERTEX)|DARK POWER|STRAIGHT POWER|SUPER FLOWER (?:LEADEX|TITANIUM)/.test(text)) return 5;
+  if(/80 PLUS GOLD|FULL MODULAR|FULLY MODULAR/.test(text)) return 4;
+  if(/CORSAIR (?:CX|TX)|PURE POWER|MWE GOLD|FOCUS GX/.test(text)) return 3;
+  return 2;
+}
+
+function pnStorageNameTier(item,text,catalog){
+  const health=Number(item&&(item.driveHealthPercent||item.healthPercent||item.health))||Number((text.match(/(?:HEALTH|LIFE)\s*(\d{1,3})/)||[])[1])||null;
+  if(item&&["DEAD","FAULTY"].includes(item.condition)||health!==null&&health<60) return 1;
+  const capacity=pnPartCapacityGb(text,catalog),type=pnNorm(catalog&&catalog.drive_type||text);
+  let tier;
+  if(/NVME/.test(type)&&capacity>=2000&&(catalog?Number(catalog.quality_score)>=70:/SAMSUNG|WD BLACK|FIRECUDA|CRUCIAL T500/.test(text))) tier=5;
+  else if(/NVME/.test(type)&&capacity>=1000) tier=4;
+  else if(/NVME/.test(type)&&capacity>=256||/SATA SSD/.test(type)&&capacity>=500) tier=3;
+  else if(/SATA SSD/.test(type)&&capacity>=128) tier=2;
+  else if(/HDD/.test(type)||capacity&&capacity<128) tier=1;
+  else tier=pnPartTierFromScore(catalog&&catalog.overall_score,PN_PART_NAME_RULES.STORAGE.scores)||2;
+  if(health!==null&&health<80) tier=Math.min(tier,2);
+  else if(health!==null&&health<90) tier=Math.min(tier,3);
+  return tier;
+}
+
+function pnCoolerNameTier(text,catalog){
+  const caps=catalog&&catalog.caps||{};
+  if(/NH D15/.test(text)) return 5;
+  if(caps.coolingClass==="EXTREME"||/DUAL TOWER|280\s*MM AIO|360\s*MM AIO|420\s*MM AIO/.test(text)) return 4;
+  if(caps.coolingClass==="STRONG"||/120\s*MM (?:TOWER|AIR)|AK400|HYPER 212|MUGEN/.test(text)) return 3;
+  if(caps.coolingClass==="STANDARD"||/TOWER/.test(text)) return 2;
+  return caps.coolingClass==="LIGHT"||/STOCK|WRAITH|LAMINAR|LOW PROFILE|TINY/.test(text)?1:2;
+}
+
+function pnCaseNameTier(text,catalog){
+  const caps=catalog&&catalog.caps||{},quality=String(caps.buildQuality||"").toUpperCase(),airflow=String(caps.airflow||"").toUpperCase();
+  if(/FLAGSHIP|HAF 700|7000D|O11D EVO XL|COSMOS C700/.test(text)&&quality==="PREMIUM") return 5;
+  if(quality==="PREMIUM"||airflow==="EXCELLENT"&&quality!=="BASIC") return 4;
+  if(quality==="GOOD"||quality==="SOLID"&&["GOOD","EXCELLENT"].includes(airflow)) return 3;
+  if(quality==="BASIC"||["FAIR","GOOD"].includes(airflow)) return 2;
+  return /GENERIC|CLOSED|POOR AIRFLOW/.test(text)||airflow==="POOR"?1:2;
+}
+
+function pnPartNameTier(item){
+  const category=pnPartTierCategory(item&&item.category),catalog=pnPartCatalogMatch(item||{}),text=pnPartText(item,catalog);
+  let tier=category==="CPU"?pnCpuNameTier(text,catalog):category==="GPU"?pnGpuNameTier(text,catalog):category==="MOTHERBOARD"?pnMotherboardNameTier(text,catalog):category==="RAM"?pnRamNameTier(text):category==="PSU"?pnPsuNameTier(text,catalog):category==="STORAGE"?pnStorageNameTier(item,text,catalog):category==="COOLING"?pnCoolerNameTier(text,catalog):category==="CASE"?pnCaseNameTier(text,catalog):3;
+  tier=Math.max(1,Math.min(5,Number(tier)||3));
+  return Object.assign({tier: tier,source:catalog?"catalog":"heuristic",category:category},PN_PART_NAME_TIERS[tier]);
+}
+
+function pnPartNameHtml(item){
+  const visual=pnPartNameTier(item),category=pnPartTierCategory(item&&item.category),name=((item&&item.manufacturer)||"")+(((item&&item.manufacturer)&&(item&&item.model))?" ":"")+((item&&item.model)||"");
+  return '<span class="pn-part-name '+visual.className+(category==="COOLING"||category==="CASE"?' pn-part-name-subtle':'')+'" data-pn-part-tier="'+visual.key+'" title="PROFITNODE visual tier: '+visual.key+' — '+visual.label+'">'+escHtml(name)+'</span>';
+}
+
 /*
   PROFITNODE OPERATING INTELLIGENCE v1
 
@@ -686,6 +837,19 @@
     font-weight:900;
     letter-spacing:.12em;
   }
+
+  .pn-part-name{
+    font-weight:650;
+    letter-spacing:.006em;
+    text-shadow:0 1px 0 rgba(0,0,0,.42);
+  }
+
+  .pn-part-name-t1{color:#9a7459}
+  .pn-part-name-t2{color:#c4aa82}
+  .pn-part-name-t3{color:#c7ccd2}
+  .pn-part-name-t4{color:#e5e9ed}
+  .pn-part-name-t5{color:#d4b866}
+  .pn-part-name-subtle{filter:saturate(.78);opacity:.94}
 
   .pn-intel-strip{
     display:grid;
