@@ -102,7 +102,7 @@ async function main() {
     let wait=loadedPromise(); await cdp.send("Page.navigate",{url}); await wait; await delay(1600);
     const evaluate=async expression=>(await cdp.send("Runtime.evaluate",{expression,awaitPromise:true,returnByValue:true})).result.value;
     const shell=await evaluate(`({brand:document.title==='PROFITNODE'&&!!document.querySelector('[aria-label="PROFITNODE"]'),routes:new Set(Array.from(document.querySelectorAll('[data-route]'),e=>e.dataset.route)).size,legacy:!!document.querySelector('.brand-shop:not([data-pn-sidebar-cleanup="hidden"])'),schema:Store.load().meta.schemaVersion})`);
-    check("app loads its complete navigation in a real browser",shell.brand&&shell.routes===13,JSON.stringify(shell));
+    check("app loads its complete navigation in a real browser",shell.brand&&shell.routes===14,JSON.stringify(shell));
     check("sidebar cleanup runs in the real DOM",!shell.legacy);
     check("browser storage initializes on the current schema",shell.schema===2);
     const navVisual=await evaluate(`(()=>{const rig=document.querySelector('[data-route="rigbuild"]'),roulette=document.querySelector('[data-route="roulette"]'),chrome=getComputedStyle(rig,'::before'),lightning=getComputedStyle(rig,'::after');return {rigLabel:rig.textContent.trim(),chromeAnimation:chrome.animationName,chromeFill:chrome.webkitTextFillColor,chromeBackground:chrome.backgroundImage,chromeFilter:chrome.filter,lightningColor:lightning.backgroundColor,lightningAnimation:lightning.animationName,lightningShape:lightning.clipPath,rouletteAfter:getComputedStyle(roulette,'::after').content}})()`);
@@ -182,6 +182,12 @@ async function main() {
     check("ROAD TO route opens a live quest page with its controls",quest.h1==='ROAD TO'&&quest.form&&!quest.feat,JSON.stringify(quest));
     const questDetail=await evaluate(`(()=>{RoadToUI.focusId=Store.all('roadTo')[0].id;render();return {add:!!document.querySelector('[data-roadto-add]'),remove:!!document.querySelector('[data-roadto-remove]'),target:!!document.querySelector('[data-roadto-set-target]'),history:document.body.textContent.includes('+75.000 RSD'),open:document.querySelector('.pn-roadto-detail .panel-head h2')&&document.querySelector('.pn-roadto-detail .panel-head h2').textContent}})()`);
     check("ROAD TO detail shows fund controls and persisted history",questDetail.add&&questDetail.remove&&questDetail.target&&questDetail.history&&questDetail.open.includes('Browser RTX 5090'),JSON.stringify(questDetail));
+    await evaluate(`document.querySelector('[data-route="myrig"]').click();MyRig.ensure();render()`);
+    const rig=await evaluate(`(()=>{const h1=document.querySelector('h1')&&document.querySelector('h1').textContent;return {h1:h1,hero:!!document.querySelector('.pn-myrig-hero'),loadout:document.body.textContent.includes('COMPONENT LOADOUT'),compat:!!document.querySelector('[data-myrig-compat]')}})()`);
+    check("MY RIG route opens the LEVIATHAN personal rig page",rig.h1==='MY RIG'&&rig.hero&&rig.loadout&&rig.compat,JSON.stringify(rig));
+    await evaluate(`MyRig.setSlot('GPU',{label:'NVIDIA RTX 3080 10GB',specs:'10 GB GDDR6X',purchasePrice:94000,purchaseDate:'2026-01-15',notes:'',vaultId:null});MyRig.setResale(132000);render()`);
+    const rigVal=await evaluate(`(()=>{const v=document.querySelector('[data-myrig-value]');return !!v&&v.textContent.includes('94.000 RSD')&&v.textContent.includes('EST. RESALE')})()`);
+    check("MY RIG slot and value update persist in the live ledger",rigVal);
     await delay(300);
     check("browser run has no console errors or warnings",errors.length===0,errors.join(" | "));
   } finally {

@@ -66,7 +66,7 @@ const probe = `
   // --- NAV LABELS (terminal naming — replaces old 'RIG BUILD' assertion) ---
   render();
   const shellHtml = renderShell();
-  const navLabels = ['COMMAND','TREASURY','INTEL','RIG ASSEMBLY','BUILDS','PARTS VAULT','REPAIR BAY','THE HUNT','ROAD TO','LEDGER','ARCHIVE','THE ROULETTE','BLACKBOX'];
+  const navLabels = ['COMMAND','TREASURY','INTEL','RIG ASSEMBLY','MY RIG','BUILDS','PARTS VAULT','REPAIR BAY','THE HUNT','ROAD TO','LEDGER','ARCHIVE','THE ROULETTE','BLACKBOX'];
   out.push(['nav shows terminal labels', navLabels.every(l => shellHtml.includes(l))]);
   out.push(['nav no longer shows legacy labels', !shellHtml.includes('RIG BUILD') && !shellHtml.includes('BUILD PLANNER') && !shellHtml.includes('>DASHBOARD<')]);
   out.push(['nav includes the roulette button', shellHtml.includes('data-route="roulette"')]);
@@ -139,6 +139,19 @@ const probe = `
   out.push(['ROAD TO detail provides ADD FUNDS / REMOVE FUNDS / EDIT TARGET', roadDetailHtml.includes('data-roadto-add') && roadDetailHtml.includes('data-roadto-remove') && roadDetailHtml.includes('data-roadto-set-target')]);
   out.push(['ROAD TO detail provides PAUSE / ARCHIVE / MARK AS PURCHASED', roadDetailHtml.includes('data-roadto-pause') && roadDetailHtml.includes('data-roadto-archive') && roadDetailHtml.includes('data-roadto-purchase')]);
   RoadToUI.focusId = null;
+
+  // --- MY RIG (personal rig profile) ---
+  const myRigBefore = Store.load().myRig;
+  state.route = 'myrig';
+  const myRigNavHtml = renderShell();
+  out.push(['MY RIG nav label navigates to the personal rig page', myRigNavHtml.includes('data-route="myrig"') && myRigNavHtml.includes('>MY RIG<')]);
+  MyRigUI.installPanel = false;
+  const myRigHtml = renderMyRig();
+  out.push(['MY RIG page leads with the LEVIATHAN identity hero', myRigHtml.includes('pn-myrig-hero') && myRigHtml.includes('LEVIATHAN') && myRigHtml.includes('PERSONAL RIG')]);
+  out.push(['MY RIG page renders a full component loadout grid', myRigHtml.includes('COMPONENT LOADOUT') && myRigHtml.includes('data-myrig-slot-edit="CPU"') && myRigHtml.includes('data-myrig-slot-edit="GPU"')]);
+  out.push(['MY RIG value panel is informational and never implies profit', myRigHtml.includes('INFORMATIONAL ONLY') && myRigHtml.includes('TOTAL INVESTED')]);
+  out.push(['MY RIG page exposes future-upgrades and health note sections', myRigHtml.includes('FUTURE UPGRADES') && myRigHtml.includes('HEALTH / PERFORMANCE NOTES')]);
+  state.route = myRigBefore ? 'myrig' : 'dashboard';
 
   // --- new markup assertions for the 12-item extension ---
   state.rigDraft = newRigDraft(null);

@@ -17,10 +17,10 @@ const CANONICAL_ORDER = [
   'rig_bench_navigation_extension.js', 'command_financial_model_extension.js',
   'profitnode_intelligence_extension.js', 'command_separator_tune.js',
   'roulette_extension.js', 'roulette_ui_extension.js', 'treasury_extension.js',
-  'road_to_extension.js', 'sidebar_cleanup_extension.js'
+  'road_to_extension.js', 'my_rig_extension.js', 'sidebar_cleanup_extension.js'
 ];
-checks.push(['manifest has 17 scripts', entries.length === 17]);
-checks.push(['manifest order matches canonical 17-file load order',
+checks.push(['manifest has 18 scripts', entries.length === 18]);
+checks.push(['manifest order matches canonical 18-file load order',
   entries.map(e => e.split('?')[0]).join(',') === CANONICAL_ORDER.join(',')]);
 checks.push(['first script is app_core.js', entries[0].split('?')[0] === 'app_core.js']);
 checks.push(['last script is sidebar_cleanup_extension.js',
@@ -62,13 +62,13 @@ const meta = env.run(sandbox, `(() => ({
 
 const routes = meta.routes.map(r => r.split('|'));
 const routeKeys = routes.map(r => r[0]);
-checks.push(['ROUTES has 13 entries (treasury + roulette + road-to; planner retired)', routes.length === 13]);
+checks.push(['ROUTES has 14 entries (treasury + roulette + road-to + my-rig; planner retired)', routes.length === 14]);
 checks.push(['no Build Planner route', !routeKeys.includes('planner')]);
 checks.push(['roulette route present', routeKeys.includes('roulette')]);
 checks.push(['road-to route present', routeKeys.includes('roadto')]);
 checks.push(['backup route still present', routeKeys.includes('backup')]);
 const expectedSeq = [
-  ['dashboard','COMMAND'], ['treasury','TREASURY'], ['analytics','INTEL'], ['rigbuild','RIG ASSEMBLY'],
+  ['dashboard','COMMAND'], ['treasury','TREASURY'], ['analytics','INTEL'], ['rigbuild','RIG ASSEMBLY'], ['myrig','MY RIG'],
   ['projects','BUILDS'], ['inventory','PARTS VAULT'], ['repairs','REPAIR BAY'],
   ['deals','THE HUNT'], ['roadto','ROAD TO'], ['sales','LEDGER'], ['history','ARCHIVE'],
   ['roulette','THE ROULETTE'], ['backup','BLACKBOX']
@@ -79,7 +79,7 @@ checks.push(['plans CSV export retired', !meta.csvKeys.includes('plans')]);
 checks.push(['roulette ledger CSV export registered', meta.csvKeys.includes('rouletteLedger')]);
 checks.push(['PN_SALE_TYPES = RIG,COMPONENT,OTHER', meta.saleTypes === 'RIG,COMPONENT,OTHER']);
 checks.push(['currencies remain RSD,EUR', meta.curren === 'RSD,EUR']);
-checks.push(['manifest declares 17 scripts in sandbox', meta.manifestLen === 17]);
+checks.push(['manifest declares 18 scripts in sandbox', meta.manifestLen === 18]);
 const migrationProbe = env.run(sandbox, `(() => {
   const legacy={meta:{seeded:true},inventory:[
     {id:'healthy',category:'STORAGE',driveHealthPercent:120,catalogOverride:'  Samsung 970 EVO Plus 1TB  '},
@@ -896,7 +896,55 @@ const roadToProbe = `
 `;
 const roadToResults = env.run(sandbox, roadToProbe);
 
-const all = checks.concat(results).concat(interactionResults).concat(volumeResults).concat(rigResults).concat(doctrineResults).concat(enclosureResults).concat(roadToResults);
+const myRigProbe = `
+(() => {
+  const out = [];
+  const r0 = MyRig.ensure();
+  out.push(['MY RIG defaults to LEVIATHAN, a permanent personal rig', r0.name === 'LEVIATHAN' && r0.status === 'ACTIVE' && Array.isArray(r0.history) && Array.isArray(r0.health)]);
+  MyRig.setSlot('GPU',{label:'NVIDIA RTX 3080 10GB',specs:'10 GB GDDR6X · 320W',purchasePrice:94000,purchaseDate:'2026-01-15',notes:'',vaultId:null});
+  MyRig.setSlot('CPU',{label:'AMD Ryzen 7 5800X3D',specs:'8C/16T',purchasePrice:38000,purchaseDate:'2026-01-10',notes:'',vaultId:null});
+  MyRig.setSlot('PSU',{label:'Corsair RM850x 850W',specs:'850W 80+ Gold',purchasePrice:18000,purchaseDate:'2026-01-10',notes:'',vaultId:null});
+  const sl = Store.load().myRig.slots;
+  out.push(['MY RIG slots persist exact model, specs, price and purchase date', sl.GPU.label === 'NVIDIA RTX 3080 10GB' && sl.GPU.specs.indexOf('GDDR6X') > -1 && sl.GPU.purchasePrice === 94000 && sl.GPU.purchaseDate === '2026-01-15']);
+  out.push(['MY RIG current value sums only the installed loadout, never profit', MyRig.invested() === 150000 && MyRig.value().invested === 150000 && !('profit' in MyRig.value())]);
+  const page = renderMyRig();
+  out.push(['MY RIG page opens with identity hero + full loadout grid', page.indexOf('pn-myrig-hero') > -1 && page.indexOf('LEVIATHAN') > -1 && page.indexOf('COMPONENT LOADOUT') > -1 && page.indexOf('data-myrig-slot="GPU"') > -1 && page.indexOf('94.000 RSD') > -1]);
+  out.push(['MY RIG value section is informational with voluntary resale', page.indexOf('INFORMATIONAL ONLY') > -1 && page.indexOf('EST. RESALE VALUE') > -1]);
+  MyRig.setResale(132000);
+  const v2 = MyRig.value();
+  out.push(['MY RIG optional resale estimate feeds the difference readout', v2.resale === 132000 && v2.diff === -18000]);
+  const compat = MyRig.compat();
+  out.push(['MY RIG compatibility reuses the rig-assembly Build Check verdict', !!compat && ['EMPTY','PASS','WARN','FAIL'].indexOf(compat.level) > -1]);
+  out.push(['MY RIG compatibility suppresses generic unverified warnings', !!compat && compat.rows.every(r => r.status === 'WARN' || r.status === 'FAIL')]);
+  MyRig.logUpgrade({slotKey:'GPU',oldPart:'GTX 1070 8GB',newPart:'NVIDIA RTX 3080 10GB',date:'2026-01-15',cost:94000,notes:'Found on KP, sealed'});
+  const hist = Store.load().myRig.history[0];
+  out.push(['MY RIG upgrade history preserves old/new/cost/date', hist.oldPart === 'GTX 1070 8GB' && hist.newPart === 'NVIDIA RTX 3080 10GB' && hist.cost === 94000 && hist.date === '2026-01-15']);
+  const goal = RoadTo.create({name:'RTX 5080 16GB',category:'GPU',target:100000,refType:'catalog',targetSlot:'GPU'});
+  out.push(['ROAD TO goal links to an install slot on MY RIG', RoadTo.get(goal.id).targetSlot === 'GPU']);
+  out.push(['MY RIG future-upgrades section surfaces the linked quest', (function(){const h=renderMyRig();return h.indexOf('data-myrig-plan="'+goal.id+'"') > -1 && h.indexOf('RTX 5080 16GB') > -1})()]);
+  RoadTo.addFunds(goal.id, 100000);
+  const install = MyRig.installFromGoal(RoadTo.get(goal.id),{toVault:true});
+  out.push(['MY RIG install replaces the current part and closes the quest as purchased', install.ok && Store.load().myRig.slots.GPU.label === 'RTX 5080 16GB' && RoadTo.get(goal.id).status === 'PURCHASED']);
+  const ih = Store.load().myRig.history[0];
+  out.push(['MY RIG install logs the retired part into upgrade history', ih.oldPart === 'NVIDIA RTX 3080 10GB' && ih.newPart === 'RTX 5080 16GB' && ih.notes.indexOf('PARTS VAULT') > -1]);
+  out.push(['MY RIG install moves a non-vault part into PARTS VAULT only when chosen', (function(){const it=Store.all('inventory').find(i=>i.model==='RTX 3080 10GB');return !!it && it.status === 'IN_STORAGE' && it.notes.indexOf('Retired from LEVIATHAN') > -1})()]);
+  const goal2 = RoadTo.create({name:'Corsair AX1600i',category:'PSU',target:60000,refType:'custom',targetSlot:'PSU'});
+  RoadTo.addFunds(goal2.id, 60000);
+  const psuInstall = MyRig.installFromGoal(RoadTo.get(goal2.id),{toVault:false});
+  out.push(['MY RIG install with log-only keeps the old part out of inventory', psuInstall.ok && !psuInstall.moved && RoadTo.get(goal2.id).status === 'PURCHASED']);
+  MyRig.addHealth({category:'CPU TEMP',label:'idle',value:'43',notes:'air cooler'});
+  out.push(['MY RIG health notes stay lightweight manual entries', Store.load().myRig.health.length === 1 && Store.load().myRig.health[0].value === '43']);
+  out.push(['MY RIG future-upgrades section keeps its entry point after quest installs', renderMyRig().indexOf('FUTURE UPGRADES') > -1 && renderMyRig().indexOf('data-myrig-plan-new') > -1]);
+  out.push(['MY RIG profile is recognized by the backup inspector', !!inspectBackupFile({myRig:{name:'LEVIATHAN',slots:{}}})]);
+  out.push(['MY RIG backup counts profile as a single record', (function(){const c=inspectBackupFile({myRig:{name:'LEVIATHAN',slots:{}},projects:[1]});return !!c && c.myRig === 1})()]);
+  out.push(['MY RIG restore carries the personal profile through replaceAll', (function(){Store.replaceAll({meta:{},projects:[],inventory:[],deals:[],sales:[],timeline:[],plans:[],repairs:[],rigs:[],roadTo:[],myRig:{name:'LEVIATHAN BACKUP',slots:{GPU:{label:'Ref X'}}}});return Store.load().myRig && Store.load().myRig.name === 'LEVIATHAN BACKUP' && Store.load().myRig.slots.GPU.label === 'Ref X'})()]);
+  out.push(['MY RIG emptyLedger and migrateLedger default the profile slot', (function(){const e1=emptyLedger();const m=migrateLedger({meta:{schemaVersion:0}}).ledger;return e1.myRig === null && m.myRig === null})()]);
+  return out;
+})()
+`;
+const myRigResults = env.run(sandbox, myRigProbe);
+
+const all = checks.concat(results).concat(interactionResults).concat(volumeResults).concat(rigResults).concat(doctrineResults).concat(enclosureResults).concat(roadToResults).concat(myRigResults);
 let fail = 0;
 for (const [name, ok] of all){
   console.log((ok ? 'PASS' : 'FAIL') + ' - ' + name);
