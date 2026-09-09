@@ -1,6 +1,6 @@
 "use strict";
 window.__PN_SCRIPTS = [
-  "app_core.js?v=parts-vault-metallic-v1",
+  "app_core.js?v=export-refinement-v1",
   "planner_retirement_extension.js?v=planner-retired-v1",
   "terminal_naming_extension.js?v=terminal-naming-v2",
   "psu_extension.js?v=sales-ledger-v1",
