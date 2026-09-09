@@ -164,6 +164,7 @@ input,select,textarea{
 input:focus,select:focus,textarea:focus{outline:1px solid var(--amber);outline-offset:0;border-color:var(--amber-dim);box-shadow:0 0 0 2px rgba(168,85,247,.10)}
 textarea{font-family:var(--sans);resize:vertical;min-height:48px}
 label.field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
+label.field.pn-storage-only[hidden]{display:none!important}
 label.field span{font-family:var(--stamp);font-size:10.5px;letter-spacing:.09em;color:var(--text-dim);text-transform:uppercase}
 label.field span.req::after{content:' *';color:var(--amber)}
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}

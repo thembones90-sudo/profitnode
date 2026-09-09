@@ -129,12 +129,14 @@ async function main() {
     await cdp.send("Emulation.setDeviceMetricsOverride",{width:1920,height:1080,deviceScaleFactor:1,mobile:false});
 
     await evaluate(`document.querySelector('[data-route="inventory"]').click();document.querySelector('[data-open-form="inventory"]').click()`);
-    let modal=await evaluate(`({open:!!document.querySelector('form[data-entity-form="inventory"]'),healthHidden:document.querySelector('.pn-storage-only').hidden,inspector:!!document.querySelector('[data-pn-tier-inspector]')})`);
+    let modal=await evaluate(`(()=>{const health=document.querySelector('.pn-storage-only');return {open:!!document.querySelector('form[data-entity-form="inventory"]'),healthHidden:health.hidden,healthDisplay:getComputedStyle(health).display,inspector:!!document.querySelector('[data-pn-tier-inspector]')}})()`);
     check("new inventory opens with the tier inspector",modal.open&&modal.inspector);
-    check("drive health is hidden for non-storage parts",modal.healthHidden);
+    check("drive health is actually hidden for non-storage parts",modal.healthHidden&&modal.healthDisplay==='none',JSON.stringify(modal));
+    const motherboardPick=await evaluate(`(()=>{const input=document.querySelector('[data-part-search]');input.value='ASRock B450M Pro4 R2.0';input.dispatchEvent(new Event('input',{bubbles:true}));const pick=Array.from(document.querySelectorAll('[data-part-search-pick]')).find(x=>x.textContent.includes('B450M Pro4 R2.0'));if(pick)pick.click();const form=document.querySelector('form[data-entity-form="inventory"]'),health=form.querySelector('.pn-storage-only');return {picked:!!pick,category:form.elements.category.value,hidden:health.hidden,display:getComputedStyle(health).display}})()`);
+    check("motherboard auto-detection keeps Drive Health out of the rendered form",motherboardPick.picked&&motherboardPick.category==='MOTHERBOARD'&&motherboardPick.hidden&&motherboardPick.display==='none',JSON.stringify(motherboardPick));
     await evaluate(`(()=>{const f=document.querySelector('form[data-entity-form="inventory"]');const set=(n,v)=>{const e=f.elements[n];e.value=v;e.dispatchEvent(new Event(n==='category'?'change':'input',{bubbles:true}))};set('category','STORAGE');set('manufacturer','Samsung');set('model','970 EVO Plus 1TB');set('purchasePrice','5000');set('estimatedMarketValue','8000');set('driveHealthPercent','87');return true})()`);
-    modal=await evaluate(`({healthHidden:document.querySelector('.pn-storage-only').hidden,read:document.querySelector('.pn-part-tier-read').textContent})`);
-    check("storage selection reveals the bounded health field",!modal.healthHidden);
+    modal=await evaluate(`(()=>{const health=document.querySelector('.pn-storage-only');return {healthHidden:health.hidden,healthDisplay:getComputedStyle(health).display,read:document.querySelector('.pn-part-tier-read').textContent}})()`);
+    check("storage selection reveals the bounded health field",!modal.healthHidden&&modal.healthDisplay!=='none',JSON.stringify(modal));
     check("tier explanation updates live while editing",/T[1-5]/.test(modal.read)&&/match|evidence|heuristic/i.test(modal.read));
     await evaluate(`document.querySelector('form[data-entity-form="inventory"]').dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}))`);
     const saved=await evaluate(`(()=>{const x=Store.all('inventory').find(i=>i.model==='970 EVO Plus 1TB');return {id:x&&x.id,health:x&&x.driveHealthPercent,row:document.body.textContent.includes('970 EVO Plus 1TB'),tier:!!document.querySelector('[data-pn-part-tier]')}})()`);
