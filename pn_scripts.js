@@ -2,7 +2,7 @@
 window.__PN_SCRIPTS = [
   "app_core.js?v=build-check-evidence-v1",
   "planner_retirement_extension.js?v=planner-retired-v1",
-  "terminal_naming_extension.js?v=rig-assembly-star-v1",
+  "terminal_naming_extension.js?v=rig-assembly-gold-v2",
   "psu_extension.js?v=mobo-form-factor-v1",
   "rig_enclosure_extension.js?v=build-check-evidence-v1",
   "sale_type_extension.js?v=sales-ledger-v1",

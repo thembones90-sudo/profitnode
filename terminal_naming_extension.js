@@ -97,12 +97,10 @@
     position:absolute;
     left:18px;
     top:50%;
-    color:#d7ad43;
-    background:linear-gradient(180deg,#fff8c9 0%,#efd67b 26%,#9a6a18 49%,#fff0a1 68%,#bd8422 100%);
-    -webkit-background-clip:text;
-    background-clip:text;
-    -webkit-text-fill-color:transparent;
-    filter:drop-shadow(0 0 3px rgba(238,196,78,.42)) drop-shadow(0 0 8px rgba(178,118,24,.2));
+    color:#e7bc4e;
+    background:none;
+    -webkit-text-fill-color:#e7bc4e;
+    filter:drop-shadow(0 0 3px rgba(231,188,78,.5)) drop-shadow(0 0 8px rgba(231,188,78,.2));
     pointer-events:none;
     transform:translateY(-50%);
     animation:pnRigAssemblyChrome 4.4s infinite steps(1,end);
@@ -117,26 +115,26 @@
     height:3px;
     opacity:0;
     pointer-events:none;
-    background:linear-gradient(90deg,transparent 0%,#9c6815 10%,#ffe991 32%,#fffbdc 50%,#e2a72d 72%,transparent 100%);
+    background:#e7bc4e;
     clip-path:polygon(0 48%,18% 40%,24% 0,31% 84%,47% 35%,54% 100%,64% 24%,72% 64%,100% 50%,72% 82%,62% 45%,54% 100%,46% 58%,29% 92%,22% 22%,16% 68%,0 55%);
-    filter:drop-shadow(0 0 2px #fff5b5) drop-shadow(0 0 6px #e8ad32) drop-shadow(0 0 10px rgba(168,85,247,.34));
+    filter:drop-shadow(0 0 2px rgba(231,188,78,.9)) drop-shadow(0 0 7px rgba(231,188,78,.62));
     transform-origin:left center;
     animation:pnRigAssemblyLightning 4.4s infinite steps(1,end);
   }
 
   .mainnav .navlink[data-route="rigbuild"]:hover:before,
   .mainnav .navlink[data-route="rigbuild"].active:before{
-    filter:drop-shadow(0 0 4px rgba(255,225,126,.7)) drop-shadow(0 0 11px rgba(210,145,29,.36));
+    filter:drop-shadow(0 0 4px rgba(231,188,78,.72)) drop-shadow(0 0 11px rgba(231,188,78,.4));
   }
 
   @keyframes pnRigAssemblyChrome{
-    0%,61%,68%,100%{opacity:1;transform:translateY(-50%);filter:drop-shadow(0 0 3px rgba(238,196,78,.42)) drop-shadow(0 0 8px rgba(178,118,24,.2))}
-    62%{opacity:.42;transform:translate(1px,-50%);filter:drop-shadow(-2px 0 #fff8c9) drop-shadow(2px 0 rgba(168,85,247,.55)) drop-shadow(0 0 13px #e8ad32)}
-    63%{opacity:1;transform:translate(-1px,-50%);filter:drop-shadow(2px 0 #fffbdc) drop-shadow(-2px 0 #a66f17) drop-shadow(0 0 16px #ffd963)}
-    64%{opacity:.68;transform:translateY(-50%);filter:drop-shadow(0 0 2px #fff) drop-shadow(0 0 18px #e6aa2f)}
-    65%{opacity:1;transform:translateY(-50%);filter:drop-shadow(0 0 7px #fff0a1) drop-shadow(0 0 15px rgba(201,132,24,.68))}
+    0%,61%,68%,100%{opacity:1;transform:translateY(-50%);filter:drop-shadow(0 0 3px rgba(231,188,78,.5)) drop-shadow(0 0 8px rgba(231,188,78,.2))}
+    62%{opacity:.42;transform:translate(1px,-50%);filter:drop-shadow(0 0 13px rgba(231,188,78,.86))}
+    63%{opacity:1;transform:translate(-1px,-50%);filter:drop-shadow(0 0 16px rgba(231,188,78,.92))}
+    64%{opacity:.68;transform:translateY(-50%);filter:drop-shadow(0 0 18px rgba(231,188,78,.95))}
+    65%{opacity:1;transform:translateY(-50%);filter:drop-shadow(0 0 15px rgba(231,188,78,.78))}
     66%{opacity:.54;transform:translate(1px,-50%)}
-    67%{opacity:1;transform:translateY(-50%);filter:drop-shadow(0 0 5px #ffe783) drop-shadow(0 0 11px rgba(168,85,247,.38))}
+    67%{opacity:1;transform:translateY(-50%);filter:drop-shadow(0 0 11px rgba(231,188,78,.68))}
   }
 
   @keyframes pnRigAssemblyLightning{
