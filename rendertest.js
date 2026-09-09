@@ -66,7 +66,7 @@ const probe = `
   // --- NAV LABELS (terminal naming — replaces old 'RIG BUILD' assertion) ---
   render();
   const shellHtml = renderShell();
-  const navLabels = ['COMMAND','TREASURY','INTEL','RIG ASSEMBLY','BUILDS','PARTS VAULT','REPAIR BAY','THE HUNT','LEDGER','ARCHIVE','THE ROULETTE','BLACKBOX'];
+  const navLabels = ['COMMAND','TREASURY','INTEL','RIG ASSEMBLY','BUILDS','PARTS VAULT','REPAIR BAY','THE HUNT','ROAD TO','LEDGER','ARCHIVE','THE ROULETTE','BLACKBOX'];
   out.push(['nav shows terminal labels', navLabels.every(l => shellHtml.includes(l))]);
   out.push(['nav no longer shows legacy labels', !shellHtml.includes('RIG BUILD') && !shellHtml.includes('BUILD PLANNER') && !shellHtml.includes('>DASHBOARD<')]);
   out.push(['nav includes the roulette button', shellHtml.includes('data-route="roulette"')]);
@@ -80,6 +80,7 @@ const probe = `
   out.push(['COMMAND financial matrix distinguishes major and supporting metrics', (dashHtml.match(/pn-terminal-kpi is-major/g)||[]).length===2&&(dashHtml.match(/pn-terminal-kpi/g)||[]).length>=6]);
   out.push(['COMMAND panels expose primary, operational and utility hierarchy', dashHtml.includes('pn-command-panel-primary')&&dashHtml.includes('pn-command-panel-operational')&&dashHtml.includes('pn-command-panel-utility')]);
   out.push(['COMMAND header exposes a compact data freshness indicator', dashHtml.includes('data-pn-command-updated')&&dashHtml.includes('LAST UPDATED')&&dashHtml.includes('pn-command-updated')]);
+  out.push(['ROAD TO featured card stays hidden with no active quest', !dashHtml.includes('pn-roadto-feat')]);
 
   // --- TREASURY (isolated personal position) ---
   state.route = 'treasury';
@@ -121,6 +122,23 @@ const probe = `
   out.push(['backup header says BLACKBOX', backupHtml.includes('>BLACKBOX<') || backupHtml.includes('BLACKBOX')]);
   out.push(['backup renders export/import panels', backupHtml.includes('data-export-backup') && backupHtml.includes('data-import-trigger')]);
   out.push(['backup summary includes isolated treasury data', backupHtml.includes('Treasury Balances') && backupHtml.includes('Treasury Snapshots')]);
+
+  // --- ROAD TO (dedicated savings quest) ---
+  const roadG = RoadTo.create({name:'RTX 5070 Ti',category:'GPU',target:110000,refType:'catalog'});
+  RoadTo.addFunds(roadG.id, 47500);
+  state.route = 'dashboard';
+  const dashRoadHtml = renderShell();
+  out.push(['ROAD TO featured card pins above the COMMAND dashboard', dashRoadHtml.includes('pn-roadto-feat') && dashRoadHtml.indexOf('pn-roadto-feat') < dashRoadHtml.indexOf('pn-command-content') && dashRoadHtml.includes('data-roadto-open="' + roadG.id + '"')]);
+  out.push(['ROAD TO featured card shows saved, target, pct and remaining', dashRoadHtml.includes('47.500 RSD') && dashRoadHtml.includes('110.000 RSD') && dashRoadHtml.includes('hbar-fill') && dashRoadHtml.includes('62.500 RSD TO GO')]);
+  state.route = 'roadto';
+  const roadHtml = renderShell();
+  out.push(['ROAD TO nav label navigates to the quest page', roadHtml.includes('data-route="roadto"') && roadHtml.includes('>ROAD TO<')]);
+  out.push(['ROAD TO page offers category + vault/catalog/custom part pick', roadHtml.includes('data-roadto-cat') && roadHtml.includes('PARTS VAULT (OWNED)') && roadHtml.includes('CUSTOM / MANUAL TARGET')]);
+  RoadToUI.focusId = roadG.id;
+  const roadDetailHtml = renderRoadTo();
+  out.push(['ROAD TO detail provides ADD FUNDS / REMOVE FUNDS / EDIT TARGET', roadDetailHtml.includes('data-roadto-add') && roadDetailHtml.includes('data-roadto-remove') && roadDetailHtml.includes('data-roadto-set-target')]);
+  out.push(['ROAD TO detail provides PAUSE / ARCHIVE / MARK AS PURCHASED', roadDetailHtml.includes('data-roadto-pause') && roadDetailHtml.includes('data-roadto-archive') && roadDetailHtml.includes('data-roadto-purchase')]);
+  RoadToUI.focusId = null;
 
   // --- new markup assertions for the 12-item extension ---
   state.rigDraft = newRigDraft(null);

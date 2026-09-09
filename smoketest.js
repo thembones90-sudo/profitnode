@@ -17,10 +17,10 @@ const CANONICAL_ORDER = [
   'rig_bench_navigation_extension.js', 'command_financial_model_extension.js',
   'profitnode_intelligence_extension.js', 'command_separator_tune.js',
   'roulette_extension.js', 'roulette_ui_extension.js', 'treasury_extension.js',
-  'sidebar_cleanup_extension.js'
+  'road_to_extension.js', 'sidebar_cleanup_extension.js'
 ];
-checks.push(['manifest has 16 scripts', entries.length === 16]);
-checks.push(['manifest order matches canonical 16-file load order',
+checks.push(['manifest has 17 scripts', entries.length === 17]);
+checks.push(['manifest order matches canonical 17-file load order',
   entries.map(e => e.split('?')[0]).join(',') === CANONICAL_ORDER.join(',')]);
 checks.push(['first script is app_core.js', entries[0].split('?')[0] === 'app_core.js']);
 checks.push(['last script is sidebar_cleanup_extension.js',
@@ -62,14 +62,15 @@ const meta = env.run(sandbox, `(() => ({
 
 const routes = meta.routes.map(r => r.split('|'));
 const routeKeys = routes.map(r => r[0]);
-checks.push(['ROUTES has 12 entries (treasury + roulette; planner retired)', routes.length === 12]);
+checks.push(['ROUTES has 13 entries (treasury + roulette + road-to; planner retired)', routes.length === 13]);
 checks.push(['no Build Planner route', !routeKeys.includes('planner')]);
 checks.push(['roulette route present', routeKeys.includes('roulette')]);
+checks.push(['road-to route present', routeKeys.includes('roadto')]);
 checks.push(['backup route still present', routeKeys.includes('backup')]);
 const expectedSeq = [
   ['dashboard','COMMAND'], ['treasury','TREASURY'], ['analytics','INTEL'], ['rigbuild','RIG ASSEMBLY'],
   ['projects','BUILDS'], ['inventory','PARTS VAULT'], ['repairs','REPAIR BAY'],
-  ['deals','THE HUNT'], ['sales','LEDGER'], ['history','ARCHIVE'],
+  ['deals','THE HUNT'], ['roadto','ROAD TO'], ['sales','LEDGER'], ['history','ARCHIVE'],
   ['roulette','THE ROULETTE'], ['backup','BLACKBOX']
 ];
 checks.push(['nav order/labels match terminal rename + roulette insert',
@@ -78,7 +79,7 @@ checks.push(['plans CSV export retired', !meta.csvKeys.includes('plans')]);
 checks.push(['roulette ledger CSV export registered', meta.csvKeys.includes('rouletteLedger')]);
 checks.push(['PN_SALE_TYPES = RIG,COMPONENT,OTHER', meta.saleTypes === 'RIG,COMPONENT,OTHER']);
 checks.push(['currencies remain RSD,EUR', meta.curren === 'RSD,EUR']);
-checks.push(['manifest declares 16 scripts in sandbox', meta.manifestLen === 16]);
+checks.push(['manifest declares 17 scripts in sandbox', meta.manifestLen === 17]);
 const migrationProbe = env.run(sandbox, `(() => {
   const legacy={meta:{seeded:true},inventory:[
     {id:'healthy',category:'STORAGE',driveHealthPercent:120,catalogOverride:'  Samsung 970 EVO Plus 1TB  '},
@@ -853,7 +854,49 @@ const enclosureProbe = `
 `;
 const enclosureResults = env.run(sandbox, enclosureProbe);
 
-const all = checks.concat(results).concat(interactionResults).concat(volumeResults).concat(rigResults).concat(doctrineResults).concat(enclosureResults);
+const roadToProbe = `
+(() => {
+  const out = [];
+  const g = RoadTo.create({name:'RTX 5070 Ti',category:'GPU',target:110000,refType:'catalog'});
+  out.push(['ROAD TO create stores the goal in its own ledger collection', Store.all('roadTo').length === 1 && RoadTo.get(g.id).name === 'RTX 5070 Ti']);
+  RoadTo.addFunds(g.id, 47500);
+  const g1 = RoadTo.get(g.id);
+  out.push(['ROAD TO add funds persists a signed history entry', g1.saved === 47500 && g1.history.length === 1 && g1.history[0].amount === 47500]);
+  out.push(['ROAD TO progress math matches the target quest', RoadTo.pct(g1) === 43.2 && RoadTo.remaining(g1) === 62500]);
+  RoadTo.addFunds(g.id, 12000);
+  RoadTo.removeFunds(g.id, 3000);
+  const g3 = RoadTo.get(g.id);
+  out.push(['ROAD TO add/remove nets the balance and keeps every entry', g3.saved === 56500 && g3.history.length === 3]);
+  out.push(['ROAD TO remove cannot exceed the saved balance', !RoadTo.removeFunds(g.id, 999999).ok && RoadTo.get(g.id).saved === 56500]);
+  RoadTo.setTarget(g.id, 50000);
+  const g4 = RoadTo.get(g.id);
+  out.push(['ROAD TO reaching the target flips reached + caps percent at 100', RoadTo.reached(g4) && RoadTo.pct(g4) === 100]);
+  const feat = roadToFeaturedCard();
+  out.push(['ROAD TO featured card surfaces for the active quest', feat.indexOf('pn-roadto-feat') > -1 && feat.indexOf('RTX 5070 Ti') > -1 && feat.indexOf('TARGET REACHED') > -1]);
+  out.push(['ROAD TO featured card is pinned above the command dashboard', (function(){const h=renderDashboard();return h.indexOf('pn-roadto-feat') > -1 && h.indexOf('pn-roadto-feat') < h.indexOf('pn-command-content')})()]);
+  const list = renderRoadTo();
+  out.push(['ROAD TO page renders the new-quest form', list.indexOf('data-roadto-cat') > -1 && list.indexOf('data-roadto-create') > -1 && list.indexOf('START QUEST') > -1]);
+  RoadToUI.focusId = g.id;
+  const detail = renderRoadTo();
+  out.push(['ROAD TO detail exposes every required action', ['data-roadto-add','data-roadto-remove','data-roadto-set-target','data-roadto-pause','data-roadto-archive','data-roadto-purchase'].every(k => detail.indexOf(k) > -1)]);
+  out.push(['ROAD TO detail renders the signed quest history', detail.indexOf('QUEST HISTORY') > -1 && detail.indexOf('+47.500 RSD') > -1 && detail.indexOf('-3.000 RSD') > -1]);
+  RoadTo.markPurchased(g.id);
+  const purchasedDetail = renderRoadTo();
+  out.push(['ROAD TO purchase closes the quest but preserves its history', RoadTo.get(g.id).status === 'PURCHASED' && purchasedDetail.indexOf('Quest closed') > -1 && purchasedDetail.indexOf('+47.500 RSD') > -1]);
+  RoadToUI.focusId = null;
+  const closedHtml = renderRoadTo();
+  out.push(['ROAD TO purchased quest lists under CLOSED QUESTS', closedHtml.indexOf('CLOSED QUESTS') > -1 && closedHtml.indexOf('PURCHASED') > -1]);
+  out.push(['ROAD TO featured card clears once the quest is purchased', roadToFeaturedCard() === '']);
+  RoadToUI.focusId = null;
+  out.push(['ROAD TO goals are recognized by the backup inspector', !!inspectBackupFile({roadTo:[{name:'x'}]})]);
+  out.push(['ROAD TO restore carries goals through replaceAll', (function(){Store.replaceAll({meta:{},projects:[],inventory:[],deals:[],sales:[],timeline:[],plans:[],repairs:[],rigs:[],roadTo:[{id:'kept',name:'RTX 5070 Ti',saved:100,target:200,status:'ACTIVE',history:[]}]});return !!(Store.all('roadTo')||[]).find(x=>x.id==='kept')})()]);
+  out.push(['ROAD TO migrateLedger and emptyLedger default the collection', Array.isArray(emptyLedger().roadTo) && Array.isArray(migrateLedger({meta:{schemaVersion:0}}).ledger.roadTo)]);
+  return out;
+})()
+`;
+const roadToResults = env.run(sandbox, roadToProbe);
+
+const all = checks.concat(results).concat(interactionResults).concat(volumeResults).concat(rigResults).concat(doctrineResults).concat(enclosureResults).concat(roadToResults);
 let fail = 0;
 for (const [name, ok] of all){
   console.log((ok ? 'PASS' : 'FAIL') + ' - ' + name);

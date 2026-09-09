@@ -35,7 +35,7 @@ Run all four suites. They test the exact unminified code that deploys. `browsert
 ## Data model
 
 - Primary key: `localStorage` key `profitnode_ledger_v1` (legacy fallback: `shadezy_ledger_v1`)
-- Ledger shape: `{ meta, projects, inventory, deals, sales, timeline, plans, repairs, rigs }`
+- Ledger shape: `{ meta, projects, inventory, deals, sales, timeline, plans, repairs, rigs, roadTo }` (roadTo = ROAD TO savings quest goals)
 - `Store` object handles all persistence. `Actions` object handles business logic.
 - Full JSON backup + CSV export/import is built into the app.
 

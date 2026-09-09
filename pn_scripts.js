@@ -15,5 +15,6 @@ window.__PN_SCRIPTS = [
   "roulette_extension.js?v=rig-assembly-nav-v1",
   "roulette_ui_extension.js?v=rig-assembly-nav-v1",
   "treasury_extension.js?v=treasury-core-sources-v2",
+  "road_to_extension.js?v=roadto-v1",
   "sidebar_cleanup_extension.js?v=product-refinement-v1"
 ];

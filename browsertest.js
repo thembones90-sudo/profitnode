@@ -102,7 +102,7 @@ async function main() {
     let wait=loadedPromise(); await cdp.send("Page.navigate",{url}); await wait; await delay(1600);
     const evaluate=async expression=>(await cdp.send("Runtime.evaluate",{expression,awaitPromise:true,returnByValue:true})).result.value;
     const shell=await evaluate(`({brand:document.title==='PROFITNODE'&&!!document.querySelector('[aria-label="PROFITNODE"]'),routes:new Set(Array.from(document.querySelectorAll('[data-route]'),e=>e.dataset.route)).size,legacy:!!document.querySelector('.brand-shop:not([data-pn-sidebar-cleanup="hidden"])'),schema:Store.load().meta.schemaVersion})`);
-    check("app loads its complete navigation in a real browser",shell.brand&&shell.routes===12,JSON.stringify(shell));
+    check("app loads its complete navigation in a real browser",shell.brand&&shell.routes===13,JSON.stringify(shell));
     check("sidebar cleanup runs in the real DOM",!shell.legacy);
     check("browser storage initializes on the current schema",shell.schema===2);
     const navVisual=await evaluate(`(()=>{const rig=document.querySelector('[data-route="rigbuild"]'),roulette=document.querySelector('[data-route="roulette"]'),chrome=getComputedStyle(rig,'::before'),lightning=getComputedStyle(rig,'::after');return {rigLabel:rig.textContent.trim(),chromeAnimation:chrome.animationName,chromeFill:chrome.webkitTextFillColor,chromeBackground:chrome.backgroundImage,chromeFilter:chrome.filter,lightningColor:lightning.backgroundColor,lightningAnimation:lightning.animationName,lightningShape:lightning.clipPath,rouletteAfter:getComputedStyle(roulette,'::after').content}})()`);
@@ -177,6 +177,11 @@ async function main() {
     check("zero-valued price input accepts normal replacement typing",price==="3000");
     const shot=await cdp.send("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
     check("1920/1100 browser flow produces a valid rendered frame",!!shot.data&&shot.data.length>10000);
+    await evaluate(`document.querySelector('[data-route="roadto"]').click();RoadTo.create({name:'Browser RTX 5090',category:'GPU',target:200000,refType:'catalog'});RoadTo.addFunds(Store.all('roadTo')[0].id,75000);render()`);
+    const quest=await evaluate(`(()=>{const h1=document.querySelector('h1')&&document.querySelector('h1').textContent;return {h1:h1,form:!!document.querySelector('[data-roadto-create]'),feat:!!document.querySelector('.pn-roadto-feat')}})()`);
+    check("ROAD TO route opens a live quest page with its controls",quest.h1==='ROAD TO'&&quest.form&&!quest.feat,JSON.stringify(quest));
+    const questDetail=await evaluate(`(()=>{RoadToUI.focusId=Store.all('roadTo')[0].id;render();return {add:!!document.querySelector('[data-roadto-add]'),remove:!!document.querySelector('[data-roadto-remove]'),target:!!document.querySelector('[data-roadto-set-target]'),history:document.body.textContent.includes('+75.000 RSD'),open:document.querySelector('.pn-roadto-detail .panel-head h2')&&document.querySelector('.pn-roadto-detail .panel-head h2').textContent}})()`);
+    check("ROAD TO detail shows fund controls and persisted history",questDetail.add&&questDetail.remove&&questDetail.target&&questDetail.history&&questDetail.open.includes('Browser RTX 5090'),JSON.stringify(questDetail));
     await delay(300);
     check("browser run has no console errors or warnings",errors.length===0,errors.join(" | "));
   } finally {
