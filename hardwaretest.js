@@ -138,7 +138,7 @@ const results = env.run(sandbox, `(() => {
     const r = newRigDraft('INTG');
     r.slots.CPU = cat2('CPU','AMD Ryzen 5 3600');
     r.slots.GPU = cat2('GPU','NVIDIA GTX 1650 4GB GDDR5 280mm');
-    r.slots.MOBO = cat2('MOBO','ASRock B450M-HDV mATX');
+    r.slots.MOBO = cat2('MOBO','ASRock B450M-HDV');
     r.slots.RAM = {kind:'PLANNED',catalogType:'RAM',label:'DDR4 test kit',cost:0,originalPrice:0,currency:'RSD',ram:{moduleCount:2,perModuleCapacity:8,totalCapacity:16,speed:3200,casLatency:16}};
     r.slots.CASE = {kind:'CATALOG',catalogType:'CASE',label:'Fractal Design Meshify 2',cost:0,originalPrice:0,currency:'RSD'};
     r.slots.COOLER = {kind:'PLANNED',catalogType:'COOLER',label:'Noctua NH-D15',cost:0,originalPrice:0,currency:'RSD',caps:{type:'DUAL TOWER',radiator:null,heightMm:160,sockets:['AM4','AM5','LGA1200','LGA1700'],coolingClass:'EXTREME',fanCount:2,noiseClass:'NORMAL',tdpClass:'EXTREME',ramClearance:'NO',notes:''}};
@@ -146,6 +146,13 @@ const results = env.run(sandbox, `(() => {
     r.slots.STORAGE = {kind:'PLANNED',label:'NVMe SSD 1TB',cost:0,originalPrice:0,currency:'RSD'};
     return r;
   }
+  const moboSlotHtml=renderRigSlotRow('MOBO',goodRig());
+  out.push(['motherboard slot exposes canonical form, socket and chipset compactly', moboSlotHtml.includes('FORM mATX · SOCKET AM4 · CHIPSET B450')]);
+  out.push(['canonical Micro-ATX board fits a case supporting mATX and ATX', rigIntegrity(goodRig()).checks.some(c=>c.id==='MOBO_FORM_FACTOR'&&c.status==='PASS'&&c.detail.includes('mATX motherboard'))]);
+  const atxMismatch=goodRig();atxMismatch.slots.MOBO=cat2('MOBO','Gigabyte GA-A320-DS3');atxMismatch.slots.CASE={kind:'PLANNED',catalogType:'CASE',label:'mATX-only case',cost:0,originalPrice:0,currency:'RSD',source:'MANUAL',caps:{formFactors:['ITX','MATX']}};
+  out.push(['canonical ATX board fails a case limited to mATX', rigIntegrity(atxMismatch).checks.some(c=>c.id==='MOBO_FORM_FACTOR'&&c.status==='FAIL')]);
+  const unknownMoboSize=goodRig();unknownMoboSize.slots.MOBO=cat2('MOBO','Mystery Z999M-K');
+  out.push(['uncataloged M-style motherboard name remains UNVERIFIED', rigIntegrity(unknownMoboSize).checks.some(c=>c.id==='MOBO_FORM_FACTOR'&&c.status==='UNVERIFIED')]);
   HardwareCatalog.psus = [{brand:'BeQuiet',model:'Pure Power 750W',wattage_w:750,quality_score:90,quality_class:'GOLD',safety_status:'ACCEPTABLE',connector_data_confidence:'OFFICIAL',pcie_6_2_connectors:6,pcie_16pin_connectors:0,atx_spec:'ATX'}];
   const perfectIt = rigIntegrity(goodRig());
   out.push(['fully-characterized build judges BUILD INTEGRITY EXCELLENT', perfectIt.state === 'EXCELLENT']);
@@ -242,7 +249,7 @@ const results = env.run(sandbox, `(() => {
   out.push(['Ryzen5-3600 / B450M / GTX-1070 / 550W Gold reference build resolves PASS with no warnings and no failures', sanityModel.verdict==='PASS'&&sanityModel.counts.FAIL===0&&sanityModel.counts.WARN===0&&sanityModel.counts.PASS>0]);
   out.push(['the same reference build keeps honest UNVERIFIED gaps instead of inventing them', sanityModel.counts.UNVERIFIED===4&&['GPU_CLEARANCE','PSU_QUALITY','PSU_SAFETY','PSU_CONNECTORS'].every(id=>sanityModel.findings.some(f=>f.id===id&&f.status==='UNVERIFIED'))]);
   out.push(['uncataloged planned parts complete the platform without breaking compatibility', sanityModel.findings.some(f=>f.id==='CPU_PLATFORM'&&f.status==='PASS')&&sanityModel.findings.some(f=>f.id==='RAM_PLATFORM'&&f.status==='PASS')&&sanityModel.findings.some(f=>f.id==='GPU_PLATFORM'&&f.status==='PASS')&&sanityModel.findings.some(f=>f.id==='STORAGE_INTERFACE'&&f.status==='PASS')]);
-  out.push(['B450M label parses as MATX and fits the case without complaint', sanityModel.findings.some(f=>f.id==='MOBO_FORM_FACTOR'&&f.status==='PASS')]);
+  out.push(['canonical B450M form factor fits the case without name parsing', sanityModel.findings.some(f=>f.id==='MOBO_FORM_FACTOR'&&f.status==='PASS')]);
   out.push(['bundled AMD stock cooling is positively verified, not treated as unknown', sanityModel.findings.some(f=>f.id==='COOLER_SUFFICIENCY'&&f.status==='PASS'&&f.detail.includes('OEM STOCK COOLING'))&&sanityModel.findings.some(f=>f.id==='COOLER_OPERATING_NOTE'&&f.status==='INFO')]);
   out.push(['reference build PSU wattage grades against the real GPU requirement', sanityModel.findings.some(f=>f.id==='PSU_WATTAGE'&&f.status==='PASS'&&f.detail.includes('RECOMMENDED'))]);
   out.push(['uncataloged planned parts are clear work notes, never operational warnings', sanityModel.counts.WARN===0&&sanityRead.title==='READY TO ASSEMBLE'&&sanityRead.detail.includes('remain unverified')&&sanityRead.tone==='pass'&&rigReadChip(sanity).includes('READY')]);

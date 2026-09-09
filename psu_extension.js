@@ -278,7 +278,7 @@ rigPenaltyProfile = function(e,t){
 
 rigWarnings = function(e){
   const t=e.currency||"RSD",a=r=>rigSlotResolved(e.slots[r],t,r),n=e=>e?String(e.label||"").toUpperCase():"",s=[];
-  const l=a("CPU"),o=a("GPU"),i=a("RAM"),c=a("MOBO"),u=a("CASE"),p=a("COOLER"),m=a("STORAGE"),v=STORAGE_SLOT_KEYS.slice(1).map(a).filter(Boolean);
+  const l=a("CPU"),o=a("GPU"),i=a("RAM"),c=a("MOBO"),p=a("COOLER"),m=a("STORAGE"),v=STORAGE_SLOT_KEYS.slice(1).map(a).filter(Boolean);
   if(l&&c){
     const cs=detectCpuSocket(n(l)),ms=detectMoboSocket(n(c));
     if(cs&&ms&&cs!==ms) s.push("CPU platform ("+cs+") doesn't match the motherboard platform ("+ms+") — check socket compatibility.");
@@ -288,11 +288,6 @@ rigWarnings = function(e){
     const mm=/DDR5/.test(n(c))?"DDR5":/DDR4/.test(n(c))?"DDR4":/DDR3/.test(n(c))?"DDR3":null;
     if(rm&&mm&&rm!==mm) s.push("RAM is "+rm+" but the motherboard listing mentions "+mm+" — verify memory compatibility.");
   }
-  if(c&&u){
-    const cf=detectFormFactor(n(c)),uf=detectFormFactor(n(u)),rank={ITX:0,MATX:1,ATX:2,EATX:3};
-    if(cf&&uf&&rank[cf]>rank[uf]) s.push("Motherboard form factor ("+cf+") may not fit the selected case ("+uf+").");
-  }
-
   s.push(...psuMatchProfile(e).warnings);
 
   if(!m) s.push("No primary storage selected.");

@@ -370,12 +370,12 @@ function rigIntegrity(rig){
   }
 
   if(s.CASE&&s.MOBO){
-    const moboFF=mobo?detectFormFactor(pnNorm(mobo.label||"")):null;
+    const moboFF=motherboardCatalogFormFactor(mobo);
     const FFs=caseCap&&Array.isArray(caseCap.formFactors)?caseCap.formFactors:[];
     if(!caseCap||!FFs.length){
       push("MOBO_FORM_FACTOR","UNVERIFIED","Case form factor","MOBO/CASE FORM FACTOR UNVERIFIED — no case capability record.");
     }else if(!moboFF){
-      push("MOBO_FORM_FACTOR","UNVERIFIED","Case form factor","MOBO/CASE FORM FACTOR UNVERIFIED — motherboard model has no readable form factor.");
+      push("MOBO_FORM_FACTOR","UNVERIFIED","Case form factor","MOBO/CASE FORM FACTOR UNVERIFIED — canonical motherboard form factor is missing or unknown.");
     }else if(FFs.includes(moboFF)){
       push("MOBO_FORM_FACTOR","PASS","Case form factor",(PN_ENCLOSURE_FF_LABELS[moboFF]||moboFF)+" motherboard fits this case (supports "+FFs.map(f=>PN_ENCLOSURE_FF_LABELS[f]||f).join("/")+").");
     }else{

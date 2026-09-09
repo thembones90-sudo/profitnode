@@ -31,6 +31,8 @@ checks.push(['every manifest entry maps to a real file on disk',
   entries.every(e => fs.existsSync(path.join(DIR, e.split('?')[0])))]);
 
 const appJs = fs.readFileSync(path.join(DIR, 'app.js'), 'utf8');
+const appCoreJs = fs.readFileSync(path.join(DIR, 'app_core.js'), 'utf8');
+const psuExtensionJs = fs.readFileSync(path.join(DIR, 'psu_extension.js'), 'utf8');
 checks.push(['app.js loader streams the manifest via document.write',
   /document\.write\(/.test(appJs) && /window\.__PN_SCRIPTS/.test(appJs)]);
 const indexCss = fs.readFileSync(path.join(DIR, 'index.html'), 'utf8');
@@ -45,6 +47,7 @@ checks.push(['.content is the single internal scroll container with min-height:0
 checks.push(['rig slot grid collapses to stacked rows by 1180px so controls never clip',
   /@media \(max-width:1180px\)\{[\s\S]*?\.rig-slot-row\{grid-template-columns:1fr 1fr/.test(indexCss)]);
 checks.push(['no global viewport squeeze via transform:scale in the shell CSS', !indexCss.includes('transform:scale(')]);
+checks.push(['motherboard form factor has no model-name guessing path', !/function detectFormFactor/.test(appCoreJs) && !/detectFormFactor/.test(psuExtensionJs) && !/\[A-Z\]\\d\{3\}M/.test(appCoreJs)]);
 checks.push(['mobile media query detaches content from the fixed-height shell',
   /@media \(max-width:760px\)\{[\s\S]*?\.main\{height:auto;min-height:100vh\}/.test(indexCss) && /\.content\{overflow-y:visible;flex:none\}/.test(indexCss)]);
 
@@ -773,6 +776,7 @@ const enclosureProbe = `
 
   HardwareCatalog.cases = [{brand:'Fractal Design',model:'Meshify 2',confidence:'HIGH',caps:{formFactors:['ITX','MATX','ATX'],maxGpuLengthMm:355,maxCoolerHeightMm:185,psuSupport:'ATX',radiator:{front:'360',top:'360',rear:'140'},airflow:'EXCELLENT',buildQuality:'PREMIUM',sidePanel:'mesh',notes:''}}];
   HardwareCatalog.coolers = [{brand:'Noctua',model:'NH-D15',confidence:'HIGH',caps:{type:'DUAL TOWER',radiator:null,heightMm:165,sockets:['AM4','AM5','LGA115X','LGA1200','LGA1700'],coolingClass:'EXTREME',fanCount:2,noiseClass:'QUIET',tdpClass:'EXTREME',ramClearance:'UNKNOWN',notes:''}}];
+  HardwareCatalog.boards = [{brand:'Gigabyte',model:'B550 AORUS MASTER',chipset:'B550',socket:'AM4',form_factor:'ATX',vrm_power:90,features:90,upgrade_headroom:90,overall:90,confidence:'high'}];
 
   const caseSlot = {kind:'PLANNED', catalogType:'CASE', label:'Fractal Design Meshify 2', cost:0, originalPrice:0, currency:'RSD'};
   const cc = E.caseCapabilities(caseSlot, 'Fractal Design Meshify 2');
@@ -808,7 +812,7 @@ const enclosureProbe = `
   const good = baseRig();
   good.slots.CPU = cat('CPU','AMD Ryzen 7 5800X3D');
   good.slots.GPU = cat('GPU','NVIDIA RTX 3080 280mm');
-  good.slots.MOBO = cat('MOBO','Gigabyte B550 AORUS ATX');
+  good.slots.MOBO = cat('MOBO','Gigabyte B550 AORUS MASTER');
   good.slots.RAM = {kind:'PLANNED', label:'2x8GB DDR4 dual channel', cost:0, originalPrice:0, currency:'RSD'};
   good.slots.CASE = {kind:'PLANNED', catalogType:'CASE', label:'Fractal Design Meshify 2', cost:0, originalPrice:0, currency:'RSD'};
   good.slots.COOLER = {kind:'PLANNED', catalogType:'COOLER', label:'Noctua NH-D15', cost:0, originalPrice:0, currency:'RSD', caps:{type:'DUAL TOWER',radiator:null,heightMm:160,sockets:['AM4','AM5','LGA1200','LGA1700'],coolingClass:'EXTREME',fanCount:2,noiseClass:'NORMAL',tdpClass:'EXTREME',ramClearance:'NO',notes:''}};

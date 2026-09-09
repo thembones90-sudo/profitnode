@@ -145,9 +145,11 @@ async function main() {
     check("backup/restore round-trip preserves schema and drive health",backup.recognized&&backup.health===87&&backup.schema===2,JSON.stringify(backup));
 
     await cdp.send("Emulation.setDeviceMetricsOverride",{width:1100,height:800,deviceScaleFactor:1,mobile:false});
-    await evaluate(`state.route='rigbuild';state.rigDraft=newRigDraft('BROWSER TEST');state.rigDraft.slots.CPU={kind:'PLANNED',catalogType:'CPU',label:'',cost:0,originalPrice:0,currency:'RSD'};render()`);
+    await evaluate(`state.route='rigbuild';state.rigDraft=newRigDraft('BROWSER TEST');state.rigDraft.slots.CPU={kind:'PLANNED',catalogType:'CPU',label:'',cost:0,originalPrice:0,currency:'RSD'};state.rigDraft.slots.MOBO={kind:'PLANNED',catalogType:'MOBO',label:'ASRock B450M-HDV',cost:0,originalPrice:0,currency:'RSD'};state.rigDraft.slots.CASE={kind:'PLANNED',catalogType:'CASE',label:'Fractal Design Meshify 2',cost:0,originalPrice:0,currency:'RSD'};render()`);
     const responsive=await evaluate(`(()=>{const row=document.querySelector('.rig-slot-row'),style=getComputedStyle(row);return {overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth,cols:style.gridTemplateColumns.split(' ').length}})()`);
     check("RIG BENCH stacks safely at 1100px without page clipping",!responsive.overflow&&responsive.cols>=2);
+    const moboCanonical=await evaluate(`(()=>{const input=document.querySelector('[data-rig-catalog-item="MOBO"]'),row=input&&input.closest('.rig-slot-row'),status=document.querySelector('[data-bc-tile="case"] [data-bc-level]');return {meta:row&&row.textContent,status:status&&status.dataset.bcLevel}})()`);
+    check("RIG BENCH displays and checks canonical motherboard form factor",moboCanonical.meta.includes('FORM mATX · SOCKET AM4 · CHIPSET B450')&&moboCanonical.status==='PASS',JSON.stringify(moboCanonical));
     await evaluate(`(()=>{const x=document.querySelector('[data-rig-catalog-item="CPU"]');x.value='3600';x.dispatchEvent(new Event('input',{bubbles:true}));return true})()`); await delay(250);
     const search=await evaluate(`({matches:document.querySelectorAll('[data-rig-catalog-choice="CPU"]').length,text:document.body.textContent})`);
     check("typing opens matching hardware results without arrow click",search.matches>0&&search.text.includes('Ryzen 5 3600'));
