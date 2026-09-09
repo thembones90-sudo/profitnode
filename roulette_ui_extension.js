@@ -154,19 +154,6 @@
     color:#d378ff !important;
   }
 
-  [data-route="roulette"]:after{
-    content:"";
-    position:absolute;
-    right:12px;
-    top:50%;
-    width:5px;
-    height:5px;
-    border-radius:50%;
-    background:#ff315f;
-    box-shadow:0 0 12px #ff315f;
-    transform:translateY(-50%);
-  }
-
   body.pn-roulette-open{
     overflow-y:auto !important;
   }

@@ -1016,19 +1016,6 @@ function rouletteChamber(){
     color:#d378ff !important;
   }
 
-  [data-route="roulette"]:after{
-    content:"";
-    position:absolute;
-    right:12px;
-    top:50%;
-    width:5px;
-    height:5px;
-    border-radius:50%;
-    background:#ff315f;
-    box-shadow:0 0 10px #ff315f;
-    transform:translateY(-50%);
-  }
-
   .pn-r3-content{
     position:relative;
     isolation:isolate;

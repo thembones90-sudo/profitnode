@@ -105,6 +105,9 @@ async function main() {
     check("app loads its complete navigation in a real browser",shell.brand&&shell.routes===12,JSON.stringify(shell));
     check("sidebar cleanup runs in the real DOM",!shell.legacy);
     check("browser storage initializes on the current schema",shell.schema===2);
+    const navVisual=await evaluate(`(()=>{const rig=document.querySelector('[data-route="rigbuild"]'),roulette=document.querySelector('[data-route="roulette"]'),rigStyle=getComputedStyle(rig);return {rigLabel:rig.textContent.trim(),rigColor:rigStyle.color,rigAnimation:rigStyle.animationName,rouletteAfter:getComputedStyle(roulette,'::after').content}})()`);
+    check("sidebar renames RIG BENCH to RIG ASSEMBLY with a silver glitch treatment",navVisual.rigLabel==='RIG ASSEMBLY'&&navVisual.rigColor==='rgb(211, 215, 223)'&&navVisual.rigAnimation.includes('pnRigAssemblySilver'),JSON.stringify(navVisual));
+    check("Roulette sidebar indicator dot is removed",navVisual.rouletteAfter==='none'||navVisual.rouletteAfter==='normal',JSON.stringify(navVisual));
 
     await cdp.send("Emulation.setDeviceMetricsOverride",{width:1920,height:1080,deviceScaleFactor:1,mobile:false});
     const desktop=await evaluate(`({overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth,content:getComputedStyle(document.querySelector('.content')).overflowY})`);

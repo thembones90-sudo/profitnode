@@ -102,7 +102,7 @@
               '<span class="pn-op-node live"></span>'+
               '<div class="pn-op-main">'+
                 '<b>'+escHtml(rig.family+(rig.variantName?" / "+rig.variantName:""))+'</b>'+
-                '<span>RIG BENCH \xb7 '+STATUS_LABEL(rig.status)+'</span>'+
+                '<span>RIG ASSEMBLY \xb7 '+STATUS_LABEL(rig.status)+'</span>'+
               '</div>'+
               '<span class="chip '+RIG_STATUS_META[rig.status].chip+'">'+STATUS_LABEL(rig.status)+'</span>'+
             '</div>'
@@ -126,7 +126,7 @@
       .slice(0,2);
 
     if (!rigs.length){
-      return '<div class="pn-command-empty">RIG BENCH IDLE</div>';
+      return '<div class="pn-command-empty">RIG ASSEMBLY IDLE</div>';
     }
 
     return rigs.map(rig=>{
@@ -291,7 +291,7 @@
           '<div class="panel-body pn-no-pad">'+pnCommandOperationQueue(currency)+'</div>'+
         '</section>'+
         '<section class="panel pn-command-panel">'+
-          '<div class="panel-head"><h2>RIG BENCH</h2><button class="pn-command-link" data-route="rigbuild">OPEN BENCH</button></div>'+
+          '<div class="panel-head"><h2>RIG ASSEMBLY</h2><button class="pn-command-link" data-route="rigbuild">OPEN ASSEMBLY</button></div>'+
           '<div class="panel-body pn-no-pad">'+pnCommandRigSnapshot(currency)+'</div>'+
         '</section>'+
       '</div>';
