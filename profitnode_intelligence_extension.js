@@ -240,6 +240,7 @@ function pnPartTierExplanationHtml(item){
 
   function pnSoldCostBasis(currency){
     return Store.all("sales")
+      .filter(sale=>typeof saleIsCompleted!=="function" || saleIsCompleted(sale))
       .reduce((sum,sale)=>sum+convert(saleDerived(sale).totalCost || 0,sale.currency,currency),0);
   }
 
@@ -311,7 +312,7 @@ function pnPartTierExplanationHtml(item){
   }
 
   function pnCapitalVelocity(currency){
-    const sales = Store.all("sales");
+    const sales = Store.all("sales").filter(sale=>typeof saleIsCompleted!=="function" || saleIsCompleted(sale));
     const tracked = sales
       .map(sale=>{
         const days = pnDaysHeldForSale(sale);

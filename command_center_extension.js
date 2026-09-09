@@ -26,6 +26,7 @@
     const month = new Date().toISOString().slice(0,7);
 
     return Store.all("sales")
+      .filter(sale=>typeof saleIsCompleted!=="function" || saleIsCompleted(sale))
       .filter(sale=>String(sale.saleDate||"").slice(0,7)===month)
       .reduce((sum,sale)=>sum+convert(saleDerived(sale).profit,sale.currency,currency),0);
   }
@@ -232,7 +233,7 @@
     const inventory = Store.all("inventory");
     const projects = Store.all("projects");
     const rigs = Store.all("rigs");
-    const sales = Store.all("sales");
+    const sales = Store.all("sales").filter(sale=>typeof saleIsCompleted!=="function" || saleIsCompleted(sale));
 
     const vaultCount = inventory.filter(item=>item.status==="IN_STORAGE").length;
     const repairCount = inventory.filter(item=>item.status==="REPAIR").length;

@@ -83,6 +83,7 @@
 
   function pnCmdSoldCostBasis(currency){
     return Store.all("sales")
+      .filter(sale=>typeof saleIsCompleted!=="function" || saleIsCompleted(sale))
       .reduce((sum,sale)=>sum+convert(saleDerived(sale).totalCost||0,sale.currency,currency),0);
   }
 
@@ -94,6 +95,7 @@
     const month = new Date().toISOString().slice(0,7);
 
     return Store.all("sales")
+      .filter(sale=>typeof saleIsCompleted!=="function" || saleIsCompleted(sale))
       .filter(sale=>String(sale.saleDate||"").slice(0,7)===month)
       .reduce((sum,sale)=>sum+convert(saleDerived(sale).profit||0,sale.currency,currency),0);
   }

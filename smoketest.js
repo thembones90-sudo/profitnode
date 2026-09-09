@@ -184,6 +184,7 @@ const probe = `
 
   const saleSchema = FORM_SCHEMAS.sale(null);
   log('NEW SALE item field uses the component search type', saleSchema.fields[0].type === 'componentSearch');
+  log('NEW SALE defaults to a pending lifecycle state', saleSchema.fields.some(f=>f.key==='saleState' && f.default==='PENDING'));
   log('NEW SALE schema carries a Category select', saleSchema.fields.some(f=>f.key==='category' && f.options === CATEGORIES));
   log('INVENTORY_GROUP_ORDER is a permutation of CATEGORIES', INVENTORY_GROUP_ORDER.length === CATEGORIES.length && INVENTORY_GROUP_ORDER.slice().sort().join(',') === CATEGORIES.slice().sort().join(','));
   log('component pick keyboard helper is exposed', typeof pnSaleComponentPick === 'function');
@@ -224,6 +225,26 @@ const probe = `
   log('component search excludes SOLD inventory', compMatches.every(m=>m.kind!=='inventory' || m.item.status !== 'SOLD'));
   const compMatches2 = salesComponentMatches('b450');
   log('component search ranks owned inventory before catalog', compMatches2.length > 0 && compMatches2[0].kind === 'inventory');
+  const pendingPart = Actions.addInventory({category:'GPU',manufacturer:'EVGA',model:'Pending Test GPU',purchaseDate:'2026-02-12',purchasePrice:10000,currency:'RSD',estimatedMarketValue:15000,source:'OTHER',condition:'WORKING',status:'IN_STORAGE',notes:''});
+  const pendingStatsBefore = dashboardStats('RSD');
+  const pendingSummaryBefore = saleSummary('RSD');
+  const pendingSale = Actions.addSale({saleState:'PENDING',inventoryItemId:pendingPart.id,itemName:'EVGA Pending Test GPU',saleDate:'2026-03-01',buyerPrice:14000,originalInvestment:10000,additionalCosts:0,currency:'RSD',saleType:'COMPONENT',category:'GPU',notes:''});
+  const pendingStatsAfter = dashboardStats('RSD');
+  const pendingSummaryAfter = saleSummary('RSD');
+  log('pending sale reserves its linked part as LISTED', pendingSale && Store.get('inventory',pendingPart.id).status === 'LISTED');
+  log('pending sale is excluded from realized dashboard totals', pendingStatsAfter.totalRevenue === pendingStatsBefore.totalRevenue && pendingStatsAfter.realizedProfit === pendingStatsBefore.realizedProfit && pendingStatsAfter.componentsSold === pendingStatsBefore.componentsSold);
+  log('pending sale is excluded from completed ledger summary', pendingSummaryAfter.revenue === pendingSummaryBefore.revenue && pendingSummaryAfter.profit === pendingSummaryBefore.profit && pendingSummaryAfter.components === pendingSummaryBefore.components);
+  const pendingLedgerHtml = renderSales();
+  log('LEDGER renders pending and completed sales as separate sections', pendingLedgerHtml.includes('PENDING SALES') && pendingLedgerHtml.includes('COMPLETED SALES') && pendingLedgerHtml.includes('EVGA Pending Test GPU'));
+  log('pending sale exposes an explicit completion action', pendingLedgerHtml.includes('data-complete-pending-sale="'+pendingSale.id+'"'));
+  Actions.updateSale(pendingSale.id,{saleState:'COMPLETED'});
+  const completedStats = dashboardStats('RSD');
+  log('completing a pending sale retires its linked part SOLD', Store.get('inventory',pendingPart.id).status === 'SOLD');
+  log('completed pending sale enters realized totals exactly once', completedStats.totalRevenue === pendingStatsBefore.totalRevenue + 14000 && completedStats.componentsSold === pendingStatsBefore.componentsSold + 1);
+  Actions.updateSale(pendingSale.id,{saleState:'PENDING'});
+  log('returning a completed sale to pending restores LISTED state', Store.get('inventory',pendingPart.id).status === 'LISTED');
+  Actions.removeSale(pendingSale.id);
+  log('deleting a pending sale restores its pre-listing inventory state', Store.get('inventory',pendingPart.id).status === 'IN_STORAGE');
   const linked = Actions.addSale({inventoryItemId:compB.id,itemName:'MSI B450 Tomahawk',saleDate:'2026-03-01',buyerPrice:15000,originalInvestment:12000,additionalCosts:0,currency:'RSD',saleType:'COMPONENT',category:'MOTHERBOARD',notes:''});
   log('linked component sale retires the part as SOLD', linked && Store.get('inventory', compB.id).status === 'SOLD');
   log('new linked sale snapshots the pre-sale status', linked && linked.inventorySnapshot && linked.inventorySnapshot.priorStatus === 'IN_STORAGE');

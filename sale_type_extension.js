@@ -13,6 +13,17 @@
 */
 
 const PN_SALE_TYPES = ["RIG","COMPONENT","OTHER"];
+const PN_SALE_STATES = ["PENDING","COMPLETED"];
+
+function saleStateResolved(sale){
+  return String((sale && sale.saleState) || "COMPLETED").toUpperCase() === "PENDING"
+    ? "PENDING"
+    : "COMPLETED";
+}
+
+function saleIsCompleted(sale){
+  return saleStateResolved(sale) === "COMPLETED";
+}
 
 function saleTypeResolved(sale){
   const explicit = String((sale && sale.saleType) || "").toUpperCase();
@@ -74,7 +85,7 @@ function saleDaysHeldResolved(sale){
 }
 
 function saleSummary(currency){
-  const sales = Store.all("sales");
+  const sales = Store.all("sales").filter(saleIsCompleted);
   let revenue = 0;
   let profit = 0;
   let cost = 0;
@@ -118,7 +129,9 @@ function renderSales(){
     sales = sales.filter(sale=>saleTypeResolved(sale) === currentType);
   }
 
-  const rows = sales.length ? sales.map(sale=>{
+  const completed = sales.filter(saleIsCompleted);
+  const pending = sales.filter(sale=>!saleIsCompleted(sale));
+  const completedRows = completed.length ? completed.map(sale=>{
     const d = saleDerived(sale);
     const type = saleTypeResolved(sale);
     const source = saleSourceResolved(sale);
@@ -142,7 +155,25 @@ function renderSales(){
       '<td class="num" style="color:'+(d.roi>=0?"var(--green)":"var(--red)")+'">'+pct(d.roi)+'</td>'+
       '<td class="num">'+(held!=null?held:"\u2014")+'</td>'+
     '</tr>';
-  }).join("") : '<tr class="empty-row"><td colspan="8">No sales match this filter.</td></tr>';
+  }).join("") : '<tr class="empty-row"><td colspan="8">No completed sales match this filter.</td></tr>';
+
+  const pendingRows = pending.length ? pending.map(sale=>{
+    const d = saleDerived(sale);
+    const type = saleTypeResolved(sale);
+    const source = saleSourceResolved(sale);
+    return '<tr class="clickable pn-pending-sale-row" data-open-entity="sale" data-id="'+sale.id+'">'+
+      '<td><div class="pn-sale-item"><div class="sale-item-with-type"><b>'+escHtml(sale.itemName)+'</b><span class="chip '+saleTypeChipClass(type)+'">'+escHtml(type)+'</span><span class="chip pn-sale-state-pending">PENDING</span></div><div class="pn-sale-origin">'+escHtml(source)+'</div></div></td>'+
+      '<td class="mono">'+fmtDate(sale.saleDate)+'</td>'+
+      '<td class="num">'+money(sale.buyerPrice,sale.currency)+'</td>'+
+      '<td class="num">'+money(d.totalCost,sale.currency)+'</td>'+
+      '<td class="num pn-potential-profit" style="color:'+(d.profit>=0?"var(--green)":"var(--red)")+'">'+money(d.profit,sale.currency)+'</td>'+
+      '<td class="num">'+pct(d.margin)+'</td>'+
+      '<td class="num">'+pct(d.roi)+'</td>'+
+      '<td class="num"><button type="button" class="btn btn-sm pn-complete-sale" data-complete-pending-sale="'+sale.id+'">COMPLETE SALE</button></td>'+
+    '</tr>';
+  }).join("") : '<tr class="empty-row"><td colspan="8">No pending sales match this filter.</td></tr>';
+
+  const pendingAsking = pending.reduce((sum,sale)=>sum+convert(sale.buyerPrice||0,sale.currency,currency),0);
 
   const summaryHtml =
     '<div class="pn-sales-summary">'+
@@ -165,13 +196,16 @@ function renderSales(){
 
   return pageHeader(
     "Sales",
-    sales.length+" of "+Store.all("sales").length+" completed sales",
+    pending.length+" pending · "+completed.length+" completed",
     '<button class="btn btn-primary" data-open-form="sale">+ NEW SALE</button>'
   )+
   '<div class="content">'+
     summaryHtml+
     controls+
-    '<div class="panel"><div class="table-scroll"><table><thead><tr>'+
+    '<div class="panel pn-pending-sales-panel"><div class="panel-head"><h2>PENDING SALES</h2><span class="badge-count">'+pending.length+' LISTED · '+money(pendingAsking,currency)+' ASKING</span></div><div class="table-scroll"><table><thead><tr>'+
+      '<th>Sale Item</th><th>Listed</th><th class="num">Asking Price</th><th class="num">Total Cost</th><th class="num">Potential Profit</th><th class="num">Margin</th><th class="num">ROI</th><th class="num">Action</th>'+
+    '</tr></thead><tbody>'+pendingRows+'</tbody></table></div></div>'+
+    '<div class="panel pn-completed-sales-panel"><div class="panel-head"><h2>COMPLETED SALES</h2><span class="badge-count">'+completed.length+' REALIZED</span></div><div class="table-scroll"><table><thead><tr>'+
       '<th>Sale Item</th>'+
       '<th>Sale Date</th>'+
       '<th class="num">Sale Price</th>'+
@@ -180,7 +214,7 @@ function renderSales(){
       '<th class="num">Margin</th>'+
       '<th class="num">ROI</th>'+
       '<th class="num">Days Held</th>'+
-    '</tr></thead><tbody>'+rows+'</tbody></table></div></div>'+
+    '</tr></thead><tbody>'+completedRows+'</tbody></table></div></div>'+
   '</div>';
 }
 
@@ -194,7 +228,7 @@ if (typeof ROUTES !== "undefined"){
 const PNCoreDashboardStatsSaleTypes = dashboardStats;
 dashboardStats = function(currency){
   const out = PNCoreDashboardStatsSaleTypes(currency);
-  const sales = Store.all("sales");
+  const sales = Store.all("sales").filter(saleIsCompleted);
   out.pcsSold = sales.filter(s=>saleTypeResolved(s)==="RIG").length;
   out.componentsSold = sales.filter(s=>saleTypeResolved(s)==="COMPONENT").length;
   return out;
@@ -209,6 +243,11 @@ if (typeof CSV_EXPORTS !== "undefined" && CSV_EXPORTS.sales){
   if (!cols.some(c=>c.label==="Workflow Source")){
     const typeIndex = cols.findIndex(c=>c.label==="Type");
     cols.splice(typeIndex+1,0,{label:"Workflow Source",get:saleSourceResolved});
+  }
+
+  if (!cols.some(c=>c.label==="State")){
+    const typeIndex = cols.findIndex(c=>c.label==="Type");
+    cols.splice(typeIndex+1,0,{label:"State",get:saleStateResolved});
   }
 
   const heldCol = cols.find(c=>c.label==="Days Held");
@@ -229,8 +268,23 @@ if (typeof FORM_SCHEMAS !== "undefined" && FORM_SCHEMAS.sale){
     const buyerField = schema.fields.find(f=>f.key==="buyerPrice");
     if (buyerField) buyerField.label = "Sale Price";
 
-    if (!schema.fields.some(f=>f.key==="saleType")){
+    const saleDateField = schema.fields.find(f=>f.key==="saleDate");
+    if (saleDateField) saleDateField.label = "Listing / Sale Date";
+
+    if (!schema.fields.some(f=>f.key==="saleState")){
       schema.fields.splice(1,0,{
+        key:"saleState",
+        label:"Sale State",
+        type:"select",
+        options:PN_SALE_STATES,
+        required:true,
+        default:entity ? saleStateResolved(entity) : "PENDING",
+        half:true
+      });
+    }
+
+    if (!schema.fields.some(f=>f.key==="saleType")){
+      schema.fields.splice(2,0,{
         key:"saleType",
         label:"Sale Type",
         type:"select",
@@ -279,7 +333,8 @@ if (Actions && Actions.markRigSold){
           saleType:"RIG",
           saleSource:"RIG BUILD",
           rigId:rigId,
-          rigSnapshot:snapshot
+          rigSnapshot:snapshot,
+          saleState:"COMPLETED"
         });
       }
     }
@@ -307,7 +362,8 @@ if (Actions && Actions.finalizeProjectSale){
         saleType:"RIG",
         saleSource:"PROJECT",
         projectSnapshot:projectSnapshot,
-        componentSnapshots:componentSnapshots
+        componentSnapshots:componentSnapshots,
+        saleState:"COMPLETED"
       });
     }
 
@@ -322,7 +378,8 @@ if (Actions && Actions.addSale){
 
   Actions.addSale = function(data){
     const payload = Object.assign({},data,{
-      saleSource:data.saleSource || "MANUAL"
+      saleSource:data.saleSource || "MANUAL",
+      saleState:saleStateResolved(data)
     });
     if (data && data.inventoryItemId){
       const item = Store.get("inventory", data.inventoryItemId);
@@ -331,6 +388,14 @@ if (Actions && Actions.addSale){
         priorStatus: item ? item.status : null,
         priorAssignedRigId: item ? item.assignedRigId || null : null
       };
+    }
+    if (payload.saleState === "PENDING"){
+      const pending = Store.insert("sales",payload);
+      if (pending.inventoryItemId){
+        Store.update("inventory",pending.inventoryItemId,{status:"LISTED"});
+      }
+      Timeline.log("LISTED",pending.itemName+" LISTED","Asking "+money(pending.buyerPrice,pending.currency),pending.saleDate,"sale",pending.id);
+      return pending;
     }
     return PNCoreAddSaleLedger(payload);
   };
@@ -347,7 +412,8 @@ if (Actions && Actions.removeSale){
     const result = PNCoreRemoveSaleLedger(id);
     if (sale && sale.inventoryItemId && sale.inventorySnapshot){
       const part = Store.get("inventory", sale.inventoryItemId);
-      if (part && part.status === "SOLD"){
+      const expectedStatus = saleIsCompleted(sale) ? "SOLD" : "LISTED";
+      if (part && part.status === expectedStatus){
         Store.update("inventory", part.id, {
           status: sale.inventorySnapshot.priorStatus || "IN_STORAGE",
           assignedRigId: sale.inventorySnapshot.priorAssignedRigId || null
@@ -358,40 +424,63 @@ if (Actions && Actions.removeSale){
   };
 }
 
-/* Linking a sale retires the part SOLD; changing/clearing the link restores it. */
+/* Pending links reserve inventory as LISTED; completed links retire it SOLD. */
 if (Actions && Actions.updateSale){
   const PNCoreUpdateSaleLedger = Actions.updateSale.bind(Actions);
 
   Actions.updateSale = function(id, data){
     const sale = Store.get("sales", id);
-    const next = data && String(data.inventoryItemId || "");
-    if (sale && sale.inventoryItemId && next !== sale.inventoryItemId){
+    if (!sale) return PNCoreUpdateSaleLedger(id,data);
+    const payload = Object.assign({},sale,data,{saleState:saleStateResolved(Object.assign({},sale,data))});
+    const next = String(payload.inventoryItemId || "");
+    const previousLink = String(sale.inventoryItemId || "");
+    const stateChanged = saleStateResolved(sale) !== payload.saleState;
+    if (previousLink && (next !== previousLink || stateChanged)){
       const part = Store.get("inventory", sale.inventoryItemId);
-      if (part && part.status === "SOLD" && sale.inventorySnapshot){
+      if (part && ["SOLD","LISTED"].includes(part.status) && sale.inventorySnapshot){
         Store.update("inventory", part.id, {
           status: sale.inventorySnapshot.priorStatus || "IN_STORAGE",
           assignedRigId: sale.inventorySnapshot.priorAssignedRigId || null
         });
       }
     }
-    if (data && data.inventoryItemId){
-      const item = Store.get("inventory", data.inventoryItemId);
-      if (!data.inventorySnapshot){
-        const same = sale && data.inventoryItemId === sale.inventoryItemId;
-        data.inventorySnapshot = same && sale.inventorySnapshot || {
-          id: data.inventoryItemId,
+    if (next){
+      const item = Store.get("inventory", next);
+      if (!payload.inventorySnapshot){
+        const same = next === previousLink;
+        payload.inventorySnapshot = same && sale.inventorySnapshot || {
+          id: next,
           priorStatus: item ? item.status : null,
           priorAssignedRigId: item ? item.assignedRigId || null : null
         };
       }
-      if (item) Store.update("inventory", item.id, {status:"SOLD"});
+      if (item) Store.update("inventory", item.id, {status:payload.saleState === "COMPLETED" ? "SOLD" : "LISTED"});
     }
-    return PNCoreUpdateSaleLedger(id, data);
+    const result = PNCoreUpdateSaleLedger(id, payload);
+    if (stateChanged){
+      if (payload.saleState === "COMPLETED"){
+        const d = saleDerived(result);
+        Timeline.log("SOLD",result.itemName+" SOLD","Sale: "+money(result.buyerPrice,result.currency)+" · Profit: "+money(d.profit,result.currency),result.saleDate,"sale",result.id);
+      } else {
+        Timeline.log("LISTED",result.itemName+" RETURNED TO PENDING","Asking "+money(result.buyerPrice,result.currency),result.saleDate,"sale",result.id);
+      }
+    }
+    return result;
   };
 }
 
 /* Type filter click handling. */
 document.addEventListener("click",function(event){
+  const complete = event.target.closest("[data-complete-pending-sale]");
+  if (complete){
+    event.preventDefault();
+    event.stopPropagation();
+    const sale = Store.get("sales",complete.dataset.completePendingSale);
+    if (!sale) return;
+    state.modal = {entityType:"sale",id:sale.id,prefill:null,live:Object.assign({},sale,{saleState:"COMPLETED"})};
+    render();
+    return;
+  }
   const btn = event.target.closest("[data-sale-type-filter]");
   if (!btn) return;
 
@@ -416,9 +505,13 @@ function salesComponentMatches(query){
   const matches = [];
   if (q.length < 2) return matches;
   const seen = new Set();
+  const currentSaleId = state.modal && state.modal.entityType === "sale" ? state.modal.id : null;
+  const reservedIds = new Set(Store.all("sales")
+    .filter(sale=>!saleIsCompleted(sale) && sale.id !== currentSaleId && sale.inventoryItemId)
+    .map(sale=>sale.inventoryItemId));
 
   Store.all("inventory").forEach(item=>{
-    if (item.status === "SOLD") return;
+    if (item.status === "SOLD" || reservedIds.has(item.id)) return;
     const label = ((item.manufacturer || "")+" "+(item.model || "")).trim();
     const combined = pnNorm(label);
     const model = pnNorm(item.model || "");
@@ -744,6 +837,20 @@ pnSalesLedgerStyle.textContent = `
   font-weight:900;
   font-size:1.05em;
 }
+.pn-pending-sales-panel{margin-bottom:12px;border-color:rgba(201,156,70,.32)}
+.pn-pending-sales-panel .panel-head{background:linear-gradient(90deg,rgba(201,156,70,.08),transparent 48%)}
+.pn-sale-state-pending{
+  color:#e1b95f !important;
+  border-color:#8b6829 !important;
+  background:rgba(201,156,70,.10) !important;
+}
+.pn-potential-profit{font-weight:800}
+.pn-complete-sale{
+  color:#e8ca82;
+  border-color:#7d6028;
+  white-space:nowrap;
+}
+.pn-complete-sale:hover{background:rgba(201,156,70,.12);border-color:#c99c46}
 .pn-sale-type-rig{
   color:#c866ff !important;
   border-color:#8b2bd1 !important;

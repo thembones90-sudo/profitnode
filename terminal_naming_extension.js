@@ -56,7 +56,7 @@
     },
     "SALES": {
       title: "LEDGER",
-      subtitle: "Completed sales and realized profit"
+      subtitle: "Pending listings, completed sales and realized profit"
     },
     "HISTORY": {
       title: "ARCHIVE",
