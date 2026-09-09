@@ -168,6 +168,10 @@ const probe = `
   const updated = Store.update('inventory', item.id, {estimatedMarketValue: 16000});
   log('Store.update mutates and persists', updated.estimatedMarketValue === 16000);
   log('ledger persisted under profitnode_ledger_v1', typeof localStorage.getItem('profitnode_ledger_v1') === 'string' && localStorage.getItem('profitnode_ledger_v1').includes('Core i5-10400F'));
+  Store.update('inventory', item.id, {status:'REPAIR'});
+  const repairCommandHtml = renderDashboard();
+  log('COMMAND priority escalates repair work to danger', repairCommandHtml.includes('pn-command-priority is-danger')&&repairCommandHtml.includes('REPAIR INTERVENTION')&&repairCommandHtml.includes('OPEN REPAIR BAY'));
+  Store.update('inventory', item.id, {status:'IN_STORAGE'});
 
   const sale = Actions.addSale({inventoryItemId:item.id,itemName:'Core i5-10400F',saleDate:'2026-01-01',buyerPrice:20000,originalInvestment:10500,additionalCosts:200,currency:'RSD',reason:'',notes:'',saleType:'COMPONENT'});
   log('Actions.addSale creates a Sales row', !!sale && sale.itemName === 'Core i5-10400F');
@@ -195,6 +199,7 @@ const probe = `
   log('renderDashboard renders the command financial model', typeof dashHtml === 'string' && dashHtml.includes('TOTAL SPENT'));
   log('dashboard route render is the command dashboard', (ROUTES.find(r=>r.key==='dashboard').render() || '').includes('TOTAL SPENT'));
   log('command dashboard carries hero-finance markers', dashHtml.includes('pn-command-hero-finance'));
+  log('command dashboard carries telemetry and priority markers', dashHtml.includes('pn-command-telemetry')&&dashHtml.includes('pn-command-priority')&&dashHtml.includes('COMMAND PRIORITY'));
 
   const stats = dashboardStats('RSD');
   log('dashboardStats gains capital-headline keys', typeof stats.totalCapitalInvested === 'number' && typeof stats.currentInventoryValue === 'number' && typeof stats.unrealizedProfit === 'number');

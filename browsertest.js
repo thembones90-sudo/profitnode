@@ -110,6 +110,17 @@ async function main() {
     const desktop=await evaluate(`({overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth,content:getComputedStyle(document.querySelector('.content')).overflowY})`);
     check("1920x1080 shell has no document-level horizontal clipping",!desktop.overflow);
     check("desktop keeps the intended internal scroll layer",desktop.content==="auto"||desktop.content==="scroll");
+    const command=await evaluate(`(()=>{const hero=document.querySelector('.pn-command-hero-finance'),matrix=document.querySelector('.pn-financial-matrix'),priority=document.querySelector('.pn-command-priority');return {priority:!!priority,telemetry:document.querySelectorAll('.pn-command-telemetry>div').length,kpis:document.querySelectorAll('.pn-financial-matrix .pn-terminal-kpi').length,major:document.querySelectorAll('.pn-terminal-kpi.is-major').length,cols:getComputedStyle(matrix).gridTemplateColumns.split(' ').length,heroHeight:Math.round(hero.getBoundingClientRect().height),panelTiers:['primary','operational','utility'].every(t=>!!document.querySelector('.pn-command-panel-'+t))}})()`);
+    check("COMMAND renders one operational priority and five telemetry channels",command.priority&&command.telemetry===5,JSON.stringify(command));
+    check("COMMAND uses a compact six-metric 3x2 financial matrix at 1920px",command.kpis===6&&command.major===2&&command.cols===3&&command.heroHeight<250,JSON.stringify(command));
+    check("COMMAND exposes three levels of panel hierarchy",command.panelTiers);
+    const commandShot=await cdp.send("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+    fs.writeFileSync(path.join(os.tmpdir(),"profitnode-command-1920.png"),Buffer.from(commandShot.data,"base64"));
+    check("COMMAND renders a valid 1920x1080 frame",!!commandShot.data&&commandShot.data.length>10000);
+    await cdp.send("Emulation.setDeviceMetricsOverride",{width:1100,height:900,deviceScaleFactor:1,mobile:false});
+    const commandResponsive=await evaluate(`(()=>{const hero=document.querySelector('.pn-command-hero-finance');return {overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth,heroCols:getComputedStyle(hero).gridTemplateColumns.split(' ').length,priorityWidth:document.querySelector('.pn-command-priority').getBoundingClientRect().width}})()`);
+    check("COMMAND stacks safely at 1100px without horizontal clipping",!commandResponsive.overflow&&commandResponsive.heroCols===1&&commandResponsive.priorityWidth>500,JSON.stringify(commandResponsive));
+    await cdp.send("Emulation.setDeviceMetricsOverride",{width:1920,height:1080,deviceScaleFactor:1,mobile:false});
 
     await evaluate(`document.querySelector('[data-route="inventory"]').click();document.querySelector('[data-open-form="inventory"]').click()`);
     let modal=await evaluate(`({open:!!document.querySelector('form[data-entity-form="inventory"]'),healthHidden:document.querySelector('.pn-storage-only').hidden,inspector:!!document.querySelector('[data-pn-tier-inspector]')})`);

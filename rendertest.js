@@ -75,6 +75,10 @@ const probe = `
   state.route = 'dashboard';
   const dashHtml = renderShell();
   out.push(['dashboard renders command hero-finance', dashHtml.includes('pn-command-hero-finance') && dashHtml.includes('TOTAL SPENT')]);
+  out.push(['COMMAND exposes a single data-derived priority strip', (dashHtml.match(/pn-command-priority is-/g)||[]).length===1&&dashHtml.includes('COMMAND PRIORITY')&&dashHtml.includes('data-route=')]);
+  out.push(['COMMAND telemetry uses five coded operational cells', dashHtml.includes('pn-command-telemetry')&&['BLD','VLT','RPR','STL'].every(code=>dashHtml.includes('<i>'+code+'</i>'))]);
+  out.push(['COMMAND financial matrix distinguishes major and supporting metrics', (dashHtml.match(/pn-terminal-kpi is-major/g)||[]).length===2&&(dashHtml.match(/pn-terminal-kpi/g)||[]).length>=6]);
+  out.push(['COMMAND panels expose primary, operational and utility hierarchy', dashHtml.includes('pn-command-panel-primary')&&dashHtml.includes('pn-command-panel-operational')&&dashHtml.includes('pn-command-panel-utility')]);
 
   // --- TREASURY (isolated personal position) ---
   state.route = 'treasury';
