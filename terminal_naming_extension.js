@@ -86,57 +86,73 @@
 
   const style = document.createElement("style");
   style.textContent = `
-  [data-route="rigbuild"]{
+  .mainnav .navlink[data-route="rigbuild"]{
     position:relative;
-    color:#d3d7df !important;
-    text-shadow:0 0 7px rgba(218,223,232,.13),0 0 13px rgba(168,174,186,.08);
-    animation:pnRigAssemblySilver 6.2s infinite steps(1,end);
+    color:transparent !important;
+    text-shadow:none !important;
   }
 
-  [data-route="rigbuild"]:before,
-  [data-route="rigbuild"]:after{
+  .mainnav .navlink[data-route="rigbuild"]:before{
     content:"RIG ASSEMBLY";
     position:absolute;
     left:18px;
     top:50%;
-    color:#eef1f5;
-    opacity:0;
+    color:#d7ad43;
+    background:linear-gradient(180deg,#fff8c9 0%,#efd67b 26%,#9a6a18 49%,#fff0a1 68%,#bd8422 100%);
+    -webkit-background-clip:text;
+    background-clip:text;
+    -webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 0 3px rgba(238,196,78,.42)) drop-shadow(0 0 8px rgba(178,118,24,.2));
     pointer-events:none;
     transform:translateY(-50%);
+    animation:pnRigAssemblyChrome 4.4s infinite steps(1,end);
   }
 
-  [data-route="rigbuild"]:before{
-    text-shadow:-1px 0 rgba(188,197,212,.72);
-    animation:pnRigAssemblyGlitchA 6.2s infinite steps(1,end);
+  .mainnav .navlink[data-route="rigbuild"]:after{
+    content:"";
+    position:absolute;
+    left:16px;
+    top:calc(50% + 10px);
+    width:108px;
+    height:3px;
+    opacity:0;
+    pointer-events:none;
+    background:linear-gradient(90deg,transparent 0%,#9c6815 10%,#ffe991 32%,#fffbdc 50%,#e2a72d 72%,transparent 100%);
+    clip-path:polygon(0 48%,18% 40%,24% 0,31% 84%,47% 35%,54% 100%,64% 24%,72% 64%,100% 50%,72% 82%,62% 45%,54% 100%,46% 58%,29% 92%,22% 22%,16% 68%,0 55%);
+    filter:drop-shadow(0 0 2px #fff5b5) drop-shadow(0 0 6px #e8ad32) drop-shadow(0 0 10px rgba(168,85,247,.34));
+    transform-origin:left center;
+    animation:pnRigAssemblyLightning 4.4s infinite steps(1,end);
   }
 
-  [data-route="rigbuild"]:after{
-    text-shadow:1px 0 rgba(168,85,247,.42);
-    animation:pnRigAssemblyGlitchB 6.2s infinite steps(1,end);
+  .mainnav .navlink[data-route="rigbuild"]:hover:before,
+  .mainnav .navlink[data-route="rigbuild"].active:before{
+    filter:drop-shadow(0 0 4px rgba(255,225,126,.7)) drop-shadow(0 0 11px rgba(210,145,29,.36));
   }
 
-  @keyframes pnRigAssemblySilver{
-    0%,72%,75%,100%{color:#d3d7df;text-shadow:0 0 7px rgba(218,223,232,.13),0 0 13px rgba(168,174,186,.08)}
-    73%{color:#f3f5f8;text-shadow:-1px 0 #aeb6c4,1px 0 rgba(168,85,247,.38)}
-    74%{color:#bfc5cf;text-shadow:1px 0 #f1f3f6,-1px 0 rgba(168,85,247,.3)}
+  @keyframes pnRigAssemblyChrome{
+    0%,61%,68%,100%{opacity:1;transform:translateY(-50%);filter:drop-shadow(0 0 3px rgba(238,196,78,.42)) drop-shadow(0 0 8px rgba(178,118,24,.2))}
+    62%{opacity:.42;transform:translate(1px,-50%);filter:drop-shadow(-2px 0 #fff8c9) drop-shadow(2px 0 rgba(168,85,247,.55)) drop-shadow(0 0 13px #e8ad32)}
+    63%{opacity:1;transform:translate(-1px,-50%);filter:drop-shadow(2px 0 #fffbdc) drop-shadow(-2px 0 #a66f17) drop-shadow(0 0 16px #ffd963)}
+    64%{opacity:.68;transform:translateY(-50%);filter:drop-shadow(0 0 2px #fff) drop-shadow(0 0 18px #e6aa2f)}
+    65%{opacity:1;transform:translateY(-50%);filter:drop-shadow(0 0 7px #fff0a1) drop-shadow(0 0 15px rgba(201,132,24,.68))}
+    66%{opacity:.54;transform:translate(1px,-50%)}
+    67%{opacity:1;transform:translateY(-50%);filter:drop-shadow(0 0 5px #ffe783) drop-shadow(0 0 11px rgba(168,85,247,.38))}
   }
 
-  @keyframes pnRigAssemblyGlitchA{
-    0%,72%,75%,100%{opacity:0;clip-path:inset(0 0 0 0);transform:translateY(-50%)}
-    73%{opacity:.58;clip-path:inset(10% 0 64% 0);transform:translate(-2px,calc(-50% - 1px))}
-    74%{opacity:.36;clip-path:inset(58% 0 12% 0);transform:translate(1px,calc(-50% + 1px))}
-  }
-
-  @keyframes pnRigAssemblyGlitchB{
-    0%,73%,76%,100%{opacity:0;clip-path:inset(0 0 0 0);transform:translateY(-50%)}
-    74%{opacity:.42;clip-path:inset(34% 0 38% 0);transform:translate(2px,calc(-50% + 1px))}
-    75%{opacity:.28;clip-path:inset(76% 0 5% 0);transform:translate(-1px,calc(-50% - 1px))}
+  @keyframes pnRigAssemblyLightning{
+    0%,60%,68%,100%{opacity:0;transform:scaleX(.04) translateX(-8px)}
+    61%{opacity:.22;transform:scaleX(.18) translateX(-3px)}
+    62%{opacity:1;transform:scaleX(.48) translateX(0)}
+    63%{opacity:.35;transform:scaleX(.72) translateX(0)}
+    64%{opacity:1;transform:scaleX(1) translateX(0)}
+    65%{opacity:.16;transform:scaleX(1) translateX(0)}
+    66%{opacity:.92;transform:scaleX(1) translateX(0)}
+    67%{opacity:0;transform:scaleX(1) translateX(4px)}
   }
 
   @media (prefers-reduced-motion:reduce){
-    [data-route="rigbuild"]{animation:none}
-    [data-route="rigbuild"]:before,
-    [data-route="rigbuild"]:after{display:none;animation:none}
+    .mainnav .navlink[data-route="rigbuild"]:before{animation:none}
+    .mainnav .navlink[data-route="rigbuild"]:after{display:none;animation:none}
   }
   `;
   document.head.appendChild(style);

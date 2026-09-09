@@ -105,8 +105,9 @@ async function main() {
     check("app loads its complete navigation in a real browser",shell.brand&&shell.routes===12,JSON.stringify(shell));
     check("sidebar cleanup runs in the real DOM",!shell.legacy);
     check("browser storage initializes on the current schema",shell.schema===2);
-    const navVisual=await evaluate(`(()=>{const rig=document.querySelector('[data-route="rigbuild"]'),roulette=document.querySelector('[data-route="roulette"]'),rigStyle=getComputedStyle(rig);return {rigLabel:rig.textContent.trim(),rigColor:rigStyle.color,rigAnimation:rigStyle.animationName,rouletteAfter:getComputedStyle(roulette,'::after').content}})()`);
-    check("sidebar renames RIG BENCH to RIG ASSEMBLY with a silver glitch treatment",navVisual.rigLabel==='RIG ASSEMBLY'&&navVisual.rigColor==='rgb(211, 215, 223)'&&navVisual.rigAnimation.includes('pnRigAssemblySilver'),JSON.stringify(navVisual));
+    const navVisual=await evaluate(`(()=>{const rig=document.querySelector('[data-route="rigbuild"]'),roulette=document.querySelector('[data-route="roulette"]'),chrome=getComputedStyle(rig,'::before'),lightning=getComputedStyle(rig,'::after');return {rigLabel:rig.textContent.trim(),chromeAnimation:chrome.animationName,chromeGradient:chrome.backgroundImage,chromeFilter:chrome.filter,lightningAnimation:lightning.animationName,lightningShape:lightning.clipPath,rouletteAfter:getComputedStyle(roulette,'::after').content}})()`);
+    check("RIG ASSEMBLY renders as dedicated gold chrome",navVisual.rigLabel==='RIG ASSEMBLY'&&navVisual.chromeAnimation.includes('pnRigAssemblyChrome')&&navVisual.chromeGradient.includes('linear-gradient')&&navVisual.chromeFilter!=='none',JSON.stringify(navVisual));
+    check("RIG ASSEMBLY carries its own shaped lightning animation",navVisual.lightningAnimation.includes('pnRigAssemblyLightning')&&navVisual.lightningShape!=='none',JSON.stringify(navVisual));
     check("Roulette sidebar indicator dot is removed",navVisual.rouletteAfter==='none'||navVisual.rouletteAfter==='normal',JSON.stringify(navVisual));
 
     await cdp.send("Emulation.setDeviceMetricsOverride",{width:1920,height:1080,deviceScaleFactor:1,mobile:false});
