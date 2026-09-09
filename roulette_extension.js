@@ -16,8 +16,8 @@
       2ND + 3RD
   - A BET protocol always splits the entered stake 50/50 across its two legs.
   - Only two headline KPIs exist: MONEY INVESTED and MONEY GAINED / LOST.
-  - Result entry is WIN / DEFEAT plus the net amount earned or lost.
-  - Roulette accounting remains separate from normal shop finances.
+  - Result entry is WIN / LOSS plus the net amount earned or lost.
+  - Roulette keeps its own ledger; resolved bet net is included once in COMMAND Realized Profit.
 */
 
 (function installProfitnodeRouletteV3(){
@@ -302,6 +302,18 @@
     return {invested:invested,net:net};
   }
 
+  if (typeof dashboardStats === "function"){
+    const pnShopDashboardStats = dashboardStats;
+    dashboardStats = function(currency){
+      const stats = pnShopDashboardStats(currency);
+      const rouletteNet = rouletteStats(currency).net;
+      stats.shopRealizedProfit = stats.realizedProfit;
+      stats.rouletteRealizedProfit = rouletteNet;
+      stats.realizedProfit += rouletteNet;
+      return stats;
+    };
+  }
+
   function rouletteStatsHtml(currency){
     const stats = rouletteStats(currency);
 
@@ -489,12 +501,12 @@
           '<div class="pn-r3-result-form">'+
             '<label><span>RESULT</span><select data-r3-result-outcome="'+row.id+'">'+
               '<option value="WIN">WIN</option>'+
-              '<option value="DEFEAT">DEFEAT</option>'+
+              '<option value="LOSS">LOSS</option>'+
             '</select></label>'+
             '<label><span>MONEY EARNED / LOST</span><input type="number" min="0" step="1" data-r3-result-amount="'+row.id+'" placeholder="0"></label>'+
             '<button type="button" class="btn btn-primary" data-r3-record-result="'+row.id+'">RECORD RESULT</button>'+
           '</div>'+
-          '<div class="pn-r3-result-hint">WIN makes the entered amount positive. DEFEAT makes it negative. The stake is already known.</div>'+
+          '<div class="pn-r3-result-hint">WIN adds the entered net amount to Realized Profit. LOSS subtracts it. The stake is already known.</div>'+
         '</div>'+
       '</section>';
   }
@@ -580,7 +592,7 @@ function rouletteChamber(){
       if (row.type==="BET"){
         protocol = row.wager || "BET";
         stake = rouletteMoney(row.stake,row.currency);
-        result = row.status==="PENDING" ? "AWAITING RESULT" : (row.outcome==="LOSE"?"DEFEAT":row.outcome||"RESOLVED");
+        result = row.status==="PENDING" ? "AWAITING RESULT" : (["LOSE","DEFEAT","LOSS"].includes(row.outcome)?"LOSS":row.outcome||"RESOLVED");
         net = row.status==="RESOLVED" ? rouletteRowNet(row,currency) : null;
       } else {
         protocol = row.wager || "-";
@@ -593,7 +605,7 @@ function rouletteChamber(){
         '<td class="num">'+stake+'</td>'+
         '<td>'+escHtml(row.verdict||"BET")+'</td>'+
         '<td><b>'+escHtml(protocol)+'</b></td>'+
-        '<td>'+escHtml(result)+'</td>'+
+        '<td class="pn-r3-result '+(result==="WIN"?"pos":result==="LOSS"?"neg":"")+'">'+escHtml(result)+'</td>'+
         '<td class="num '+(net==null?"":net>=0?"pos":"neg")+'">'+(net==null?"-":money(net,currency))+'</td>'+
       '</tr>';
     }).join("");
@@ -791,7 +803,7 @@ function rouletteChamber(){
     const outcomeEl = document.querySelector('[data-r3-result-outcome="'+CSS.escape(id)+'"]');
     const amountEl = document.querySelector('[data-r3-result-amount="'+CSS.escape(id)+'"]');
 
-    const outcome = outcomeEl ? outcomeEl.value : "DEFEAT";
+    const outcome = outcomeEl ? outcomeEl.value : "LOSS";
     const magnitude = Math.max(0,Math.round(Number(amountEl && amountEl.value)||0));
 
     if (magnitude<=0){
@@ -955,7 +967,7 @@ function rouletteChamber(){
         {label:"Type",get:row=>row.type||""},
         {label:"Judgement",get:row=>row.verdict||""},
         {label:"Protocol",get:row=>row.wager||""},
-        {label:"Result",get:row=>row.outcome==="LOSE"?"DEFEAT":row.outcome||row.status||""},
+        {label:"Result",get:row=>["LOSE","DEFEAT","LOSS"].includes(row.outcome)?"LOSS":row.outcome||row.status||""},
         {label:"Money Invested",get:row=>row.type==="BET"?(row.stake||0):0},
         {label:"Money Gained Lost",get:row=>row.type==="BET"?(row.net||0):0},
         {label:"Currency",get:row=>row.currency||""},
@@ -1097,6 +1109,8 @@ function rouletteChamber(){
   .pn-r3-stats b.pos{color:var(--green)}
   .pn-r3-stats b.neg{color:var(--red)}
   .pn-r3-stats b.zero{color:#c36cf1}
+  .pn-r3-panel td.pn-r3-result.pos,.pn-r3-panel td.num.pos{color:var(--green);font-weight:900}
+  .pn-r3-panel td.pn-r3-result.neg,.pn-r3-panel td.num.neg{color:var(--red);font-weight:900}
 
   .pn-r3-fund b{
     color:#8fd3ff;

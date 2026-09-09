@@ -538,6 +538,24 @@ const doctrineProbe = `
 
   out.push(['fundAdd ignores zero/negative amounts', (function(){ D.fundAdd('WIN', 0, 'RSD'); return D.fundTotal('RSD') > 0; })()]);
 
+  out.push(['resolved roulette wins add and losses subtract from COMMAND Realized Profit once',
+    (function(){
+      const shopOnly = dashboardStats('RSD').shopRealizedProfit;
+      Store.insert('rouletteLedger',{type:'BET',status:'RESOLVED',outcome:'WIN',net:1500,stake:1000,currency:'RSD',date:'2026-09-09',wager:'1ST + 2ND'});
+      Store.insert('rouletteLedger',{type:'BET',status:'RESOLVED',outcome:'LOSS',net:-400,stake:500,currency:'RSD',date:'2026-09-09',wager:'ODD RED'});
+      Store.insert('rouletteLedger',{type:'BET',status:'PENDING',outcome:null,net:9999,stake:500,currency:'RSD',date:'2026-09-09',wager:'ODD BLACK'});
+      Store.insert('rouletteLedger',{type:'VERDICT',status:'RESOLVED',outcome:'SAVE MONEY',net:7777,currency:'RSD',date:'2026-09-09'});
+      const stats = dashboardStats('RSD');
+      return stats.rouletteRealizedProfit === 1100 && stats.realizedProfit === shopOnly + 1100;
+    })()]);
+
+  out.push(['roulette results render WIN green and LOSS red',
+    (function(){
+      state.route='roulette'; state.rouletteTab='RESULTS';
+      const html=renderShell();
+      return html.includes('pn-r3-result pos">WIN') && html.includes('pn-r3-result neg">LOSS');
+    })()]);
+
   out.push(['doctrine round snapshot rehydrates into state',
     (function(){
       D.record('FUCK OFF');
