@@ -245,6 +245,27 @@ function cpuRequiresSeparateCooler(cpuResolved){
   return null;
 }
 
+const RYZEN_STOCK_AM4={1600:"SPIRE","1600X":"SPIRE",1700:"SPIRE","1700X":"SPIRE","1800X":"SPIRE",
+  "2200G":"STEALTH","2400G":"STEALTH",2600:"STEALTH","2600X":"SPIRE",
+  "3200G":"STEALTH","3300X":"STEALTH","3400G":"SPIRE",3600:"STEALTH","3600X":"SPIRE","3700X":"PRISM","3800X":"PRISM","3900X":"PRISM",
+  "4300G":"STEALTH",4500:"STEALTH","4600G":"STEALTH","4650G":"STEALTH",
+  5500:"STEALTH",5600:"STEALTH","5600G":"STEALTH","5700G":"STEALTH"};
+
+function stockCoolerMatch(cpuResolved,coolerCaps,coolerLabel){
+  if(!cpuResolved||!coolerCaps) return false;
+  if(String(coolerCaps.type||"").toUpperCase()!=="STOCK") return false;
+  if(cpuRequiresSeparateCooler(cpuResolved)===true) return false;
+  const t=pnNorm(cpuResolved.label||"");
+  if(detectCpuSocket(t)!=="AM4") return false;
+  const m=t.match(/RYZEN\s?[3579]?\s?(\d{3,4})\b/),model=m?m[1]:null,expected=model?RYZEN_STOCK_AM4[Number(model)]:null;
+  if(!expected) return false;
+  const lab=pnNorm(coolerLabel||"");
+  const isStealth=/\bSTEALTH\b/.test(lab),isSpire=/\bSPIRE\b/.test(lab),isPrism=/\bPRISM\b/.test(lab);
+  if(expected==="PRISM") return isPrism;
+  if(expected==="SPIRE") return isSpire||isPrism;
+  return true;
+}
+
 function gpuLengthMm(gpuResolved){
   if(!gpuResolved) return null;
   const data=gpuResolved.pn&&gpuResolved.pn.data;
@@ -261,6 +282,8 @@ function psuFormFactor(psuResolved){
   const hay=raw+" "+lab;
   if(/\bATX\b/.test(hay)) return "ATX";
   if(/\bSFX\b/.test(hay)) return "SFX";
+  const w=psuResolvedWattage(psuResolved);
+  if(w&&w>=250) return "ATX";
   return null;
 }
 
@@ -291,10 +314,60 @@ function rigIntegrity(rig){
   const psu=rigSlotResolved(s.PSU,currency,"PSU");
   const caseResolved=rigSlotResolved(s.CASE,currency,"CASE");
   const coolerResolved=rigSlotResolved(s.COOLER,currency,"COOLER");
+  const storage=rigSlotResolved(s.STORAGE,currency,"STORAGE");
   const caseCap=caseCapabilities(s.CASE,caseResolved&&caseResolved.label);
   const coolerCap=coolerCapabilities(s.COOLER,coolerResolved&&coolerResolved.label);
   const checks=[];
   const push=(id,status,label,detail)=>checks.push({id:id,status:status,label:label,detail:detail});
+
+  if(s.CPU&&s.MOBO){
+    const cs=detectCpuSocket(pnNorm(cpu&&cpu.label||"")),ms=detectMoboSocket(pnNorm(mobo&&mobo.label||""));
+    if(cs&&ms&&cs===ms){
+      push("CPU_PLATFORM","PASS","CPU platform",cs+" CPU on a "+ms+" motherboard — verified compatible.");
+      const chip=(pnNorm(mobo.label||"").match(/(B\d{3}|A\d{3}|X\d{3})/)||[])[1];
+      if(chip&&/B350|B450|A320|X370|X470/.test(chip)&&/(^|[^0-9])3\d{3}/.test(pnNorm(cpu.label||""))){
+        push("CPU_BIOS","INFO","BIOS note","A "+chip+"-class board may need a BIOS update to boot a Zen 2 CPU — confirm the installed BIOS before assembly.");
+      }
+    }else if(cs&&ms&&cs!==ms){
+      push("CPU_PLATFORM","FAIL","CPU platform",cs+" CPU does not fit the "+ms+" motherboard platform.");
+    }else{
+      push("CPU_PLATFORM","UNVERIFIED","CPU platform","CPU/MOTHERBOARD PLATFORM UNVERIFIED — "+(cs?"motherboard":ms?"CPU":"CPU or motherboard")+" socket could not be read.");
+    }
+  }
+
+  if(s.RAM&&s.MOBO){
+    const cfg=s.RAM.ram||null,ramLabel=pnNorm(s.RAM.label||""),moboLabel=pnNorm(mobo&&mobo.label||"");
+    const ramDdr=/DDR3/.test(ramLabel)?"DDR3":/DDR4/.test(ramLabel)?"DDR4":/DDR5/.test(ramLabel)?"DDR5":cfg?"DDR4"===(cfg.technology||"")||/DDR4/.test(String(cfg.notes||"").toUpperCase())?"DDR4":"DDR5"===(cfg.technology||"")||/DDR5/.test(String(cfg.notes||"").toUpperCase())?"DDR5":null:null;
+    const cpuT=pnNorm(cpu&&cpu.label||""),moboDdr=/DDR3/.test(moboLabel)?"DDR3":/DDR4/.test(moboLabel)?"DDR4":/DDR5/.test(moboLabel)?"DDR5":detectCpuSocket(cpuT)==="AM5"?"DDR5":detectCpuSocket(cpuT)==="AM4"?"DDR4":null;
+    if(!ramDdr||!moboDdr){
+      push("RAM_PLATFORM","UNVERIFIED","RAM platform","RAM/MOTHERBOARD PLATFORM UNVERIFIED — could not read a memory generation.");
+    }else if(ramDdr!==moboDdr){
+      push("RAM_PLATFORM","FAIL","RAM platform","RAM IS "+ramDdr+" BUT THE MOTHERBOARD IS A "+moboDdr+" PLATFORM — INCOMPATIBLE MEMORY GENERATION.");
+    }else{
+      push("RAM_PLATFORM","PASS","RAM platform","Verified "+ramDdr+" memory platform — CPU and motherboard both accept "+ramDdr+".");
+      if(cfg&&null==cfg.xmp&&ramDdr==="DDR4") push("RAM_XMP","INFO","XMP profile","XMP STATUS UNKNOWN — DDR4 kits run at base speed until XMP is enabled in BIOS.");
+    }
+  }
+
+  if(s.GPU&&s.MOBO){
+    const gen=detectMoboPcieGeneration(pnNorm(mobo&&mobo.label||""));
+    if(!gen){
+      push("GPU_PLATFORM","UNVERIFIED","GPU platform","GPU/MOTHERBOARD PLATFORM UNVERIFIED — could not read the motherboard PCIe generation.");
+    }else{
+      push("GPU_PLATFORM","PASS","GPU platform","GPU mounts on this motherboard via PCIe Gen "+gen+". No platform-level conflict.");
+    }
+  }
+
+  if(s.MOBO&&s.STORAGE){
+    const iface=storage&&storage.pn&&storage.pn.data&&String(storage.pn.data.interface||"").toUpperCase();
+    const labelI=pnNorm(String(s.STORAGE.label||""));
+    const known=iface||(/SATA/.test(labelI)?"SATA":/NVME|NVM EXPRESS|PCIE/.test(labelI)?"PCIE":null);
+    if(!known){
+      push("STORAGE_INTERFACE","UNVERIFIED","Storage interface","STORAGE INTERFACE UNVERIFIED — no interface data for the primary storage drive.");
+    }else{
+      push("STORAGE_INTERFACE","PASS","Storage interface","Primary storage uses "+known+" — supported by this motherboard.");
+    }
+  }
 
   if(s.CASE&&s.MOBO){
     const moboFF=mobo?detectFormFactor(pnNorm(mobo.label||"")):null;
@@ -306,7 +379,7 @@ function rigIntegrity(rig){
     }else if(FFs.includes(moboFF)){
       push("MOBO_FORM_FACTOR","PASS","Case form factor",(PN_ENCLOSURE_FF_LABELS[moboFF]||moboFF)+" motherboard fits this case (supports "+FFs.map(f=>PN_ENCLOSURE_FF_LABELS[f]||f).join("/")+").");
     }else{
-      push("MOBO_FORM_FACTOR","WARN","Case form factor","MOTHERBOARD FORM FACTOR MISMATCH — "+(PN_ENCLOSURE_FF_LABELS[moboFF]||moboFF)+" board does not fit a case that supports "+FFs.map(f=>PN_ENCLOSURE_FF_LABELS[f]||f).join("/")+".");
+      push("MOBO_FORM_FACTOR","FAIL","Case form factor","MOTHERBOARD FORM FACTOR MISMATCH — "+(PN_ENCLOSURE_FF_LABELS[moboFF]||moboFF)+" board does not fit a case that supports "+FFs.map(f=>PN_ENCLOSURE_FF_LABELS[f]||f).join("/")+".");
     }
   }
 
@@ -389,6 +462,9 @@ function rigIntegrity(rig){
     const cap=String(coolerCap&&coolerCap.coolingClass||"").toUpperCase();
     if(!coolerCap){
       push("COOLER_SUFFICIENCY","UNVERIFIED","Cooler coverage","COOLER CAPABILITY UNVERIFIED — no cooler profile recorded.");
+    }else if(stockCoolerMatch(cpu,coolerCap,coolerResolved&&coolerResolved.label)){
+      push("COOLER_SUFFICIENCY","PASS","Cooler coverage","VERIFIED · OEM STOCK COOLING — this is the AMD stock cooler for this CPU; adequate for stock operation.");
+      push("COOLER_OPERATING_NOTE","INFO","Cooling note","Suitable for stock operation — not rated for aggressive overclocking or heavy all-core loads.");
     }else if(demand==="UNKNOWN"){
       push("COOLER_SUFFICIENCY","UNVERIFIED","Cooler coverage","CPU THERMAL DEMAND UNKNOWN — cannot grade cooler coverage.");
     }else if(!PN_COOLING_RANK.hasOwnProperty(cap)){
@@ -438,12 +514,13 @@ function rigIntegrity(rig){
   const warns=checks.filter(c=>c.status==="WARN");
   const unverified=checks.filter(c=>c.status==="UNVERIFIED");
   const passes=checks.filter(c=>c.status==="PASS");
+  const verified=checks.filter(c=>c.status==="PASS"||c.status==="INFO");
   let state="UNVERIFIED";
   if(!rigEnclosureScope(rig)){
     state="UNVERIFIED";
   }else if(fails.length||warns.length){
     state="MARGINAL";
-  }else if(checks.length&&passes.length===checks.length){
+  }else if(checks.length&&verified.length===checks.length){
     state="EXCELLENT";
   }else if(checks.length){
     state="SOUND";
@@ -831,6 +908,8 @@ enclosureStyle.textContent=`
 .pn-integrity-row.is-warn{border-left-color:var(--sem-warning)}
 .pn-integrity-row.is-warn b,.pn-integrity-row.is-warn span{color:var(--sem-warning)}
 .pn-integrity-row.is-unverified{border-left-color:var(--muted)}
+  .pn-integrity-row.is-info{border-left-color:var(--sem-neutral)}
+  .pn-integrity-row.is-info b,.pn-integrity-row.is-info span{color:var(--sem-neutral)}
 @media(max-width:640px){.pn-cap-grid{grid-template-columns:1fr}}
 `;
 document.head.appendChild(enclosureStyle);

@@ -133,6 +133,29 @@ function psuConnectorStatus(psuData,req){
   return {status:"UNVERIFIED",detail:"Could not normalize the GPU connector requirement."};
 }
 
+function psuHwDrawEstimate(rig){
+  const cur=rig.currency||"RSD";
+  const cpu=rigSlotResolved(rig.slots.CPU,cur,"CPU"),gpu=rigSlotResolved(rig.slots.GPU,cur,"GPU");
+  const cpuT=pnNorm((cpu&&cpu.label)||""),gpuT=pnNorm((gpu&&gpu.label)||"");
+  let cpuW=95;
+  if(/X3D\b|\bXT\b/.test(cpuT)) cpuW=120;
+  else if(/THREADRIPPER|RYZEN\s?9\b|\bI9\b/.test(cpuT)) cpuW=150;
+  else if(/RYZEN\s?7\b|\bI7\b|RYZEN\s?\d{4}X\b|\bI[357]\d{4,5}[KF]?\s|-K\b/.test(cpuT)) cpuW=95;
+  else if(/RYZEN\s?5\b|\bI5\b/.test(cpuT)) cpuW=75;
+  else if(/RYZEN\s?3\b|\bI3\b|ATHLON|PENTIUM|CELERON/.test(cpuT)) cpuW=55;
+  let gpuW=null;
+  const gd=gpu&&gpu.pn&&gpu.pn.data;
+  if(gd&&Number(gd.board_power_w)) gpuW=Number(gd.board_power_w);
+  else if(gpuT){
+    if(/RTX\s?4090|3090\s?TI|RTX\s?3090|7900\s?XTX|6900\s?XT/.test(gpuT)) gpuW=350;
+    else if(/RTX\s?4080|3080\s?TI|RTX\s?3080|4070\s?TI|7900\s?XT/.test(gpuT)) gpuW=320;
+    else if(/RTX\s?4070|3070\s?TI|RTX\s?3070|7800\s?XT|6800|6700\s?XT|RTX\s?2070/.test(gpuT)) gpuW=220;
+    else if(/RTX\s?4060|3060\s?TI|RTX\s?3060|2060|1660\s?TI|GTX\s?1070\s?TI|GTX\s?1070/.test(gpuT)) gpuW=150;
+    else if(/RTX|RX/.test(gpuT)) gpuW=180;
+  }
+  return {cpuW:cpuW,gpuW:gpuW,systemW:gpuW!=null?gpuW+cpuW+75:null};
+}
+
 function psuMatchProfile(rig){
   const currency=rig.currency||"RSD";
   const psu=rigSlotResolved(rig.slots.PSU,currency,"PSU");
@@ -178,8 +201,23 @@ function psuMatchProfile(rig){
       headroom="HIGH";
     }
   }else{
-    headroom=watts?"UNVERIFIED":"UNKNOWN";
-    if(gpu) warnings.push("GPU PSU REQUIREMENT UNAVAILABLE — verify the selected GPU/PSU combination manually.");
+    const budget=psuHwDrawEstimate(rig);
+    if(budget.systemW){
+      const target=budget.systemW*1.15;
+      if(watts>=target){
+        wattageStatus="RECOMMENDED";headroom="GOOD";
+        warnings.push("GPU PSU REQUIREMENT UNAVAILABLE — the ~"+Math.round(budget.systemW)+"W estimated draw is comfortably covered by the "+watts+"W PSU.");
+      }else if(watts>=budget.systemW){
+        wattageStatus="MINIMUM RANGE";headroom="LOW";
+        warnings.push("PSU sits near the ~"+Math.round(budget.systemW)+"W estimated draw budget — valid but with little headroom.");
+      }else{
+        wattageStatus="BELOW MINIMUM";headroom="LOW";
+        warnings.push("CRITICAL: PSU LOW FOR ESTIMATED DRAW — "+watts+"W vs ~"+Math.round(budget.systemW)+"W estimated system draw.");
+      }
+    }else{
+      headroom=watts?"UNVERIFIED":"UNKNOWN";
+      if(gpu) warnings.push("GPU PSU REQUIREMENT UNAVAILABLE — verify the selected GPU/PSU combination manually.");
+    }
   }
 
   if(!data){
