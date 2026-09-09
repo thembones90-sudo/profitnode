@@ -18,7 +18,8 @@
 
       if (key === "DASHBOARD" || key === "COMMAND" || key === "THE COMMAND"){
         title = "THE COMMAND";
-        subtitle = '<span class="pn-battle-controls" data-text="BATTLE CONTROLS ONLINE">BATTLE CONTROLS ONLINE</span>';
+        const freshness = typeof window.pnCommandFreshnessHtml === "function" ? window.pnCommandFreshnessHtml() : "";
+        subtitle = '<span class="pn-battle-controls" data-text="BATTLE CONTROLS ONLINE">BATTLE CONTROLS ONLINE</span>'+freshness;
       }
 
       return PNCorePageHeaderCommandGlitch(title,subtitle,actionHtml);
@@ -49,6 +50,42 @@
     pointer-events:none;
     opacity:.35;
     mix-blend-mode:screen;
+  }
+
+  .pn-command-updated{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    margin-left:11px;
+    padding-left:11px;
+    border-left:1px solid rgba(216,222,232,.22);
+    color:#8f8998;
+    font-family:var(--mono);
+    font-size:8px;
+    font-weight:600;
+    letter-spacing:.08em;
+    white-space:nowrap;
+    vertical-align:1px;
+  }
+
+  .pn-command-updated i{
+    width:4px;
+    height:4px;
+    border-radius:50%;
+    background:#77717e;
+  }
+
+  .pn-command-updated time{color:#bdb7c5}
+  .pn-command-updated.is-fresh{animation:pnCommandFresh 2.2s ease-out}
+  .pn-command-updated.is-fresh i{background:var(--green);box-shadow:0 0 8px rgba(62,207,126,.72)}
+
+  @keyframes pnCommandFresh{
+    0%,22% { color:var(--green);text-shadow:0 0 8px rgba(62,207,126,.28); }
+    100% { color:#8f8998;text-shadow:none; }
+  }
+
+  @media (max-width:620px){
+    .pn-command-updated{display:flex;margin:4px 0 0;padding:0;border-left:0}
   }
 
   .pn-battle-controls:before{

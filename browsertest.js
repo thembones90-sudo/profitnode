@@ -114,6 +114,8 @@ async function main() {
     check("COMMAND renders one operational priority and five telemetry channels",command.priority&&command.telemetry===5,JSON.stringify(command));
     check("COMMAND uses a compact six-metric 3x2 financial matrix at 1920px",command.kpis===6&&command.major===2&&command.cols===3&&command.heroHeight<250,JSON.stringify(command));
     check("COMMAND exposes three levels of panel hierarchy",command.panelTiers);
+    const freshness=await evaluate(`(()=>{Store.setMeta({displayCurrency:Store.load().meta.displayCurrency});render();const el=document.querySelector('[data-pn-command-updated]');return {present:!!el,fresh:el&&el.classList.contains('is-fresh'),label:el&&el.textContent,stamp:localStorage.getItem('profitnode_last_updated_v1')}})()`);
+    check("COMMAND reports and pulses on a saved data change",freshness.present&&freshness.fresh&&freshness.label.includes('LAST UPDATED')&&/^\d{4}-\d{2}-\d{2}T/.test(freshness.stamp||''),JSON.stringify(freshness));
     const commandShot=await cdp.send("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
     fs.writeFileSync(path.join(os.tmpdir(),"profitnode-command-1920.png"),Buffer.from(commandShot.data,"base64"));
     check("COMMAND renders a valid 1920x1080 frame",!!commandShot.data&&commandShot.data.length>10000);

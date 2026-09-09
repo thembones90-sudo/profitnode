@@ -200,6 +200,10 @@ const probe = `
   log('dashboard route render is the command dashboard', (ROUTES.find(r=>r.key==='dashboard').render() || '').includes('TOTAL SPENT'));
   log('command dashboard carries hero-finance markers', dashHtml.includes('pn-command-hero-finance'));
   log('command dashboard carries telemetry and priority markers', dashHtml.includes('pn-command-telemetry')&&dashHtml.includes('pn-command-priority')&&dashHtml.includes('COMMAND PRIORITY'));
+  Store.persist();
+  const commandUpdateStamp = localStorage.getItem('profitnode_last_updated_v1');
+  const freshCommandHtml = renderDashboard();
+  log('COMMAND freshness follows canonical Store persistence', /^\\d{4}-\\d{2}-\\d{2}T/.test(commandUpdateStamp||'')&&freshCommandHtml.includes('data-pn-command-updated')&&freshCommandHtml.includes('is-fresh'));
 
   const stats = dashboardStats('RSD');
   log('dashboardStats gains capital-headline keys', typeof stats.totalCapitalInvested === 'number' && typeof stats.currentInventoryValue === 'number' && typeof stats.unrealizedProfit === 'number');

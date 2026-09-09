@@ -79,6 +79,7 @@ const probe = `
   out.push(['COMMAND telemetry uses five coded operational cells', dashHtml.includes('pn-command-telemetry')&&['BLD','VLT','RPR','STL'].every(code=>dashHtml.includes('<i>'+code+'</i>'))]);
   out.push(['COMMAND financial matrix distinguishes major and supporting metrics', (dashHtml.match(/pn-terminal-kpi is-major/g)||[]).length===2&&(dashHtml.match(/pn-terminal-kpi/g)||[]).length>=6]);
   out.push(['COMMAND panels expose primary, operational and utility hierarchy', dashHtml.includes('pn-command-panel-primary')&&dashHtml.includes('pn-command-panel-operational')&&dashHtml.includes('pn-command-panel-utility')]);
+  out.push(['COMMAND header exposes a compact data freshness indicator', dashHtml.includes('data-pn-command-updated')&&dashHtml.includes('LAST UPDATED')&&dashHtml.includes('pn-command-updated')]);
 
   // --- TREASURY (isolated personal position) ---
   state.route = 'treasury';

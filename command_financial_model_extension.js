@@ -12,6 +12,56 @@
 
 (function installCommandFinancialModel(){
 
+  const PN_COMMAND_UPDATED_KEY = "profitnode_last_updated_v1";
+
+  if (!Store.__pnCommandFreshnessWrapped){
+    const pnCommandPersist = Store.persist;
+
+    Store.persist = function(){
+      const result = pnCommandPersist.apply(this,arguments);
+      const stamp = nowISO();
+
+      window.__pnCommandLastUpdated = stamp;
+      window.__pnCommandFreshUntil = Date.now()+2200;
+      try { localStorage.setItem(PN_COMMAND_UPDATED_KEY,stamp); } catch (error) {}
+      return result;
+    };
+    Store.__pnCommandFreshnessWrapped = true;
+  }
+
+  function pnCmdLatestKnownUpdate(){
+    if (window.__pnCommandLastUpdated) return window.__pnCommandLastUpdated;
+
+    try {
+      const saved = localStorage.getItem(PN_COMMAND_UPDATED_KEY);
+      if (saved) return saved;
+    } catch (error) {}
+
+    const ledger = Store.load();
+    const rows = ["projects","inventory","deals","sales","timeline","plans","repairs","rigs"]
+      .reduce((all,key)=>all.concat(ledger[key]||[]),[]);
+    const treasury = ledger.treasury||{};
+    ["balances","obligations","pendingAssets","incomes","snapshots"]
+      .forEach(key=>rows.push.apply(rows,treasury[key]||[]));
+
+    return rows.reduce((latest,row)=>{
+      const candidate = row.updatedAt||row.createdAt||"";
+      return candidate>latest ? candidate : latest;
+    },"");
+  }
+
+  window.pnCommandFreshnessHtml = function(){
+    const stamp = pnCmdLatestKnownUpdate();
+    const time = stamp
+      ? new Date(stamp).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",hour12:false})
+      : "--:--";
+    const fresh = Number(window.__pnCommandFreshUntil||0)>Date.now();
+
+    return '<span class="pn-command-updated'+(fresh?' is-fresh':'')+'" data-pn-command-updated title="Last saved PROFITNODE data change">'+
+      '<i></i><span>LAST UPDATED</span><time'+(stamp?' datetime="'+escAttr(stamp)+'"':'')+'>'+escHtml(time)+'</time>'+
+    '</span>';
+  };
+
   function pnCmdActiveCapital(currency){
     const inventory = Store.all("inventory");
     const liveIds = new Set(
