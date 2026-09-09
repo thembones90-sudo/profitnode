@@ -818,7 +818,7 @@ const enclosureProbe = `
   good.slots.COOLER = {kind:'PLANNED', catalogType:'COOLER', label:'Noctua NH-D15', cost:0, originalPrice:0, currency:'RSD', caps:{type:'DUAL TOWER',radiator:null,heightMm:160,sockets:['AM4','AM5','LGA1200','LGA1700'],coolingClass:'EXTREME',fanCount:2,noiseClass:'NORMAL',tdpClass:'EXTREME',ramClearance:'NO',notes:''}};
   good.slots.PSU = cat('PSU','BeQuiet Pure Power 750W');
   const g = E.integrity(good);
-  out.push(['known compatibility = EXCELLENT integrity, every check PASS', g.state === 'EXCELLENT' && g.checks.every(c => c.status === 'PASS')]);
+  out.push(['known compatibility = EXCELLENT integrity, every applicable check PASS', g.state === 'EXCELLENT' && g.checks.every(c => c.status === 'PASS' || c.status === 'INFO') && g.checks.some(c => c.id === 'RADIATOR_FIT' && c.status === 'INFO')]);
 
   const bad = baseRig();
   Object.keys(good.slots).forEach(k => bad.slots[k] = good.slots[k]);

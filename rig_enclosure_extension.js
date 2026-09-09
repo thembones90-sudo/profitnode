@@ -267,12 +267,24 @@ function stockCoolerMatch(cpuResolved,coolerCaps,coolerLabel){
 }
 
 function gpuLengthMm(gpuResolved){
+  const profile=gpuLengthProfile(gpuResolved);
+  return profile?profile.lengthMm:null;
+}
+
+const PN_GPU_GENERIC_ENVELOPES=[
+  {model:"GTX 1070 8GB",match:/\bGTX 1070(?: 8GB)?\b/,lengthMm:300,basis:"MSI 279 mm / Gigabyte 280 mm representative cards + 20 mm fit buffer"}
+];
+
+function gpuLengthProfile(gpuResolved){
   if(!gpuResolved) return null;
   const data=gpuResolved.pn&&gpuResolved.pn.data;
   const raw=data&&data.length_mm;
-  if(raw!=null&&!isNaN(Number(raw))) return Number(raw);
+  if(raw!=null&&!isNaN(Number(raw))) return {lengthMm:Number(raw),source:"EXACT",basis:"Exact catalog dimension"};
   const m=String(gpuResolved.label||"").match(/(\d{3})\s*mm/i);
-  return m?Number(m[1]):null;
+  if(m) return {lengthMm:Number(m[1]),source:"EXACT",basis:"Explicit selected-card dimension"};
+  const label=pnNorm((data&&data.model)||gpuResolved.label||"");
+  const envelope=PN_GPU_GENERIC_ENVELOPES.find(item=>item.match.test(label));
+  return envelope?{lengthMm:envelope.lengthMm,source:"GENERIC_ENVELOPE",model:envelope.model,basis:envelope.basis}:null;
 }
 
 function psuFormFactor(psuResolved){
@@ -385,13 +397,17 @@ function rigIntegrity(rig){
 
   if(s.CASE&&s.GPU){
     const maxGpu=caseCap?numOrNull(caseCap.maxGpuLengthMm):null;
-    const gpuLen=gpuLengthMm(gpu);
+    const gpuProfile=gpuLengthProfile(gpu),gpuLen=gpuProfile&&gpuProfile.lengthMm;
     if(!caseCap||!maxGpu){
       push("GPU_CLEARANCE","UNVERIFIED","GPU length","GPU CLEARANCE UNVERIFIED — the case has no max GPU length record.");
     }else if(!gpuLen){
       push("GPU_CLEARANCE","UNVERIFIED","GPU length","GPU CLEARANCE UNVERIFIED — could not read a length from the GPU model.");
+    }else if(gpuProfile.source==="GENERIC_ENVELOPE"&&maxGpu<gpuLen+10){
+      push("GPU_CLEARANCE","UNVERIFIED","GPU length","GPU CLEARANCE UNVERIFIED — "+maxGpu+" mm case clearance is too close to the "+gpuLen+" mm "+gpuProfile.model+" generic envelope; exact card model required.");
     }else if(gpuLen>maxGpu){
       push("GPU_CLEARANCE","WARN","GPU length","GPU EXCEEDS CASE CLEARANCE — "+gpuLen+" mm GPU does not fit the "+maxGpu+" mm case limit.");
+    }else if(gpuProfile.source==="GENERIC_ENVELOPE"){
+      push("GPU_CLEARANCE","PASS","GPU length",gpuLen+" mm conservative "+gpuProfile.model+" family envelope fits within the "+maxGpu+" mm case limit (generic envelope).");
     }else{
       push("GPU_CLEARANCE","PASS","GPU length",gpuLen+" mm GPU fits within the "+maxGpu+" mm case limit.");
     }
@@ -427,6 +443,8 @@ function rigIntegrity(rig){
         push("RADIATOR_FIT","FAIL","AIO radiator","AIO RADIATOR FIT — a "+rad+" mm radiator has no listed mount position in this case.");
       }
     }
+  }else if(s.CASE&&s.COOLER&&coolerCap){
+    push("RADIATOR_FIT","INFO","AIO radiator","Not applicable — selected cooler does not require a radiator mount.");
   }
 
   if(s.CASE&&s.PSU){
@@ -870,6 +888,8 @@ window.__pnEnclosure={
   cpuRequiresSeparateCooler:cpuRequiresSeparateCooler,
   coolerFitStatus:coolerFitStatus,
   gpuLengthMm:gpuLengthMm,
+  gpuLengthProfile:gpuLengthProfile,
+  gpuEnvelopes:PN_GPU_GENERIC_ENVELOPES,
   psuFormFactor:psuFormFactor,
   normalizeCaseCaps:normalizeCaseCaps,
   normalizeCoolerCaps:normalizeCoolerCaps,

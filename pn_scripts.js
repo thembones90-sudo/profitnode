@@ -1,10 +1,10 @@
 "use strict";
 window.__PN_SCRIPTS = [
-  "app_core.js?v=mobo-form-factor-v1",
+  "app_core.js?v=build-check-evidence-v1",
   "planner_retirement_extension.js?v=planner-retired-v1",
   "terminal_naming_extension.js?v=terminal-naming-v2",
   "psu_extension.js?v=mobo-form-factor-v1",
-  "rig_enclosure_extension.js?v=mobo-form-factor-v1",
+  "rig_enclosure_extension.js?v=build-check-evidence-v1",
   "sale_type_extension.js?v=sales-ledger-v1",
   "command_center_extension.js?v=command-center-v1",
   "command_header_glitch_extension.js?v=command-freshness-v1",
