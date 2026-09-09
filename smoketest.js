@@ -16,10 +16,11 @@ const CANONICAL_ORDER = [
   'command_center_extension.js', 'command_header_glitch_extension.js',
   'rig_bench_navigation_extension.js', 'command_financial_model_extension.js',
   'profitnode_intelligence_extension.js', 'command_separator_tune.js',
-  'roulette_extension.js', 'roulette_ui_extension.js', 'sidebar_cleanup_extension.js'
+  'roulette_extension.js', 'roulette_ui_extension.js', 'treasury_extension.js',
+  'sidebar_cleanup_extension.js'
 ];
-checks.push(['manifest has 15 scripts', entries.length === 15]);
-checks.push(['manifest order matches canonical 15-file load order',
+checks.push(['manifest has 16 scripts', entries.length === 16]);
+checks.push(['manifest order matches canonical 16-file load order',
   entries.map(e => e.split('?')[0]).join(',') === CANONICAL_ORDER.join(',')]);
 checks.push(['first script is app_core.js', entries[0].split('?')[0] === 'app_core.js']);
 checks.push(['last script is sidebar_cleanup_extension.js',
@@ -58,12 +59,12 @@ const meta = env.run(sandbox, `(() => ({
 
 const routes = meta.routes.map(r => r.split('|'));
 const routeKeys = routes.map(r => r[0]);
-checks.push(['ROUTES has 11 entries (planner retired + roulette added)', routes.length === 11]);
+checks.push(['ROUTES has 12 entries (treasury + roulette; planner retired)', routes.length === 12]);
 checks.push(['no Build Planner route', !routeKeys.includes('planner')]);
 checks.push(['roulette route present', routeKeys.includes('roulette')]);
 checks.push(['backup route still present', routeKeys.includes('backup')]);
 const expectedSeq = [
-  ['dashboard','COMMAND'], ['analytics','INTEL'], ['rigbuild','RIG BENCH'],
+  ['dashboard','COMMAND'], ['treasury','TREASURY'], ['analytics','INTEL'], ['rigbuild','RIG BENCH'],
   ['projects','BUILDS'], ['inventory','PARTS VAULT'], ['repairs','REPAIR BAY'],
   ['deals','THE HUNT'], ['sales','LEDGER'], ['history','ARCHIVE'],
   ['roulette','THE ROULETTE'], ['backup','BLACKBOX']
@@ -74,7 +75,7 @@ checks.push(['plans CSV export retired', !meta.csvKeys.includes('plans')]);
 checks.push(['roulette ledger CSV export registered', meta.csvKeys.includes('rouletteLedger')]);
 checks.push(['PN_SALE_TYPES = RIG,COMPONENT,OTHER', meta.saleTypes === 'RIG,COMPONENT,OTHER']);
 checks.push(['currencies remain RSD,EUR', meta.curren === 'RSD,EUR']);
-checks.push(['manifest still declares 15 scripts in sandbox', meta.manifestLen === 15]);
+checks.push(['manifest declares 16 scripts in sandbox', meta.manifestLen === 16]);
 const sidebarCleanup = env.run(sandbox, `(() => {
   const aside=document.createElement('aside');aside.setAttribute('class','sidebar');
   const shop=document.createElement('div');shop.setAttribute('class','brand-shop');shop.textContent='Shadezy Repair Shop';
@@ -85,6 +86,45 @@ const sidebarCleanup = env.run(sandbox, `(() => {
 checks.push(['sidebar cleanup directly hides the legacy shop label', sidebarCleanup.applied && sidebarCleanup.attr === 'hidden' && sidebarCleanup.display === 'none']);
 const sidebarSource = fs.readFileSync(path.join(DIR, 'sidebar_cleanup_extension.js'), 'utf8');
 checks.push(['sidebar cleanup has no retry interval or mutation observer', !/setInterval|MutationObserver/.test(sidebarSource)]);
+
+const treasuryProbe = env.run(sandbox, `(() => {
+  const blank = normalizeTreasury(null);
+  const sample = {
+    settings:{baseCurrency:'EUR',usdToEur:.9,rsdToEur:.01,fortressFloor:150},
+    balances:[
+      {label:'EUR cash',amount:100,currency:'EUR',include:true},
+      {label:'Payoneer',amount:100,currency:'USD',include:true},
+      {label:'Excluded bank',amount:1000,currency:'RSD',include:false}
+    ],
+    obligations:[
+      {name:'Pending',amount:20,currency:'EUR',status:'PENDING'},
+      {name:'Paid history',amount:999,currency:'EUR',status:'PAID'}
+    ],
+    pendingAssets:[
+      {name:'GPU sale',amount:50,currency:'EUR',converted:false},
+      {name:'Already cash',amount:80,currency:'EUR',converted:true}
+    ],
+    incomes:[{source:'Salary',amount:30,currency:'EUR',confidence:'HIGH'}],snapshots:[]
+  };
+  const calc = pnTreasuryCalculate(sample);
+  Store.load().treasury = normalizeTreasury(sample); Store.persist();
+  const persisted = JSON.parse(localStorage.getItem('profitnode_ledger_v1')).treasury;
+  return {
+    blankOk:Array.isArray(blank.balances)&&Array.isArray(blank.snapshots),
+    liquid:calc.liquid, obligations:calc.obligations, fortress:calc.fortress,
+    pending:calc.pending, afterPending:calc.afterPending, afterSalary:calc.afterSalary,
+    persisted:!!persisted&&persisted.settings.baseCurrency==='EUR',
+    backup:inspectBackupFile({treasury:sample}).treasury===0,
+    routeHtml:/PERSONAL TREASURY|Personal Treasury/.test(renderTreasury()) && /NEW REBALANCE/.test(renderTreasury())
+  };
+})()`);
+checks.push(['old ledgers normalize with an empty isolated treasury', treasuryProbe.blankOk]);
+checks.push(['treasury FX conversion honors include/exclude', treasuryProbe.liquid === 190]);
+checks.push(['paid obligations remain history but do not reduce fortress', treasuryProbe.obligations === 20 && treasuryProbe.fortress === 170]);
+checks.push(['converted pending assets stop counting', treasuryProbe.pending === 50 && treasuryProbe.afterPending === 220]);
+checks.push(['projected income stays outside liquid and reaches after-salary only', treasuryProbe.afterSalary === 250]);
+checks.push(['treasury persists inside the canonical ledger backup', treasuryProbe.persisted && treasuryProbe.backup]);
+checks.push(['TREASURY route renders compact rebalance entry point', treasuryProbe.routeHtml]);
 
 // --- Functional probe (Store/Actions + extensions wiring) ---
 const probe = `

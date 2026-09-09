@@ -66,7 +66,7 @@ const probe = `
   // --- NAV LABELS (terminal naming — replaces old 'RIG BUILD' assertion) ---
   render();
   const shellHtml = renderShell();
-  const navLabels = ['COMMAND','INTEL','RIG BENCH','BUILDS','PARTS VAULT','REPAIR BAY','THE HUNT','LEDGER','ARCHIVE','THE ROULETTE','BLACKBOX'];
+  const navLabels = ['COMMAND','TREASURY','INTEL','RIG BENCH','BUILDS','PARTS VAULT','REPAIR BAY','THE HUNT','LEDGER','ARCHIVE','THE ROULETTE','BLACKBOX'];
   out.push(['nav shows terminal labels', navLabels.every(l => shellHtml.includes(l))]);
   out.push(['nav no longer shows legacy labels', !shellHtml.includes('RIG BUILD') && !shellHtml.includes('BUILD PLANNER') && !shellHtml.includes('>DASHBOARD<')]);
   out.push(['nav includes the roulette button', shellHtml.includes('data-route="roulette"')]);
@@ -75,6 +75,16 @@ const probe = `
   state.route = 'dashboard';
   const dashHtml = renderShell();
   out.push(['dashboard renders command hero-finance', dashHtml.includes('pn-command-hero-finance') && dashHtml.includes('TOTAL SPENT')]);
+
+  // --- TREASURY (isolated personal position) ---
+  state.route = 'treasury';
+  const treasuryHtml = renderShell();
+  out.push(['treasury route renders seven strategic cards', (treasuryHtml.match(/pn-treasury-card/g)||[]).length >= 7 && treasuryHtml.includes('Post-Obligation Fortress')]);
+  out.push(['treasury exposes one compact rebalance entry point', treasuryHtml.includes('data-treasury-new') && treasuryHtml.includes('NEW REBALANCE')]);
+  state.treasuryDraft = pnTreasuryClone();
+  const treasuryEditHtml = renderTreasury();
+  out.push(['rebalance editor keeps four data groups and manual FX', treasuryEditHtml.includes('Liquid assets') && treasuryEditHtml.includes('Obligations') && treasuryEditHtml.includes('Pending / saleable assets') && treasuryEditHtml.includes('Salary / income projection') && treasuryEditHtml.includes('USD → EUR')]);
+  state.treasuryDraft = null;
 
   // --- INTEL (analytics route render wraps in capital velocity strip) ---
   state.route = 'analytics';
@@ -104,6 +114,7 @@ const probe = `
   const backupHtml = renderShell();
   out.push(['backup header says BLACKBOX', backupHtml.includes('>BLACKBOX<') || backupHtml.includes('BLACKBOX')]);
   out.push(['backup renders export/import panels', backupHtml.includes('data-export-backup') && backupHtml.includes('data-import-trigger')]);
+  out.push(['backup summary includes isolated treasury data', backupHtml.includes('Treasury Balances') && backupHtml.includes('Treasury Snapshots')]);
 
   // --- new markup assertions for the 12-item extension ---
   state.rigDraft = newRigDraft(null);
