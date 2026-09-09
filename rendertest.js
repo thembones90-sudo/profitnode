@@ -83,7 +83,8 @@ const probe = `
   out.push(['treasury exposes one compact rebalance entry point', treasuryHtml.includes('data-treasury-new') && treasuryHtml.includes('NEW REBALANCE')]);
   state.treasuryDraft = pnTreasuryClone();
   const treasuryEditHtml = renderTreasury();
-  out.push(['rebalance editor keeps four data groups and manual FX', treasuryEditHtml.includes('Liquid assets') && treasuryEditHtml.includes('Obligations') && treasuryEditHtml.includes('Pending / saleable assets') && treasuryEditHtml.includes('Salary / income projection') && treasuryEditHtml.includes('USD → EUR')]);
+  out.push(['rebalance editor keeps four data groups and manual FX', treasuryEditHtml.includes('Core balances') && treasuryEditHtml.includes('Obligations') && treasuryEditHtml.includes('Pending / saleable assets') && treasuryEditHtml.includes('Salary / income projection') && treasuryEditHtml.includes('USD → EUR')]);
+  out.push(['every rebalance preloads all five canonical balance sources', ['Payoneer','Preply','Fiverr','Cash (RSD)','Cash (EUR)'].every(label => treasuryEditHtml.includes('value="' + label + '"')) && (treasuryEditHtml.match(/data-treasury-core=/g)||[]).length === 5]);
   state.treasuryDraft = null;
 
   // --- INTEL (analytics route render wraps in capital velocity strip) ---

@@ -14,6 +14,6 @@ window.__PN_SCRIPTS = [
   "command_separator_tune.js?v=command-separator-tune-v1",
   "roulette_extension.js?v=roulette-core-v7",
   "roulette_ui_extension.js?v=roulette-graphics-v8-rollback-v13",
-  "treasury_extension.js?v=personal-treasury-v1",
+  "treasury_extension.js?v=treasury-core-sources-v2",
   "sidebar_cleanup_extension.js?v=product-refinement-v1"
 ];
