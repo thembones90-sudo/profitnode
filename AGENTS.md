@@ -9,7 +9,7 @@ Single-page browser app for a PC-flipping/inventory ledger ("Shadezy Repair Shop
 - `index.html` — single HTML shell, loads `pn_scripts.js` then `app.js` via `<script>` tags
 - `app.js` — **loader only**, uses `document.write()` to inject the scripts listed in `window.__PN_SCRIPTS` in order. The real entry point is `app_core.js`.
 - `pn_scripts.js` — **canonical script manifest**: defines `window.__PN_SCRIPTS` (source order + `?v=` cache-busting suffixes). The browser loader (`app.js`) and the Node test harness both consume this single list — never maintain a second copy of the order.
-- `app_core.js` — core data model, Store, Actions, rendering, and UI (~669 lines)
+- `app_core.js` — core data model, Store, Actions, rendering, and UI (~755 lines)
 - `*_extension.js` files — feature modules loaded after core. Each appends to the global namespace. Load order matters.
 - `profitnode_*_catalog_v1.json` — hardware catalogs fetched at runtime by `loadHardwareCatalog()`
 - `assets/roulette/` — image assets for the Roulette feature, referenced by manifest JSONs
@@ -20,9 +20,10 @@ All tests use Node's `vm` module to run every file in `window.__PN_SCRIPTS` in a
 
 ```bash
 node smoketest.js && node rendertest.js && node hardwaretest.js
+node browsertest.js
 ```
 
-Run all suites. They test the exact unminified code that deploys.
+Run all four suites. They test the exact unminified code that deploys. `browsertest.js` additionally boots a real Chrome/Edge against a local static server and takes a minute; it can be skipped on machines without a browser.
 
 ## Editing rules
 
@@ -45,6 +46,7 @@ Vercel static hosting, Vercel team `team_p26UJZ9MgenN71TjBdHzUeMo`. Only git-lin
 ## Gotchas
 
 - `app.js` uses `document.write()` to inject all scripts — this is intentional and the only loading mechanism. It reads the manifest from `window.__PN_SCRIPTS` (set by `pn_scripts.js`).
+- **Whenever you edit a runtime script, bump its `?v=` suffix in `pn_scripts.js`.** Browsers cache scripts by that suffix, so a stale version silently serves old behavior (this has bitten before).
 - Hardware catalogs are fetched at runtime from sibling JSON files, not bundled. They must be served alongside the HTML/JS.
 - Currencies are hardcoded: RSD and EUR with a fixed exchange rate of 117.5.
 - The app uses `crypto.randomUUID()` — tests shim this.
