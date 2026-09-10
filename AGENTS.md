@@ -35,7 +35,7 @@ Run all four suites. They test the exact unminified code that deploys. `browsert
 ## Data model
 
 - Primary key: `localStorage` key `profitnode_ledger_v1` (legacy fallback: `shadezy_ledger_v1`)
-- Ledger shape: `{ meta, projects, inventory, deals, sales, timeline, plans, repairs, rigs, roadTo, myRig }` (roadTo = ROAD TO savings quest goals; myRig = single personal-rig profile object, e.g. `{name, slots, history, health}`, or null)
+- Ledger shape: `{ meta, projects, inventory, deals, sales, timeline, plans, repairs, rigs, roadTo, myRig, mail, treasury }` (roadTo = ROAD TO savings quest goals; myRig = single personal-rig profile object, e.g. `{name, slots, history, health}`, or null; mail = MAIL shipment records, see `mail_extension.js`)
 - The MY RIG tab (`my_rig_extension.js`, loads after `road_to_extension.js`) tracks the owner's personal PC separately from shop records. Its optional Compatibility Summary reuses the RIG ASSEMBLY Build Check pipeline (`buildCheckModel`/`catalogFind`) but hides generic UNVERIFIED findings, showing only WARN/FAIL rows plus a verdict chip. ROAD TO goals can carry a `targetSlot`; at 100% the quest offers INSTALL INTO MY RIG (replaces the slot, logs an upgrade-history entry, closes the quest as PURCHASED, and the user chooses whether the replaced part moves to PARTS VAULT).
 - `Store` object handles all persistence. `Actions` object handles business logic.
 - Full JSON backup + CSV export/import is built into the app.

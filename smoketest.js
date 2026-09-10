@@ -17,14 +17,14 @@ const CANONICAL_ORDER = [
   'rig_bench_navigation_extension.js', 'command_financial_model_extension.js',
   'profitnode_intelligence_extension.js', 'command_separator_tune.js',
   'roulette_extension.js', 'roulette_ui_extension.js', 'treasury_extension.js',
-  'road_to_extension.js', 'my_rig_extension.js', 'sidebar_cleanup_extension.js'
+  'road_to_extension.js', 'my_rig_extension.js', 'sidebar_cleanup_extension.js', 'mail_extension.js'
 ];
-checks.push(['manifest has 18 scripts', entries.length === 18]);
-checks.push(['manifest order matches canonical 18-file load order',
+checks.push(['manifest has 19 scripts', entries.length === 19]);
+checks.push(['manifest order matches canonical 19-file load order',
   entries.map(e => e.split('?')[0]).join(',') === CANONICAL_ORDER.join(',')]);
 checks.push(['first script is app_core.js', entries[0].split('?')[0] === 'app_core.js']);
-checks.push(['last script is sidebar_cleanup_extension.js',
-  entries[entries.length - 1].split('?')[0] === 'sidebar_cleanup_extension.js']);
+checks.push(['last script is mail_extension.js',
+  entries[entries.length - 1].split('?')[0] === 'mail_extension.js']);
 checks.push(['every manifest entry has a cache-busting ?v= suffix',
   entries.every(e => /\.js\?v=.+/.test(e))]);
 checks.push(['every manifest entry maps to a real file on disk',
@@ -62,24 +62,26 @@ const meta = env.run(sandbox, `(() => ({
 
 const routes = meta.routes.map(r => r.split('|'));
 const routeKeys = routes.map(r => r[0]);
-checks.push(['ROUTES has 14 entries (treasury + roulette + road-to + my-rig; planner retired)', routes.length === 14]);
+checks.push(['ROUTES has 15 entries (treasury + roulette + road-to + my-rig + mail; planner retired)', routes.length === 15]);
 checks.push(['no Build Planner route', !routeKeys.includes('planner')]);
 checks.push(['roulette route present', routeKeys.includes('roulette')]);
 checks.push(['road-to route present', routeKeys.includes('roadto')]);
+checks.push(['mail route present', routeKeys.includes('mail')]);
 checks.push(['backup route still present', routeKeys.includes('backup')]);
 const expectedSeq = [
   ['dashboard','COMMAND'], ['treasury','TREASURY'], ['analytics','INTEL'], ['rigbuild','RIG ASSEMBLY'], ['myrig','MY RIG'],
   ['projects','BUILDS'], ['inventory','PARTS VAULT'], ['repairs','REPAIR BAY'],
-  ['deals','THE HUNT'], ['roadto','ROAD TO'], ['sales','LEDGER'], ['history','ARCHIVE'],
+  ['deals','THE HUNT'], ['roadto','ROAD TO'], ['sales','LEDGER'], ['mail','MAIL'], ['history','ARCHIVE'],
   ['roulette','THE ROULETTE'], ['backup','BLACKBOX']
 ];
-checks.push(['nav order/labels match terminal rename + roulette insert',
+checks.push(['nav order/labels match terminal rename + roulette insert + mail insert',
   routes.map(r => r.join('|')).join(',') === expectedSeq.map(r => r.join('|')).join(',')]);
 checks.push(['plans CSV export retired', !meta.csvKeys.includes('plans')]);
 checks.push(['roulette ledger CSV export registered', meta.csvKeys.includes('rouletteLedger')]);
+checks.push(['mail CSV export registered', meta.csvKeys.includes('mail')]);
 checks.push(['PN_SALE_TYPES = RIG,COMPONENT,OTHER', meta.saleTypes === 'RIG,COMPONENT,OTHER']);
 checks.push(['currencies remain RSD,EUR', meta.curren === 'RSD,EUR']);
-checks.push(['manifest declares 18 scripts in sandbox', meta.manifestLen === 18]);
+checks.push(['manifest declares 19 scripts in sandbox', meta.manifestLen === 19]);
 const migrationProbe = env.run(sandbox, `(() => {
   const legacy={meta:{seeded:true},inventory:[
     {id:'healthy',category:'STORAGE',driveHealthPercent:120,catalogOverride:'  Samsung 970 EVO Plus 1TB  '},
@@ -944,7 +946,62 @@ const myRigProbe = `
 `;
 const myRigResults = env.run(sandbox, myRigProbe);
 
-const all = checks.concat(results).concat(interactionResults).concat(volumeResults).concat(rigResults).concat(doctrineResults).concat(enclosureResults).concat(roadToResults).concat(myRigResults);
+const mailProbe = `
+(() => {
+  const out = [];
+  out.push(['MAIL: INCOMING added to INVENTORY_STATUSES with matching chip meta', INVENTORY_STATUSES.indexOf('INCOMING') > -1 && !!INVENTORY_STATUS_META.INCOMING]);
+
+  const proj = Store.insert('projects', {name:'Mail Test Rig', status:'BUILDING', currency:'RSD', componentIds:[], startDate:'2026-01-01', additionalCosts:0});
+  const deal = Store.insert('deals', {item:'Mail Test Deal', category:'GPU', date:'2026-01-01', purchasePrice:10000, estimatedMarketValue:15000, currency:'RSD', condition:'WORKING', source:'OTHER'});
+  const sale = Store.insert('sales', {itemName:'Mail Test Sale', saleDate:'2026-02-01', buyerPrice:50000, currency:'RSD', originalInvestment:30000, additionalCosts:0});
+  const item = Store.insert('inventory', {category:'GPU', manufacturer:'Mail', model:'Test Card', purchaseDate:'2026-01-01', purchasePrice:20000, currency:'RSD', estimatedMarketValue:25000, source:'OTHER', condition:'WORKING', status:'INCOMING'});
+
+  const mail1 = Actions.addMail({direction:'incoming', description:'GPU inbound', linkedType:'inventory', linkedId:item.id, shippingCost:1000, currency:'RSD', status:'in_transit'});
+  out.push(['MAIL: addMail stores a record on its own ledger collection', Store.all('mail').length === 1 && mailGet(mail1.id).description === 'GPU inbound']);
+
+  Actions.addMail({direction:'incoming', description:'Deal parts', linkedType:'deal', linkedId:deal.id, shippingCost:1500, currency:'RSD', status:'preparing'});
+  const dealAfter = dealDerived(deal);
+  out.push(['MAIL: incoming shipping folds into dealDerived via the existing Calc helpers, never mutating the stored deal', Math.abs(dealAfter.amountSaved - (15000-11500)) < 0.001 && Math.abs(dealAfter.discountPct - ((15000-11500)/15000*100)) < 0.001 && Store.get('deals',deal.id).purchasePrice === 10000]);
+
+  Actions.addMail({direction:'incoming', description:'Build parts', linkedType:'project', linkedId:proj.id, shippingCost:2500, currency:'RSD', status:'preparing'});
+  out.push(['MAIL: incoming shipping folds into project acquisition/build cost via Actions.projectTotalInvestment', Actions.projectTotalInvestment(Store.get('projects',proj.id)) === 2500]);
+
+  const mail4 = Actions.addMail({direction:'outgoing', description:'Shipped to buyer', linkedType:'sale', linkedId:sale.id, shippingCost:2000, currency:'RSD', status:'sent'});
+  const saleBefore = saleDerived(sale);
+  out.push(['MAIL: outgoing shipping counts toward sale expenses and recalculates profit/margin/ROI', saleBefore.totalCost === 32000 && saleBefore.profit === 18000 && Math.abs(saleBefore.margin-36) < 0.001 && Math.abs(saleBefore.roi-56.25) < 0.001]);
+
+  Actions.updateMail(mail4.id, {shippingCost:3000});
+  const saleAfterEdit = saleDerived(Store.get('sales',sale.id));
+  out.push(['MAIL: editing a linked shipment cost recalculates instead of accumulating (no double-counting)', saleAfterEdit.totalCost === 33000]);
+
+  Actions.removeMail(mail4.id);
+  const saleAfterDelete = saleDerived(Store.get('sales',sale.id));
+  out.push(['MAIL: deleting a linked shipment reverts the sale totals', saleAfterDelete.totalCost === 30000 && saleAfterDelete.profit === 20000]);
+
+  out.push(['MAIL: mailIsActive excludes only delivered/returned/lost', !mailIsActive({status:'delivered'}) && !mailIsActive({status:'returned'}) && !mailIsActive({status:'lost'}) && mailIsActive({status:'in_transit'}) && mailIsActive({status:'delayed'}) && mailIsActive({status:'preparing'})]);
+  out.push(['MAIL: mailIsProblem is exactly delayed/returned/lost', mailIsProblem({status:'delayed'}) && mailIsProblem({status:'returned'}) && mailIsProblem({status:'lost'}) && !mailIsProblem({status:'in_transit'}) && !mailIsProblem({status:'delivered'})]);
+
+  const before1 = mailGet(mail1.id);
+  const rec1 = Actions.updateMail(mail1.id, {status:'delivered'});
+  out.push(['MAIL: marking delivered auto-sets actualDeliveryDate when empty', rec1.actualDeliveryDate === todayISO()]);
+  mailCheckDeliveredOffer(before1, rec1);
+  out.push(['MAIL: delivered incoming shipment linked to INCOMING inventory offers the transition without silently forcing it', !!MailUI.offer && MailUI.offer.inventoryId === item.id && Store.get('inventory',item.id).status === 'INCOMING']);
+  Actions.updateInventory(MailUI.offer.inventoryId, {status:'IN_STORAGE'});
+  MailUI.offer = null;
+  out.push(['MAIL: applying the offered transition sets the linked inventory item to IN STORAGE', Store.get('inventory',item.id).status === 'IN_STORAGE']);
+
+  const page = renderMail();
+  out.push(['MAIL page renders the summary strip, filter tabs and Add Shipment action', page.indexOf('pn-mail-summary') > -1 && page.indexOf('data-mail-filter="PROBLEM"') > -1 && page.indexOf('data-mail-add') > -1]);
+
+  out.push(['MAIL: recognized by the backup inspector', !!inspectBackupFile({mail:[{id:'x'}]})]);
+  out.push(['MAIL: restore carries shipments through replaceAll', (function(){Store.replaceAll({meta:{},projects:[],inventory:[],deals:[],sales:[],timeline:[],plans:[],repairs:[],rigs:[],roadTo:[],myRig:null,mail:[{id:'kept-mail',direction:'incoming',description:'kept',status:'preparing'}]});return !!(Store.all('mail')||[]).find(x=>x.id==='kept-mail')})()]);
+  out.push(['MAIL: emptyLedger and migrateLedger default the collection so pre-MAIL saves load cleanly', Array.isArray(emptyLedger().mail) && Array.isArray(migrateLedger({meta:{schemaVersion:0}}).ledger.mail)]);
+  return out;
+})()
+`;
+const mailResults = env.run(sandbox, mailProbe);
+
+const all = checks.concat(results).concat(interactionResults).concat(volumeResults).concat(rigResults).concat(doctrineResults).concat(enclosureResults).concat(roadToResults).concat(myRigResults).concat(mailResults);
 let fail = 0;
 for (const [name, ok] of all){
   console.log((ok ? 'PASS' : 'FAIL') + ' - ' + name);
