@@ -36,7 +36,7 @@ const results = env.run(sandbox, `(() => {
   const out=[];
   out.push(['canonical CPU count is 279', HardwareCatalog.cpus.length===279]);
   out.push(['canonical GPU count is 123', HardwareCatalog.gpus.length===123]);
-  out.push(['canonical motherboard count is 1324 (935 legacy + ASUS + MSI + Gigabyte + ASRock AM5 registries)', HardwareCatalog.boards.length===1324]);
+  out.push(['canonical motherboard count is 1326 (935 legacy + ASUS + MSI + Gigabyte + ASRock + NZXT AM5 registries)', HardwareCatalog.boards.length===1326]);
   out.push(['canonical DDR4 family catalog is loaded', HardwareCatalog.ramFamilies.length>=100]);
   out.push(['canonical storage catalog has 1,324 entries', HardwareCatalog.storage.length===1324]);
   out.push(['storage type counts are preserved', HardwareCatalog.storage.filter(e=>e.drive_type==='NVMe SSD').length===658&&HardwareCatalog.storage.filter(e=>e.drive_type==='SATA SSD').length===462&&HardwareCatalog.storage.filter(e=>e.drive_type==='HDD').length===204]);
@@ -193,7 +193,7 @@ const results = env.run(sandbox, `(() => {
   out.push(['Gigabyte B650M resolves Gen4 GPU / Gen4 M.2 through the PCIe matrix', detectMoboPcieGeneration('Gigabyte B650M DS3H')===4&&detectMoboStoragePcieGeneration('Gigabyte B650M DS3H')===4]);
 
   const asrockAm5=HardwareCatalog.boards.filter(b=>b.brand==='ASRock'&&b.socket==='AM5');
-  out.push(['ASRock AM5 registry is live with 89 verified SKUs', asrockAm5.length===89]);
+  out.push(['ASRock AM5 registry is live with 87 verified SKUs', asrockAm5.length===87]);
   out.push(['every ASRock AM5 board carries PN_AM5_MOBO_V2 rating', asrockAm5.every(b=>b.rating_method==='PN_AM5_MOBO_V2'&&typeof b.pn_score==='number'&&b.pn_score>=0&&b.pn_score<=100&&b.pn_tier)]);
   out.push(['every ASRock AM5 board resolves to a valid tier on a valid chipset', asrockAm5.every(b=>['SCRAPBLADE','SCRAPWRAITH','REVENANT','GHOUL','ALGHOUL'].includes(b.pn_tier)&&['X870E','X870','B850','B650E','B650','A620','A620A'].includes(b.chipset)&&b.pn_tier!==b.chipset)]);
   out.push(['every ASRock AM5 board has per-board PCIe generation and M.2 detail', asrockAm5.every(b=>Number.isFinite(Number(b.primary_pcie_generation))&&b.m2_details&&b.m2_details!=='UNKNOWN'&&b.source_url)]);
@@ -208,6 +208,22 @@ const results = env.run(sandbox, `(() => {
   out.push(['ASRock mATX / Mini-ITX / E-ATX form factors normalize through the mapper', motherboardCatalogFormFactor({pn:{data:catalogFind('MOBO','ASRock B850M Steel Legend WiFi')}})==='MATX'&&motherboardCatalogFormFactor({pn:{data:catalogFind('MOBO','ASRock B650E PG-ITX WiFi')}})==='ITX'&&catalogFind('MOBO','ASRock X870E Taichi').form_factor==='E-ATX']);
   out.push(['ASRock X870E resolves Gen5 GPU / Gen5 M.2 through the PCIe matrix', detectMoboPcieGeneration('ASRock X870E Nova WiFi')===5&&detectMoboStoragePcieGeneration('ASRock X870E Nova WiFi')===5]);
   out.push(['ASRock A620 resolves Gen4 GPU / Gen4 M.2 through the PCIe matrix', detectMoboPcieGeneration('ASRock A620M Pro RS WiFi')===4&&detectMoboStoragePcieGeneration('ASRock A620M Pro RS WiFi')===4]);
+
+  const nzxtAm5=HardwareCatalog.boards.filter(b=>b.brand==='NZXT'&&b.socket==='AM5');
+  out.push(['NZXT AM5 registry is live with 4 verified SKUs', nzxtAm5.length===4]);
+  out.push(['every NZXT AM5 board carries PN_AM5_MOBO_V2 rating', nzxtAm5.every(b=>b.rating_method==='PN_AM5_MOBO_V2'&&typeof b.pn_score==='number'&&b.pn_score>=0&&b.pn_score<=100&&b.pn_tier)]);
+  out.push(['every NZXT AM5 board resolves to a valid tier on a valid chipset', nzxtAm5.every(b=>['SCRAPBLADE','SCRAPWRAITH','REVENANT','GHOUL','ALGHOUL'].includes(b.pn_tier)&&['X870E','X870','B850','B650E','B650','A620','A620A'].includes(b.chipset)&&b.pn_tier!==b.chipset)]);
+  out.push(['every NZXT AM5 board has per-board PCIe generation and M.2 detail', nzxtAm5.every(b=>Number.isFinite(Number(b.primary_pcie_generation))&&b.m2_details&&b.m2_details!=='UNKNOWN'&&b.source_url)]);
+  out.push(['no duplicate NZXT AM5 model names', nzxtAm5.every(b=>nzxtAm5.filter(x=>x.model===b.model).length===1)]);
+  out.push(['every NZXT AM5 board is RELEASED (no fabricated HOLD)', nzxtAm5.every(b=>b.availability_status==='RELEASED')]);
+  out.push(['price never enters the NZXT board score', nzxtAm5.every(b=>!('price_eur' in b)&&!('price_rsd' in b)&&b.pn_score===b.overall&&Number.isFinite(b.overall))]);
+  out.push(['NZXT N9 X870E carries verified 20+2+1 VRM, 5G/2.5G LAN, Wi-Fi 7 and USB4 facts', (function(){const b=catalogFind('MOBO','NZXT N9 X870E');return b&&b.vrm_phases===23&&b.ethernet_speed==='5G'&&b.wifi_standard==='Wi-Fi 7'&&b.usb4===true&&b.m2_slots===4&&b.pn_score>=85})()]);
+  out.push(['NZXT N7 B650E carries verified 16+2+1 VRM, ALC1220, Wi-Fi 6E and 3x M.2', (function(){const b=catalogFind('MOBO','NZXT N7 B650E');return b&&b.vrm_phases===19&&b.audio_codec==='Realtek ALC1220'&&b.wifi_standard==='Wi-Fi 6E'&&b.m2_slots===3&&b.ethernet_speed==='2.5G'&&b.pn_score>=75})()]);
+  out.push(['NZXT N7 B850 carries verified 16+2+1 VRM with 80A DrMOS and 2.5G LAN', (function(){const b=catalogFind('MOBO','NZXT N7 B850');return b&&b.vrm_phases===19&&b.power_stage_rating===80&&b.ethernet_speed==='2.5G'&&b.wifi_standard==='Wi-Fi 6E'&&b.pn_score>=75})()]);
+  out.push(['NZXT N9 X870E Kraken Elite bundle stays a distinct verified SKU', (function(){const b=catalogFind('MOBO','NZXT N9 X870E + Kraken Elite 360 RGB');return b&&b.rating_method==='PN_AM5_MOBO_V2'&&b.pn_score===catalogFind('MOBO','NZXT N9 X870E').pn_score})()]);
+  out.push(['NZXT X870E resolves Gen5 GPU / Gen5 M.2 through the PCIe matrix', detectMoboPcieGeneration('NZXT N9 X870E')===5&&detectMoboStoragePcieGeneration('NZXT N9 X870E')===5]);
+  out.push(['NZXT B650E resolves Gen5 GPU / Gen5 M.2 through the PCIe matrix', detectMoboPcieGeneration('NZXT N7 B650E')===5&&detectMoboStoragePcieGeneration('NZXT N7 B650E')===5]);
+  out.push(['ASRock AM5 rows no longer carry NZXT N-series co-branded boards', HardwareCatalog.boards.filter(b=>b.brand==='ASRock'&&/^N7|^N9/.test(b.model||'')).length===0]);
 
   const hero=catalogFind('MOBO','ASUS ROG CROSSHAIR X870E HERO');
   out.push(['X870E HERO carries verified board facts', hero&&hero.socket==='AM5'&&hero.chipset==='X870E'&&hero.primary_pcie_generation===5&&hero.wifi===true&&hero.usb4===true&&hero.m2_slots===5&&hero.form_factor==='ATX']);

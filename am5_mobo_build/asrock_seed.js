@@ -99,7 +99,6 @@ function boards(){
   L.push(["X870E","Nova",E("X870E Nova WiFi",{ vrm_phases: 23, vrm: "20+2+1", power_stage_rating: 110, eps_connectors: "2x 8-pin", pcb_layers: 8, audio_codec: "Realtek ALC4082", ethernet: "Realtek 5GbE", ethernet_speed: "5G", ethernet_controller: "Realtek RTL8126", m2_slots: 5, m2_details: "1x PCIe 5.0 x4 M.2, 3x PCIe 4.0 x4 M.2, 1x PCIe 3.0 x2 M.2", sata_ports: 4, usb4: true, post_code: true, _claim: "HIGH", _src: "Tech4Gamers ASRock X870E Nova WiFi review (verified)" }, Object.assign({}, W7))]);
   L.push(["X870E","Challenger",E("X870E Challenger WiFi White",{ form_factor: "ATX", memory_slots: 4, m2_slots: 0, sata_ports: 2, usb4: true, _claim: "LOW" }, Object.assign({}, W6E))]);
   L.push(["X870E","Challenger",E("X870E Challenger WiFi",{ form_factor: "ATX", memory_slots: 4, m2_slots: 0, sata_ports: 2, usb4: true, _claim: "LOW" }, Object.assign({}, W6E))]);
-  L.push(["X870E","N",E("N9 X870E",{ form_factor: "ATX", memory_slots: 4, m2_slots: 0, sata_ports: 0, usb4: true, _claim: "LOW" }, Object.assign({}, W6E))]);
 
   /* ---- X870 ---- */
   L.push(["X870","Taichi",E("X870 Taichi Creator",{ form_factor: "ATX", m2_slots: 4, m2_details: "1x PCIe 5.0 x4 M.2, 3x PCIe 4.0 x4 M.2", sata_ports: 4, _claim: "MEDIUM" }, Object.assign({}, W7))]);
@@ -163,7 +162,6 @@ function boards(){
   L.push(["B650","UD",E("B650M-HDV/M.2",{ form_factor: "Micro-ATX", memory_slots: 2, max_memory: 128, m2_slots: 2, m2_details: "1x PCIe 5.0 x4 M.2, 1x PCIe 4.0 x4 M.2", sata_ports: 4, _claim: "LOW" })]);
   L.push(["B650","UD",E("B650M-H/M.2+ WiFi",{ form_factor: "Micro-ATX", m2_slots: 2, m2_details: "1x PCIe 5.0 x4 M.2, 1x PCIe 4.0 x4 M.2", sata_ports: 4, _claim: "LOW" }, Object.assign({}, W6E))]);
   L.push(["B650","UD",E("B650M-H/M.2+",{ form_factor: "Micro-ATX", m2_slots: 2, m2_details: "1x PCIe 5.0 x4 M.2, 1x PCIe 4.0 x4 M.2", sata_ports: 4, _claim: "LOW" })]);
-  L.push(["B650","N",E("N7 B650E",{ form_factor: "ATX", m2_slots: 0, sata_ports: 0, _claim: "LOW" }, Object.assign({}, W6E))]);
   L.push(["B650","TW",E("B650 TW",{ form_factor: "ATX", m2_slots: 3, m2_details: "1x PCIe 5.0 x4 M.2, 2x PCIe 4.0 x4 M.2", sata_ports: 4, _claim: "LOW" })]);
 
   /* ---- A620 ---- */
