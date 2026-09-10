@@ -36,7 +36,7 @@ const results = env.run(sandbox, `(() => {
   const out=[];
   out.push(['canonical CPU count is 279', HardwareCatalog.cpus.length===279]);
   out.push(['canonical GPU count is 123', HardwareCatalog.gpus.length===123]);
-  out.push(['canonical motherboard count is 1238 (935 legacy + ASUS + MSI + Gigabyte AM5 registries)', HardwareCatalog.boards.length===1238]);
+  out.push(['canonical motherboard count is 1324 (935 legacy + ASUS + MSI + Gigabyte + ASRock AM5 registries)', HardwareCatalog.boards.length===1324]);
   out.push(['canonical DDR4 family catalog is loaded', HardwareCatalog.ramFamilies.length>=100]);
   out.push(['canonical storage catalog has 1,324 entries', HardwareCatalog.storage.length===1324]);
   out.push(['storage type counts are preserved', HardwareCatalog.storage.filter(e=>e.drive_type==='NVMe SSD').length===658&&HardwareCatalog.storage.filter(e=>e.drive_type==='SATA SSD').length===462&&HardwareCatalog.storage.filter(e=>e.drive_type==='HDD').length===204]);
@@ -191,6 +191,23 @@ const results = env.run(sandbox, `(() => {
   out.push(['Gigabyte mATX / Mini-ITX / E-ATX form factors normalize through the mapper', motherboardCatalogFormFactor({pn:{data:catalogFind('MOBO','Gigabyte X870M AORUS ELITE WIFI7')}})==='MATX'&&motherboardCatalogFormFactor({pn:{data:catalogFind('MOBO','Gigabyte B650I AORUS ULTRA')}})==='ITX'&&catalogFind('MOBO','Gigabyte X870E AORUS XTREME AI TOP').form_factor==='E-ATX']);
   out.push(['Gigabyte X870E resolves Gen5 GPU / Gen5 M.2 through the PCIe matrix', detectMoboPcieGeneration('Gigabyte B650E AORUS MASTER')===5&&detectMoboStoragePcieGeneration('Gigabyte B650E AORUS MASTER')===5]);
   out.push(['Gigabyte B650M resolves Gen4 GPU / Gen4 M.2 through the PCIe matrix', detectMoboPcieGeneration('Gigabyte B650M DS3H')===4&&detectMoboStoragePcieGeneration('Gigabyte B650M DS3H')===4]);
+
+  const asrockAm5=HardwareCatalog.boards.filter(b=>b.brand==='ASRock'&&b.socket==='AM5');
+  out.push(['ASRock AM5 registry is live with 89 verified SKUs', asrockAm5.length===89]);
+  out.push(['every ASRock AM5 board carries PN_AM5_MOBO_V2 rating', asrockAm5.every(b=>b.rating_method==='PN_AM5_MOBO_V2'&&typeof b.pn_score==='number'&&b.pn_score>=0&&b.pn_score<=100&&b.pn_tier)]);
+  out.push(['every ASRock AM5 board resolves to a valid tier on a valid chipset', asrockAm5.every(b=>['SCRAPBLADE','SCRAPWRAITH','REVENANT','GHOUL','ALGHOUL'].includes(b.pn_tier)&&['X870E','X870','B850','B650E','B650','A620','A620A'].includes(b.chipset)&&b.pn_tier!==b.chipset)]);
+  out.push(['every ASRock AM5 board has per-board PCIe generation and M.2 detail', asrockAm5.every(b=>Number.isFinite(Number(b.primary_pcie_generation))&&b.m2_details&&b.m2_details!=='UNKNOWN'&&b.source_url)]);
+  out.push(['no duplicate ASRock AM5 model names', asrockAm5.every(b=>asrockAm5.filter(x=>x.model===b.model).length===1)]);
+  out.push(['every ASRock AM5 board is RELEASED (no fabricated HOLD)', asrockAm5.every(b=>b.availability_status==='RELEASED')]);
+  out.push(['price never enters the ASRock board score', asrockAm5.every(b=>!('price_eur' in b)&&!('price_rsd' in b)&&b.pn_score===b.overall&&Number.isFinite(b.overall))]);
+  out.push(['legacy ASRock AM5 rows are covered by the new registry', ['B650M Pro RS WiFi','A620M-HDV'].every(m=>{const b=catalogFind('MOBO','ASRock '+m);return b&&b.socket==='AM5'&&b.rating_method==='PN_AM5_MOBO_V2'})]);
+  out.push(['ASRock flagships land ALGHOUL while entry boards stay below', catalogFind('MOBO','ASRock X870E Nova WiFi').pn_tier==='ALGHOUL'&&catalogFind('MOBO','ASRock X870E Nova WiFi').pn_score>=85&&catalogFind('MOBO','ASRock A620M Pro RS WiFi').pn_tier!=='ALGHOUL']);
+  out.push(['ASRock X870E Taichi carries verified 24+2+1 VRM, 5G LAN and USB4 facts', (function(){const b=catalogFind('MOBO','ASRock X870E Taichi');return b&&b.vrm_phases===27&&b.ethernet_speed==='5G'&&b.usb4===true&&b.m2_slots===4&&b.pn_score>=85})()]);
+  out.push(['ASRock B650E PG-ITX carries verified 10+2+1 VRM, ALC1220 and Mini-ITX form', (function(){const b=catalogFind('MOBO','ASRock B650E PG-ITX WiFi');return b&&b.vrm_phases===13&&b.audio_codec==='Realtek ALC1220'&&b.form_factor==='Mini-ITX'&&b.m2_slots===2&&b.pn_score>=70})()]);
+  out.push(['ASRock B850 Steel Legend carries verified 14+2+1 VRM, Wi-Fi 7 and 4x M.2', (function(){const b=catalogFind('MOBO','ASRock B850 Steel Legend WiFi');return b&&b.vrm_phases===17&&b.wifi_standard==='Wi-Fi 7'&&b.m2_slots===4&&b.pn_score>=80})()]);
+  out.push(['ASRock mATX / Mini-ITX / E-ATX form factors normalize through the mapper', motherboardCatalogFormFactor({pn:{data:catalogFind('MOBO','ASRock B850M Steel Legend WiFi')}})==='MATX'&&motherboardCatalogFormFactor({pn:{data:catalogFind('MOBO','ASRock B650E PG-ITX WiFi')}})==='ITX'&&catalogFind('MOBO','ASRock X870E Taichi').form_factor==='E-ATX']);
+  out.push(['ASRock X870E resolves Gen5 GPU / Gen5 M.2 through the PCIe matrix', detectMoboPcieGeneration('ASRock X870E Nova WiFi')===5&&detectMoboStoragePcieGeneration('ASRock X870E Nova WiFi')===5]);
+  out.push(['ASRock A620 resolves Gen4 GPU / Gen4 M.2 through the PCIe matrix', detectMoboPcieGeneration('ASRock A620M Pro RS WiFi')===4&&detectMoboStoragePcieGeneration('ASRock A620M Pro RS WiFi')===4]);
 
   const hero=catalogFind('MOBO','ASUS ROG CROSSHAIR X870E HERO');
   out.push(['X870E HERO carries verified board facts', hero&&hero.socket==='AM5'&&hero.chipset==='X870E'&&hero.primary_pcie_generation===5&&hero.wifi===true&&hero.usb4===true&&hero.m2_slots===5&&hero.form_factor==='ATX']);
