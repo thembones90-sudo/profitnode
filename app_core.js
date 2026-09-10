@@ -94,15 +94,15 @@ updateProject(e,t){const a=Store.get("projects",e);t.componentIds&&this.syncProj
 syncProjectComponents(e,t){Store.all("inventory").forEach(a=>{const r=t.includes(a.id),n=a.assignedProjectId===e;r&&!n?Store.update("inventory",a.id,{assignedProjectId:e,
 status:"SOLD"===a.status?a.status:"IN_BUILD"}):!r&&n&&Store.update("inventory",a.id,{assignedProjectId:null})})},projectTotalInvestment(e){
 const t=Store.all("inventory").filter(t=>t.assignedProjectId===e.id)
-;return t.reduce((t,a)=>t+convert(a.purchasePrice,a.currency,e.currency),0)+t.reduce((t,a)=>t+repairCostForItem(a.id,e.currency),0)+(e.additionalCosts||0)},removeProject(e){
+;return t.reduce((t,a)=>t+inventoryAcquisitionCost(a,e.currency),0)+(e.additionalCosts||0)},removeProject(e){
 Store.all("inventory").forEach(t=>{t.assignedProjectId===e&&Store.update("inventory",t.id,{assignedProjectId:null})}),Store.remove("projects",e)},finalizeProjectSale(e){
 const t=Store.all("sales").find(t=>t.projectId===e.id),a=this.projectTotalInvestment(e),r=e.completionDate||todayISO(),n={projectId:e.id,inventoryItemId:null,itemName:e.name,
 saleDate:r,buyerPrice:e.salePrice||0,originalInvestment:a-(e.additionalCosts||0),additionalCosts:e.additionalCosts||0,currency:e.currency,referenceStartDate:e.startDate,
 notes:"Auto-recorded from project sale."};if(t)Store.update("sales",t.id,n);else{const t=Store.insert("sales",n)
 ;Timeline.log("SOLD",e.name+" SOLD","Investment: "+money(a,e.currency)+" · Sale: "+money(e.salePrice,e.currency),r,"sale",t.id)}
 Store.all("inventory").filter(t=>t.assignedProjectId===e.id).forEach(e=>{Store.update("inventory",e.id,{status:"SOLD"})})},addSale(e){const t=Store.insert("sales",e)
-;t.inventoryItemId&&Store.update("inventory",t.inventoryItemId,{status:"SOLD"});const a=(t.originalInvestment||0)+(t.additionalCosts||0),r=Calc.profit(t.buyerPrice,a)
-;return Timeline.log("SOLD",t.itemName+" SOLD","Investment: "+money(a,t.currency)+" · Sale: "+money(t.buyerPrice,t.currency)+" · Profit: "+money(r,t.currency),t.saleDate,"sale",t.id),
+;t.inventoryItemId&&Store.update("inventory",t.inventoryItemId,{status:"SOLD"});const a=saleDerived(t),r=a.totalCost,n=a.profit
+;return Timeline.log("SOLD",t.itemName+" SOLD","Investment: "+money(r,t.currency)+" · Sale: "+money(t.buyerPrice,t.currency)+" · Profit: "+money(n,t.currency),t.saleDate,"sale",t.id),
 t},updateSale:(e,t)=>Store.update("sales",e,t),removeSale(e){Store.remove("sales",e)},removePlan(e){Store.remove("plans",e)},
 duplicateRig(e,t){const a=Store.get("rigs",e);if(!a)return null;const r=JSON.parse(JSON.stringify(a.slots))
 ;return Store.insert("rigs",{family:a.family,variantName:t||a.variantName+" copy",status:"PLANNED",currency:a.currency,slots:r,
@@ -136,7 +136,9 @@ copySlotToFamily(e,t){const a=Store.get("rigs",e);if(!a)return{ok:!1,error:"Rig 
 ;const r=a.slots[t]?JSON.parse(JSON.stringify(a.slots[t])):null,n=Store.all("rigs").filter(r=>r.id!==e&&r.family===a.family)
 ;return n.forEach(e=>Store.update("rigs",e.id,{slots:Object.assign({},e.slots,{[t]:r})})),{ok:!0,count:n.length}}
 };function repairCostForItem(e,t){
-return Store.all("repairs").filter(t=>t.inventoryItemId===e).reduce((e,a)=>e+convert(a.cost,a.currency,t),0)}function saleDerived(e){
+return Store.all("repairs").filter(t=>t.inventoryItemId===e).reduce((e,a)=>e+convert(a.cost,a.currency,t),0)}function inventoryAcquisitionCost(e,t){
+if(!e)return 0;const a=t||e.currency||"RSD",r=Number(e.purchasePrice)||0;
+return convert(r,e.currency,a)+repairCostForItem(e.id,a)}function saleDerived(e){
 const t=(e.originalInvestment||0)+(e.additionalCosts||0),a=Calc.profit(e.buyerPrice,t);return{totalCost:t,profit:a,roi:Calc.roi(a,t),margin:Calc.profitMargin(a,e.buyerPrice),
 daysHeld:Calc.daysHeld(e.referenceStartDate,e.saleDate)}}function projectDerived(e){
 const t=Actions.projectTotalInvestment(e),a="SOLD"===e.status&&null!=e.salePrice,r=a?Calc.profit(e.salePrice,t):null;return{totalInvestment:t,profit:r,roi:a?Calc.roi(r,t):null,
@@ -148,7 +150,7 @@ function emptyRigSlots(){return RIG_SLOTS.reduce((e,t)=>(e[t]=null,e),{})}
 function rigPriceField(e){return["cost","originalPrice"].includes(e)}
 function rigSlotResolved(e,t,a){if(!e)return null;if("INVENTORY"===e.kind){const r=Store.get("inventory",e.inventoryItemId)
 ;if(!r)return{label:"(deleted inventory item)",cost:0,originalPrice:0,missing:!0};const n=r.manufacturer+" "+r.model,s=a||("MOTHERBOARD"===r.category?"MOBO":r.category),l=catalogFind(s,n)
-;return{label:n,cost:convert(r.purchasePrice,r.currency,t),originalPrice:convert(r.estimatedMarketValue||0,r.currency,t),category:r.category,condition:r.condition,status:r.status,item:r,pn:l?{type:s,data:l,performance:Number(l.overall)||0,tierIndex:catalogTier(s,l),tier:pnTier(catalogTier(s,l))}:null}}
+;return{label:n,cost:inventoryAcquisitionCost(r,t),originalPrice:convert(r.estimatedMarketValue||0,r.currency,t),category:r.category,condition:r.condition,status:r.status,item:r,pn:l?{type:s,data:l,performance:Number(l.overall)||0,tierIndex:catalogTier(s,l),tier:pnTier(catalogTier(s,l))}:null}}
 if("CATALOG"===e.kind||"PLANNED"===e.kind&&e.catalogType){const r=e.catalogType||a,n=catalogFind(r,e.label);if("RAM"===r){const a=ramRating(e.ram),ddr=n?n.technology||"DDR4":"DDR4";return{label:(e.label||"(select RAM family)")+" "+ddr+(ramConfigText(e.ram)?" "+ramConfigText(e.ram):"")+(e.ram&&e.ram.speed?" "+e.ram.speed+" CL"+(e.ram.casLatency||"?"):""),cost:convert(e.cost||0,e.currency||t,t),originalPrice:convert(e.originalPrice||0,e.currency||t,t),planned:!0,catalog:!!n,pn:n&&a.overall?{type:r,data:n,performance:a.overall,tierIndex:a.tierIndex,tier:a.tier,ram:a}:null}}const s=n?catalogTier(r,n):null,l=n&&isStorageSlot(r)?n.overall_score:n&&n.overall;return{label:e.label||"(select planned part)",cost:convert(e.cost||0,e.currency||t,t),originalPrice:convert(e.originalPrice||0,e.currency||t,t),planned:!0,catalog:!!n,pn:n?{type:r,data:n,performance:Number(l)||0,tierIndex:s,tier:pnTier(s)}:null}}
 return{label:e.label||"(unnamed part)",cost:convert(e.cost||0,e.currency||t,t),originalPrice:convert(e.originalPrice||0,e.currency||t,t),planned:!0}}
 function rigPenaltyProfile(e,t){let a=0;const r=[],n=s=>{const l=rigSlotResolved(e.slots[s],t,s);return pnNorm(l&&l.label)},s=n("RAM"),l=n("PSU"),o=n("STORAGE"),i=n("COOLER"),c=rigSlotResolved(e.slots.CPU,t,"CPU"),d=rigSlotResolved(e.slots.GPU,t,"GPU"),u=e.slots.RAM&&e.slots.RAM.ram
@@ -260,7 +262,7 @@ function saveRigDraft(){const e=state.rigDraft;e.family&&e.family.trim()||(e.fam
 return e.id}
 function dashboardStats(e){
 const t=Store.all("inventory"),a=Store.all("sales").filter(e=>"function"!=typeof saleIsCompleted||saleIsCompleted(e)),r=Store.all("deals"),n=(Store.all("projects"),
-e),s=Store.all("repairs").reduce((e,t)=>e+convert(t.cost,t.currency,n),0),l=t.reduce((e,t)=>e+convert(t.purchasePrice,t.currency,n),0)+s,o=t.filter(e=>"SOLD"!==e.status).reduce((e,t)=>e+convert(t.estimatedMarketValue,t.currency,n),0),i=a.reduce((e,t)=>e+convert(t.buyerPrice,t.currency,n),0),c=a.reduce((e,t)=>e+convert(saleDerived(t).profit,t.currency,n),0),d=a.reduce((e,t)=>e+convert(saleDerived(t).totalCost,t.currency,n),0),u=t.filter(e=>"SOLD"!==e.status).reduce((e,t)=>e+convert(Calc.savings(t.estimatedMarketValue,t.purchasePrice),t.currency,n),0),p=Calc.roi(c,d),m=r.reduce((e,t)=>e+convert(dealDerived(t).amountSaved,t.currency,n),0),v=a.filter(e=>e.projectId).length,y=a.filter(e=>!e.projectId).length,h=r.length?r.reduce((e,t)=>e+dealScoreResolved(t).score,0)/r.length:null
+e),s=Store.all("repairs").reduce((e,t)=>e+convert(t.cost,t.currency,n),0),l=t.reduce((e,t)=>e+inventoryAcquisitionCost(t,n),0),o=t.filter(e=>"SOLD"!==e.status).reduce((e,t)=>e+convert(Number(t.estimatedMarketValue)||0,t.currency,n),0),i=a.reduce((e,t)=>e+convert(t.buyerPrice,t.currency,n),0),c=a.reduce((e,t)=>e+convert(saleDerived(t).profit,t.currency,n),0),d=a.reduce((e,t)=>e+convert(saleDerived(t).totalCost,t.currency,n),0),u=t.filter(e=>"SOLD"!==e.status).reduce((e,t)=>e+convert(Number(t.estimatedMarketValue)||0,t.currency,n)-inventoryAcquisitionCost(t,n),0),p=Calc.roi(c,d),m=r.reduce((e,t)=>e+convert(dealDerived(t).amountSaved,t.currency,n),0),v=a.filter(e=>e.projectId).length,y=a.filter(e=>!e.projectId).length,h=r.length?r.reduce((e,t)=>e+dealScoreResolved(t).score,0)/r.length:null
 ;let S=null,f=null;return a.forEach(e=>{const t=convert(saleDerived(e).profit,e.currency,n);(!S||t>S.val)&&(S={val:t,name:e.itemName,currency:n})}),r.forEach(e=>{
 const t=convert(dealDerived(e).amountSaved,e.currency,n);(!f||t<f.val)&&(f={val:t,name:e.item,currency:n})}),{totalCapitalInvested:l,currentInventoryValue:o,totalRevenue:i,
 realizedProfit:c,unrealizedProfit:u,lifetimeROI:p,totalMoneySaved:m,pcsSold:v,componentsSold:y,avgDealScore:h,bestFlip:S,worstPurchase:f,totalRepairSpend:s}}
@@ -272,7 +274,7 @@ if(a=t.match(/I[3579][- ]?(\d{4,5})/),a){const e=a[1],t=5===e.length?parseInt(e.
 ;if(t>=8&&t<=9)return"LGA1151v2 · 8th/9th Gen";if(t>=10&&t<=11)return"LGA1200 · 10th/11th Gen";if(t>=12)return"LGA1700 · 12th Gen+"}return"Other / Unclassified"}
 function profitByDimension(e,t){const a={},r=(e,t)=>{null!=e&&(a[e]=(a[e]||0)+t)};return Store.all("sales").filter(e=>"function"!=typeof saleIsCompleted||saleIsCompleted(e)).forEach(a=>{const n=convert(saleDerived(a).profit,a.currency,t)
 ;if(a.projectId){const s=Store.all("inventory").filter(e=>e.assignedProjectId===a.projectId);if(!s.length)return
-;const l=s.reduce((e,a)=>e+convert(a.purchasePrice,a.currency,t),0)||1;s.forEach(a=>{const s=convert(a.purchasePrice,a.currency,t)/l;r(e(a),n*s)})}else if(a.inventoryItemId){
+;const l=s.reduce((e,a)=>e+inventoryAcquisitionCost(a,t),0)||1;s.forEach(a=>{const s=inventoryAcquisitionCost(a,t)/l;r(e(a),n*s)})}else if(a.inventoryItemId){
 const t=Store.get("inventory",a.inventoryItemId);t&&r(e(t),n)}}),a}function profitByCategory(e){return profitByDimension(e=>e.category,e)}function profitByPlatform(e){
 return profitByDimension(classifyPlatform,e)}function profitBySource(e){return profitByDimension(e=>STATUS_LABEL(e.source||"OTHER"),e)}function profitByCondition(e){
 return profitByDimension(e=>STATUS_LABEL(e.condition||"—"),e)}const MONTH_ABBR=["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];function monthLabel(e){
@@ -540,7 +542,7 @@ style2.textContent=".field.half{flex:1 1 46%;min-width:180px}.field:not(.half){f
 marginalRoi:10};function buildVerdict(e,t){return null==e||isNaN(e)?{label:"INCOMPLETE",chip:"chip-muted"}:e<=0?{label:"NOT WORTH IT",chip:"chip-red"
 }:t>=BUILD_VERDICT_THRESHOLDS.worthRoi?{label:"WORTH BUILDING",chip:"chip-green"}:t>=BUILD_VERDICT_THRESHOLDS.marginalRoi?{label:"MARGINAL",chip:"chip-amber-outline"}:{
 label:"NOT WORTH IT",chip:"chip-red-outline"}}function planDerived(e){const t=e.currency||"RSD",a=(e.items||[]).reduce((e,a)=>{if("INVENTORY"===a.kind){
-const r=Store.get("inventory",a.inventoryItemId);return e+(r?convert(r.purchasePrice,r.currency,t):0)}return e+convert(a.cost||0,a.currency||t,t)
+const r=Store.get("inventory",a.inventoryItemId);return e+(r?inventoryAcquisitionCost(r,t):0)}return e+convert(a.cost||0,a.currency||t,t)
 },0),r=Calc.profit(e.estimatedSalePrice||0,a),n=Calc.roi(r,a);return{totalCost:a,profit:r,roi:n,margin:Calc.profitMargin(r,e.estimatedSalePrice||0),verdict:buildVerdict(r,n)}}
 function newPlannerDraft(e){return e?JSON.parse(JSON.stringify(e)):{id:null,name:"",currency:displayCurrency(),estimatedSalePrice:0,items:[],notes:""}}
 function plannerItemIndex(e,t){return e.items.findIndex(e=>e.id===t)}function plannerItemRow(e,t){

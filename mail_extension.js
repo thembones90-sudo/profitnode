@@ -89,9 +89,24 @@ function mailParseSerbianAmount(s){
   return Number.isFinite(amount)?amount:null;
 }
 function mailExtractCod(raw){
-  const text=mailFoldSerbian(raw),hit=text.match(/\b(?:pouzece|otkupnina|cod|iznos\s+za\s+uplatu)\s*(?:iznosi|je|:)?\s*([0-9][0-9.\s]*(?:,[0-9]{1,2})?)\s*(rsd|din(?:ara)?|eur|€)?/i);
+  const text=mailFoldSerbian(raw),hit=text.match(/\b(?:pouzece|otkupnina|cod|iznos\s+za\s+uplatu|iznosom\s+za\s+uplatu)\s*(?:iznosi|je|:)?\s*(?:od\s+)?([0-9][0-9.\s]*(?:,[0-9]{1,2})?)\s*(rsd|din(?:ara)?|eur|€)?/i);
   if(!hit)return{amount:null,currency:null};
   return{amount:mailParseSerbianAmount(hit[1]),currency:hit[2]&&(hit[2].toLowerCase()==="eur"||hit[2]==="€")?"EUR":"RSD"};
+}
+function mailDetectPostaScore(ctx){
+  let score=0;
+  const folded=ctx.folded,tracking=ctx.trackingNumber,urls=ctx.urls;
+  if(/^[A-Z]{2}[0-9]{9}RS$/.test(tracking))score+=40;
+  if(urls.some(u=>mailFoldSerbian(u).indexOf("posta.rs")>-1))score+=30;
+  if(urls.some(u=>mailFoldSerbian(u).indexOf("portal.posta.rs")>-1))score+=20;
+  if(/\bposta\s+srbije\b/.test(folded))score+=25;
+  if(/\bpost\s*express\b/.test(folded))score+=20;
+  if(/\bpaketomat\w*\b/.test(folded))score+=15;
+  if(/\bposiljku\b/.test(folded)||/\bpošiljaoca\b/.test(folded)||/\bposiljaoca\b/.test(folded))score+=10;
+  if(/\bkod\s+je\b/.test(folded))score+=10;
+  if(/\bdina\s+platnom\b/.test(folded))score+=10;
+  if(/\bips\s+pokazi\b/.test(folded)||/\bips\s+pokaži\b/.test(folded))score+=10;
+  return score;
 }
 function mailPad2(n){return String(n).padStart(2,"0")}
 function mailLocalDate(d){return d.getFullYear()+"-"+mailPad2(d.getMonth()+1)+"-"+mailPad2(d.getDate())}
@@ -221,6 +236,7 @@ function mailShippingSum(direction,linkedType,linkedId,currency){
 function mailOutgoingShippingCostForSale(saleId,currency){return mailShippingSum("outgoing","sale",saleId,currency)}
 function mailIncomingShippingCostForDeal(dealId,currency){return mailShippingSum("incoming","deal",dealId,currency)}
 function mailIncomingShippingCostForProject(projectId,currency){return mailShippingSum("incoming","project",projectId,currency)}
+function mailIncomingShippingCostForInventory(inventoryId,currency){return mailShippingSum("incoming","inventory",inventoryId,currency)}
 
 /* Timeline + inventory/financial integration lives on the Actions object, following the app's own convention. */
 Actions.addMail=function(data){
@@ -274,6 +290,16 @@ dealDerived=function(deal){
   if(!shipping)return PNCoreDealDerivedMail(deal);
   const effective=(deal.purchasePrice||0)+shipping;
   return{amountSaved:Calc.savings(deal.estimatedMarketValue,effective),discountPct:Calc.discountPct(deal.estimatedMarketValue,effective),mailShippingCost:shipping};
+};
+
+/* Inventory acquisition cost includes incoming shipping attached to the item or its originating deal. */
+const PNCoreInventoryAcquisitionCostMail=inventoryAcquisitionCost;
+inventoryAcquisitionCost=function(item,currency){
+  if(!item)return 0;const cur=currency||item.currency||"RSD",base=PNCoreInventoryAcquisitionCostMail(item,cur),
+  invMail=mailIncomingShippingCostForInventory(item.id,cur),
+  deal=Store.all("deals").find(d=>d.inventoryItemId===item.id),
+  dealMail=deal?mailIncomingShippingCostForDeal(deal.id,cur):0;
+  return base+invMail+dealMail;
 };
 
 /* Project-linked incoming shipping folds into acquisition/build cost via the existing single source of truth. */
