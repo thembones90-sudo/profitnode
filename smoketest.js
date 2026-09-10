@@ -968,8 +968,18 @@ const mailProbe = `
   const mail1b = Actions.updateMail(mail1.id, {trackingUrl:'posta.rs/pracenje?ID=123'});
   out.push(['MAIL: saved trackingUrl is normalized to a full https link', mail1b.trackingUrl === 'https://posta.rs/pracenje?ID=123']);
   const cardWithLink = mailCard(mail1b);
-  out.push(['MAIL card renders a TRACK ONLINE link for a stored tracking URL', cardWithLink.indexOf('TRACK ONLINE') > -1 && cardWithLink.indexOf('href="https://posta.rs/pracenje?ID=123"') > -1 && cardWithLink.indexOf('target="_blank"') > -1 && cardWithLink.indexOf('rel="noopener noreferrer"') > -1]);
+  out.push(['MAIL card renders a TRACK ONLINE button wired to the one-click track action', cardWithLink.indexOf('TRACK ONLINE') > -1 && cardWithLink.indexOf('data-mail-track="' + mail1b.id + '"') > -1]);
   out.push(['MAIL CSV export includes the Tracking Link column', CSV_EXPORTS.mail.columns.some(c => c.label === 'Tracking Link' && c.get(mail1b) === 'https://posta.rs/pracenje?ID=123')]);
+
+  out.push(['MAIL: mailCarrierPresetUrl recognizes Posta Srbije regardless of accents/casing', mailCarrierPresetUrl('Pošta Srbije') === 'https://www.posta.rs/lat/alati/pracenje-posiljke.aspx' && mailCarrierPresetUrl('POSTA SRBIJE') === 'https://www.posta.rs/lat/alati/pracenje-posiljke.aspx' && mailCarrierPresetUrl('posta  srbije') === 'https://www.posta.rs/lat/alati/pracenje-posiljke.aspx']);
+  out.push(['MAIL: mailCarrierPresetUrl returns empty for an unknown carrier', mailCarrierPresetUrl('DHL') === '']);
+
+  let calledOpenWith = null;
+  window.open = (u) => { calledOpenWith = u; };
+  const mail5 = Actions.addMail({direction:'outgoing', description:'Buyer return', trackingNumber:'CC1RS', trackingUrl:'posta.rs/lat/alati/pracenje-posiljke.aspx'});
+  mailTrack(mail5.id, null);
+  out.push(['MAIL: mailTrack copies the tracking number and opens the stored (normalized) tracking URL', calledOpenWith === 'https://posta.rs/lat/alati/pracenje-posiljke.aspx']);
+  delete window.open;
 
   Actions.addMail({direction:'incoming', description:'Deal parts', linkedType:'deal', linkedId:deal.id, shippingCost:1500, currency:'RSD', status:'preparing'});
   const dealAfter = dealDerived(deal);

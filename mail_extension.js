@@ -18,6 +18,23 @@ const MAIL_STATUS_META={
 const MAIL_PROBLEM_STATUSES=["delayed","returned","lost"];
 const MailUI={offer:null};
 
+/* Known carrier tracking-tool base URLs, keyed by a normalized (lowercased, diacritic-stripped) carrier name.
+   Only carriers whose site we've actually confirmed live here — an unverified guess is worse than no autofill.
+   Posta Srbije's own tool is a same-page AJAX lookup (no per-shipment deep link, reCAPTCHA-gated), so this can
+   only open the tool, not jump straight to the result — see mailTrack() below for the copy+open combo that gets
+   as close to one-click as the site allows. */
+const MAIL_CARRIER_URL_PRESETS={
+  "postasrbije":"https://www.posta.rs/lat/alati/pracenje-posiljke.aspx"
+};
+function mailNormalizeCarrierKey(s){
+  return String(s||"").toLowerCase()
+    .replace(/[čć]/g,"c").replace(/š/g,"s").replace(/ž/g,"z").replace(/đ/g,"dj")
+    .replace(/[^a-z0-9]/g,"");
+}
+function mailCarrierPresetUrl(carrierText){
+  return MAIL_CARRIER_URL_PRESETS[mailNormalizeCarrierKey(carrierText)]||"";
+}
+
 function mailStatusLabel(s){return String(s||"").replace(/_/g," ")}
 function mailAll(){return Store.all("mail")}
 function mailGet(id){return Store.get("mail",id)}
@@ -223,7 +240,7 @@ function mailCard(m){
     row("CARRIER","<b>"+escHtml(m.carrier||"—")+"</b>")+
     (m.trackingNumber||mailSafeUrl(m.trackingUrl)?'<div class="pn-mail-card-row pn-mail-track"><span>TRACKING</span>'+
       (m.trackingNumber?'<b class="mono">'+escHtml(m.trackingNumber)+'</b><button type="button" class="btn btn-sm btn-ghost" data-mail-copy="'+escAttr(m.trackingNumber)+'">COPY TRACKING</button>':"<b class=\"mono\">—</b>")+
-      (mailSafeUrl(m.trackingUrl)?'<a class="btn btn-sm btn-ghost" href="'+escAttr(mailSafeUrl(m.trackingUrl))+'" target="_blank" rel="noopener noreferrer">TRACK ONLINE ↗</a>':"")+
+      (mailSafeUrl(m.trackingUrl)?'<button type="button" class="btn btn-sm btn-ghost" data-mail-track="'+m.id+'" title="'+(m.trackingNumber?"Copies the tracking number, then opens the carrier’s tracker":"Opens the carrier’s tracker")+'">TRACK ONLINE ↗</button>':"")+
       "</div>":"")+
     row("SHIPPING","<b>"+money(m.shippingCost||0,m.currency)+"</b>")+
     row("SENT","<b>"+(m.dateSent?fmtDate(m.dateSent):"—")+"</b>")+
@@ -380,6 +397,27 @@ function mailClick(e){
     setTimeout(()=>{copy.textContent=original;copy.disabled=false},1200);
     return;
   }
+  const track=e.target.closest("[data-mail-track]");
+  if(track){
+    mailTrack(track.dataset.mailTrack,track);
+    return;
+  }
+}
+/* One button: copies the tracking number (so it's on the clipboard the instant the carrier's tab opens)
+   then opens the carrier's tracking tool. Most carrier sites (Posta Srbije included) don't support a
+   per-shipment deep link — this is the closest a static, backend-less app can get to one-click tracking. */
+function mailTrack(id,btn){
+  const rec=mailGet(id);
+  if(!rec)return;
+  const url=mailSafeUrl(rec.trackingUrl);
+  if(!url)return;
+  if(rec.trackingNumber)rigCopyText(rec.trackingNumber);
+  window.open(url,"_blank","noopener,noreferrer");
+  if(btn){
+    const original=btn.textContent;
+    btn.textContent=rec.trackingNumber?"OPENED — NUMBER COPIED":"OPENED";
+    setTimeout(()=>{btn.textContent=original},1600);
+  }
 }
 function mailFormInput(e){
   const el=e.target.closest("[data-mail-path]");
@@ -398,6 +436,10 @@ function mailFormChange(e){
     return;
   }
   if(path==="linkedType"){state.mailDraft.linkedId=null;render();return}
+  if(path==="carrier"&&!state.mailDraft.trackingUrl){
+    const preset=mailCarrierPresetUrl(state.mailDraft.carrier);
+    if(preset){state.mailDraft.trackingUrl=preset;render();return}
+  }
 }
 
 if(typeof ROUTES!=="undefined"&&!window.__PN_MAIL_REGISTERED){
