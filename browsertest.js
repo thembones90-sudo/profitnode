@@ -185,6 +185,16 @@ async function main() {
     await evaluate(`document.querySelector('[data-route="myrig"]').click();MyRig.ensure();render()`);
     const rig=await evaluate(`(()=>{const h1=document.querySelector('h1')&&document.querySelector('h1').textContent;return {h1:h1,hero:!!document.querySelector('.pn-myrig-hero'),loadout:document.body.textContent.includes('COMPONENT LOADOUT'),compat:!!document.querySelector('[data-myrig-compat]')}})()`);
     check("MY RIG route opens the LEVIATHAN personal rig page",rig.h1==='MY RIG'&&rig.hero&&rig.loadout&&rig.compat,JSON.stringify(rig));
+    await evaluate(`document.querySelector('[data-myrig-slot-edit="MOBO"]').click();document.querySelector('[data-myrig-catalog-search]').focus()`);
+    await cdp.send("Input.insertText",{text:"b"});
+    const oneLetter=await evaluate(`(()=>{const x=document.querySelector('[data-myrig-catalog-search]');return {value:x&&x.value,focused:document.activeElement===x}})()`);
+    await cdp.send("Input.insertText",{text:"4"});
+    await cdp.send("Input.insertText",{text:"5"});
+    await cdp.send("Input.insertText",{text:"0"});
+    await delay(150);
+    const uninterruptedSearch=await evaluate(`(()=>{const x=document.querySelector('[data-myrig-catalog-search]');return {value:x&&x.value,focused:document.activeElement===x,matches:document.querySelectorAll('[data-myrig-catalog-pick]').length}})()`);
+    check("MY RIG catalog search keeps focus and accepts uninterrupted typing",oneLetter.value==='b'&&oneLetter.focused&&uninterruptedSearch.value==='b450'&&uninterruptedSearch.focused&&uninterruptedSearch.matches>0,JSON.stringify({oneLetter,uninterruptedSearch}));
+    await evaluate(`document.querySelector('[data-myrig-cancel-slot]').click()`);
     await evaluate(`MyRig.setSlot('GPU',{label:'NVIDIA RTX 3080 10GB',specs:'10 GB GDDR6X',purchasePrice:94000,purchaseDate:'2026-01-15',notes:'',vaultId:null});MyRig.setResale(132000);render()`);
     const rigVal=await evaluate(`(()=>{const v=document.querySelector('[data-myrig-value]');return !!v&&v.textContent.includes('94.000 RSD')&&v.textContent.includes('EST. RESALE')})()`);
     check("MY RIG slot and value update persist in the live ledger",rigVal);

@@ -16,6 +16,6 @@ window.__PN_SCRIPTS = [
   "roulette_ui_extension.js?v=rig-assembly-nav-v1",
   "treasury_extension.js?v=treasury-core-sources-v2",
   "road_to_extension.js?v=roadto-myrrig-v1",
-  "my_rig_extension.js?v=myrig-v2",
+  "my_rig_extension.js?v=myrig-search-focus-v1",
   "sidebar_cleanup_extension.js?v=product-refinement-v1"
 ];
