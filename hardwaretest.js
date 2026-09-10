@@ -36,7 +36,7 @@ const results = env.run(sandbox, `(() => {
   const out=[];
   out.push(['canonical CPU count is 279', HardwareCatalog.cpus.length===279]);
   out.push(['canonical GPU count is 123', HardwareCatalog.gpus.length===123]);
-  out.push(['canonical motherboard count is 1107 (935 legacy + ASUS + MSI AM5 registries)', HardwareCatalog.boards.length===1107]);
+  out.push(['canonical motherboard count is 1238 (935 legacy + ASUS + MSI + Gigabyte AM5 registries)', HardwareCatalog.boards.length===1238]);
   out.push(['canonical DDR4 family catalog is loaded', HardwareCatalog.ramFamilies.length>=100]);
   out.push(['canonical storage catalog has 1,324 entries', HardwareCatalog.storage.length===1324]);
   out.push(['storage type counts are preserved', HardwareCatalog.storage.filter(e=>e.drive_type==='NVMe SSD').length===658&&HardwareCatalog.storage.filter(e=>e.drive_type==='SATA SSD').length===462&&HardwareCatalog.storage.filter(e=>e.drive_type==='HDD').length===204]);
@@ -174,6 +174,23 @@ const results = env.run(sandbox, `(() => {
   out.push(['MSI X870E resolves Gen5 GPU / Gen5 M.2 through the PCIe matrix', detectMoboPcieGeneration('MSI MPG X870E CARBON WIFI')===5&&detectMoboStoragePcieGeneration('MSI MPG X870E CARBON WIFI')===5]);
   out.push(['MSI B840 micro resolves Gen4 GPU / Gen4 M.2 through the PCIe matrix', detectMoboPcieGeneration('MSI PRO B840M-P WIFI')===4&&detectMoboStoragePcieGeneration('MSI PRO B840M-P WIFI')===4]);
   out.push(['MSI X870 TOMAHAWK carries verified Gen5 PCB, USB4 and RTL8126-CG facts', (function(){const b=catalogFind('MOBO','MSI MAG X870 TOMAHAWK WIFI');return b&&b.primary_pcie_generation===5&&b.m2_slots===4&&b.usb4===true&&String(b.ethernet_controller).includes('RTL8126')})()]);
+
+  const gigAm5=HardwareCatalog.boards.filter(b=>b.brand==='Gigabyte'&&b.socket==='AM5');
+  out.push(['Gigabyte AM5 registry is live with 136 verified SKUs', gigAm5.length===136]);
+  out.push(['every Gigabyte AM5 board carries PN_AM5_MOBO_V2 rating', gigAm5.every(b=>b.rating_method==='PN_AM5_MOBO_V2'&&typeof b.pn_score==='number'&&b.pn_score>=0&&b.pn_score<=100&&b.pn_tier)]);
+  out.push(['every Gigabyte AM5 board resolves to a valid tier on a valid chipset', gigAm5.every(b=>['SCRAPBLADE','SCRAPWRAITH','REVENANT','GHOUL','ALGHOUL'].includes(b.pn_tier)&&['X870E','X870','B850','B840','B650E','B650','X670E','X670','A620'].includes(b.chipset)&&b.pn_tier!==b.chipset)]);
+  out.push(['every Gigabyte AM5 board has per-board PCIe generation and M.2 detail', gigAm5.every(b=>Number.isFinite(Number(b.primary_pcie_generation))&&b.m2_details&&b.m2_details!=='UNKNOWN'&&b.source_url)]);
+  out.push(['no duplicate Gigabyte AM5 model keys', (function(){const s=new Set();let dup=0;gigAm5.forEach(b=>{const k=(b.brand+' '+b.model).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();s.has(k)&&dup++,s.add(k)});return dup===0})()]);
+  out.push(['every Gigabyte AM5 board is RELEASED (no fabricated HOLD)', gigAm5.every(b=>b.availability_status==='RELEASED')]);
+  out.push(['price never enters the Gigabyte board score', gigAm5.every(b=>!('price_eur' in b)&&!('price_rsd' in b)&&b.pn_score===b.overall&&Number.isFinite(b.overall))]);
+  out.push(['all five legacy Gigabyte AM5 rows are covered by the new registry', ['B650 AORUS ELITE AX','B650M DS3H','X670E AORUS MASTER','X870E AORUS MASTER','B650I AORUS ULTRA'].every(m=>{const b=catalogFind('MOBO','Gigabyte '+m);return b&&b.socket==='AM5'&&b.rating_method==='PN_AM5_MOBO_V2'})]);
+  out.push(['Gigabyte flagships land ALGHOUL while entry boards stay below', catalogFind('MOBO','Gigabyte X870E AORUS XTREME AI TOP').pn_tier==='ALGHOUL'&&catalogFind('MOBO','Gigabyte X870E AORUS XTREME AI TOP').pn_score>=85&&catalogFind('MOBO','Gigabyte A620M H').pn_tier!=='ALGHOUL'&&catalogFind('MOBO','Gigabyte B650 AORUS ELITE AX').pn_score>=75]);
+  out.push(['Gigabyte X870 AORUS INFINITY carries verified 5G, 22-phase VRM and USB4 facts', (function(){const b=catalogFind('MOBO','Gigabyte X870 AORUS INFINITY');return b&&b.ethernet_speed==='5G'&&b.vrm_phases===22&&b.usb4===true&&b.m2_slots===3&&b.pn_score>=85})()]);
+  out.push(['Gigabyte Wi-Fi / non-Wi-Fi submodels are distinct SKUs', catalogFind('MOBO','Gigabyte B650M DS3H').wifi===false&&catalogFind('MOBO','Gigabyte B650I AORUS ULTRA').wifi===true&&catalogFind('MOBO','Gigabyte B650I AORUS ULTRA').wifi_standard==='Wi-Fi 6E'&&catalogFind('MOBO','Gigabyte B650E AORUS PRO X USB4').wifi_standard==='Wi-Fi 7']);
+  out.push(['Gigabyte ICE submodels stay distinct and carry the white variant tag', (function(){const ice=catalogFind('MOBO','Gigabyte X870E AORUS MASTER X3D ICE');const std=catalogFind('MOBO','Gigabyte X870E AORUS MASTER X3D');return ice&&ice.model!==std.model&&ice.color_variant==='ICE'&&std.color_variant===null})()]);
+  out.push(['Gigabyte mATX / Mini-ITX / E-ATX form factors normalize through the mapper', motherboardCatalogFormFactor({pn:{data:catalogFind('MOBO','Gigabyte X870M AORUS ELITE WIFI7')}})==='MATX'&&motherboardCatalogFormFactor({pn:{data:catalogFind('MOBO','Gigabyte B650I AORUS ULTRA')}})==='ITX'&&catalogFind('MOBO','Gigabyte X870E AORUS XTREME AI TOP').form_factor==='E-ATX']);
+  out.push(['Gigabyte X870E resolves Gen5 GPU / Gen5 M.2 through the PCIe matrix', detectMoboPcieGeneration('Gigabyte B650E AORUS MASTER')===5&&detectMoboStoragePcieGeneration('Gigabyte B650E AORUS MASTER')===5]);
+  out.push(['Gigabyte B650M resolves Gen4 GPU / Gen4 M.2 through the PCIe matrix', detectMoboPcieGeneration('Gigabyte B650M DS3H')===4&&detectMoboStoragePcieGeneration('Gigabyte B650M DS3H')===4]);
 
   const hero=catalogFind('MOBO','ASUS ROG CROSSHAIR X870E HERO');
   out.push(['X870E HERO carries verified board facts', hero&&hero.socket==='AM5'&&hero.chipset==='X870E'&&hero.primary_pcie_generation===5&&hero.wifi===true&&hero.usb4===true&&hero.m2_slots===5&&hero.form_factor==='ATX']);
