@@ -1,27 +1,823 @@
 {
   "schema_version": "1.0",
-  "catalog": "PN DDR4 RAM Foundation v1",
-  "scope": "Desktop DDR4 UDIMM consumer and gaming memory",
+  "catalog": "PN RAM Foundation v1",
+  "scope": "Desktop DDR4 UDIMM and DDR5 UDIMM consumer and gaming memory",
   "technology": "DDR4",
   "families": [
-    {"brand":"Corsair","series":"ValueSelect DDR4"},{"brand":"Corsair","series":"Vengeance LPX"},{"brand":"Corsair","series":"Vengeance RGB","rgb":true},{"brand":"Corsair","series":"Vengeance RGB PRO","rgb":true},{"brand":"Corsair","series":"Vengeance RGB PRO SL","rgb":true},{"brand":"Corsair","series":"Vengeance RGB RS","rgb":true},{"brand":"Corsair","series":"Vengeance RGB RT","rgb":true},{"brand":"Corsair","series":"Dominator Platinum"},{"brand":"Corsair","series":"Dominator Platinum RGB","rgb":true},
-    {"brand":"HyperX","series":"Fury DDR4"},{"brand":"HyperX","series":"Fury RGB DDR4","rgb":true},{"brand":"HyperX","series":"Savage DDR4"},{"brand":"HyperX","series":"Predator DDR4"},{"brand":"HyperX","series":"Predator RGB DDR4","rgb":true},{"brand":"Kingston","series":"Fury Beast DDR4"},{"brand":"Kingston","series":"Fury Beast RGB DDR4","rgb":true},{"brand":"Kingston","series":"Fury Renegade DDR4"},{"brand":"Kingston","series":"Fury Renegade RGB DDR4","rgb":true},
-    {"brand":"G.Skill","series":"Aegis"},{"brand":"G.Skill","series":"Ripjaws 4"},{"brand":"G.Skill","series":"Ripjaws V"},{"brand":"G.Skill","series":"Flare X"},{"brand":"G.Skill","series":"Sniper X"},{"brand":"G.Skill","series":"Trident Z"},{"brand":"G.Skill","series":"Trident Z RGB","rgb":true},{"brand":"G.Skill","series":"Trident Z Neo","rgb":true},{"brand":"G.Skill","series":"Trident Z Royal","rgb":true},{"brand":"G.Skill","series":"Trident Z Royal Elite","rgb":true},
-    {"brand":"Crucial","series":"Standard DDR4"},{"brand":"Ballistix","series":"Sport"},{"brand":"Ballistix","series":"Sport LT"},{"brand":"Ballistix","series":"Sport AT"},{"brand":"Ballistix","series":"Tactical"},{"brand":"Ballistix","series":"Tactical Tracer RGB","rgb":true},{"brand":"Ballistix","series":"Elite"},{"brand":"Crucial","series":"Ballistix"},{"brand":"Crucial","series":"Ballistix RGB","rgb":true},{"brand":"Crucial","series":"Ballistix MAX"},{"brand":"Crucial","series":"Ballistix MAX RGB","rgb":true},
-    {"brand":"Patriot","series":"Signature Line DDR4"},{"brand":"Patriot","series":"Signature Premium DDR4"},{"brand":"Patriot","series":"Viper 4"},{"brand":"Patriot","series":"Viper 4 Blackout"},{"brand":"Patriot","series":"Viper Elite"},{"brand":"Patriot","series":"Viper Elite II"},{"brand":"Patriot","series":"Viper Steel"},{"brand":"Patriot","series":"Viper Steel RGB","rgb":true},{"brand":"Patriot","series":"Viper RGB","rgb":true},
-    {"brand":"TeamGroup","series":"Elite"},{"brand":"TeamGroup","series":"Elite Plus"},{"brand":"T-Force","series":"Vulcan"},{"brand":"T-Force","series":"Vulcan Z"},{"brand":"T-Force","series":"Vulcan TUF"},{"brand":"T-Force","series":"Dark"},{"brand":"T-Force","series":"Dark Z"},{"brand":"T-Force","series":"Dark Za"},{"brand":"T-Force","series":"Delta RGB","rgb":true},{"brand":"T-Force","series":"Delta RGB TUF","rgb":true},{"brand":"T-Force","series":"Night Hawk RGB","rgb":true},{"brand":"T-Force","series":"Xtreem"},{"brand":"T-Force","series":"Xtreem ARGB","rgb":true},{"brand":"T-Force","series":"Zeus"},
-    {"brand":"ADATA","series":"Premier DDR4"},{"brand":"XPG","series":"Gammix D10"},{"brand":"XPG","series":"Gammix D20"},{"brand":"XPG","series":"Gammix D30"},{"brand":"XPG","series":"Gammix D45"},{"brand":"XPG","series":"Spectrix D40","rgb":true},{"brand":"XPG","series":"Spectrix D41","rgb":true},{"brand":"XPG","series":"Spectrix D45G","rgb":true},{"brand":"XPG","series":"Spectrix D50","rgb":true},{"brand":"XPG","series":"Spectrix D50 Xtreme","rgb":true},{"brand":"XPG","series":"Spectrix D60G","rgb":true},
-    {"brand":"GeIL","series":"Pristine"},{"brand":"GeIL","series":"Potenza"},{"brand":"GeIL","series":"Super Luce"},{"brand":"GeIL","series":"Super Luce RGB Sync","rgb":true},{"brand":"GeIL","series":"EVO Potenza"},{"brand":"GeIL","series":"EVO Spear"},{"brand":"GeIL","series":"EVO Spear Phantom Gaming"},{"brand":"GeIL","series":"EVO X","rgb":true},{"brand":"GeIL","series":"EVO X II","rgb":true},{"brand":"GeIL","series":"Orion"},{"brand":"GeIL","series":"Orion RGB","rgb":true},{"brand":"GeIL","series":"Dragon RAM"},{"brand":"GeIL","series":"Polaris RGB DDR4","rgb":true},
-    {"brand":"PNY","series":"XLR8 Gaming DDR4"},{"brand":"Silicon Power","series":"Gaming DDR4"},{"brand":"KLEVV","series":"BOLT X"},{"brand":"KLEVV","series":"CRAS X RGB","rgb":true},{"brand":"Goodram","series":"DDR4 UDIMM"},{"brand":"IRDM","series":"PRO DDR4"},{"brand":"Apacer","series":"NOX DDR4"},{"brand":"Thermaltake","series":"TOUGHRAM"},{"brand":"Thermaltake","series":"TOUGHRAM RGB","rgb":true},{"brand":"Mushkin","series":"Redline DDR4"},{"brand":"OLOy","series":"Blade DDR4"},{"brand":"Lexar","series":"THOR DDR4"}
+    {
+      "brand": "Corsair",
+      "series": "ValueSelect DDR4"
+    },
+    {
+      "brand": "Corsair",
+      "series": "Vengeance LPX"
+    },
+    {
+      "brand": "Corsair",
+      "series": "Vengeance RGB",
+      "rgb": true
+    },
+    {
+      "brand": "Corsair",
+      "series": "Vengeance RGB PRO",
+      "rgb": true
+    },
+    {
+      "brand": "Corsair",
+      "series": "Vengeance RGB PRO SL",
+      "rgb": true
+    },
+    {
+      "brand": "Corsair",
+      "series": "Vengeance RGB RS",
+      "rgb": true
+    },
+    {
+      "brand": "Corsair",
+      "series": "Vengeance RGB RT",
+      "rgb": true
+    },
+    {
+      "brand": "Corsair",
+      "series": "Dominator Platinum"
+    },
+    {
+      "brand": "Corsair",
+      "series": "Dominator Platinum RGB",
+      "rgb": true
+    },
+    {
+      "brand": "HyperX",
+      "series": "Fury DDR4"
+    },
+    {
+      "brand": "HyperX",
+      "series": "Fury RGB DDR4",
+      "rgb": true
+    },
+    {
+      "brand": "HyperX",
+      "series": "Savage DDR4"
+    },
+    {
+      "brand": "HyperX",
+      "series": "Predator DDR4"
+    },
+    {
+      "brand": "HyperX",
+      "series": "Predator RGB DDR4",
+      "rgb": true
+    },
+    {
+      "brand": "Kingston",
+      "series": "Fury Beast DDR4"
+    },
+    {
+      "brand": "Kingston",
+      "series": "Fury Beast RGB DDR4",
+      "rgb": true
+    },
+    {
+      "brand": "Kingston",
+      "series": "Fury Renegade DDR4"
+    },
+    {
+      "brand": "Kingston",
+      "series": "Fury Renegade RGB DDR4",
+      "rgb": true
+    },
+    {
+      "brand": "G.Skill",
+      "series": "Aegis"
+    },
+    {
+      "brand": "G.Skill",
+      "series": "Ripjaws 4"
+    },
+    {
+      "brand": "G.Skill",
+      "series": "Ripjaws V"
+    },
+    {
+      "brand": "G.Skill",
+      "series": "Flare X"
+    },
+    {
+      "brand": "G.Skill",
+      "series": "Sniper X"
+    },
+    {
+      "brand": "G.Skill",
+      "series": "Trident Z"
+    },
+    {
+      "brand": "G.Skill",
+      "series": "Trident Z RGB",
+      "rgb": true
+    },
+    {
+      "brand": "G.Skill",
+      "series": "Trident Z Neo",
+      "rgb": true
+    },
+    {
+      "brand": "G.Skill",
+      "series": "Trident Z Royal",
+      "rgb": true
+    },
+    {
+      "brand": "G.Skill",
+      "series": "Trident Z Royal Elite",
+      "rgb": true
+    },
+    {
+      "brand": "Crucial",
+      "series": "Standard DDR4"
+    },
+    {
+      "brand": "Ballistix",
+      "series": "Sport"
+    },
+    {
+      "brand": "Ballistix",
+      "series": "Sport LT"
+    },
+    {
+      "brand": "Ballistix",
+      "series": "Sport AT"
+    },
+    {
+      "brand": "Ballistix",
+      "series": "Tactical"
+    },
+    {
+      "brand": "Ballistix",
+      "series": "Tactical Tracer RGB",
+      "rgb": true
+    },
+    {
+      "brand": "Ballistix",
+      "series": "Elite"
+    },
+    {
+      "brand": "Crucial",
+      "series": "Ballistix"
+    },
+    {
+      "brand": "Crucial",
+      "series": "Ballistix RGB",
+      "rgb": true
+    },
+    {
+      "brand": "Crucial",
+      "series": "Ballistix MAX"
+    },
+    {
+      "brand": "Crucial",
+      "series": "Ballistix MAX RGB",
+      "rgb": true
+    },
+    {
+      "brand": "Patriot",
+      "series": "Signature Line DDR4"
+    },
+    {
+      "brand": "Patriot",
+      "series": "Signature Premium DDR4"
+    },
+    {
+      "brand": "Patriot",
+      "series": "Viper 4"
+    },
+    {
+      "brand": "Patriot",
+      "series": "Viper 4 Blackout"
+    },
+    {
+      "brand": "Patriot",
+      "series": "Viper Elite"
+    },
+    {
+      "brand": "Patriot",
+      "series": "Viper Elite II"
+    },
+    {
+      "brand": "Patriot",
+      "series": "Viper Steel"
+    },
+    {
+      "brand": "Patriot",
+      "series": "Viper Steel RGB",
+      "rgb": true
+    },
+    {
+      "brand": "Patriot",
+      "series": "Viper RGB",
+      "rgb": true
+    },
+    {
+      "brand": "TeamGroup",
+      "series": "Elite"
+    },
+    {
+      "brand": "TeamGroup",
+      "series": "Elite Plus"
+    },
+    {
+      "brand": "T-Force",
+      "series": "Vulcan"
+    },
+    {
+      "brand": "T-Force",
+      "series": "Vulcan Z"
+    },
+    {
+      "brand": "T-Force",
+      "series": "Vulcan TUF"
+    },
+    {
+      "brand": "T-Force",
+      "series": "Dark"
+    },
+    {
+      "brand": "T-Force",
+      "series": "Dark Z"
+    },
+    {
+      "brand": "T-Force",
+      "series": "Dark Za"
+    },
+    {
+      "brand": "T-Force",
+      "series": "Delta RGB",
+      "rgb": true
+    },
+    {
+      "brand": "T-Force",
+      "series": "Delta RGB TUF",
+      "rgb": true
+    },
+    {
+      "brand": "T-Force",
+      "series": "Night Hawk RGB",
+      "rgb": true
+    },
+    {
+      "brand": "T-Force",
+      "series": "Xtreem"
+    },
+    {
+      "brand": "T-Force",
+      "series": "Xtreem ARGB",
+      "rgb": true
+    },
+    {
+      "brand": "T-Force",
+      "series": "Zeus"
+    },
+    {
+      "brand": "ADATA",
+      "series": "Premier DDR4"
+    },
+    {
+      "brand": "XPG",
+      "series": "Gammix D10"
+    },
+    {
+      "brand": "XPG",
+      "series": "Gammix D20"
+    },
+    {
+      "brand": "XPG",
+      "series": "Gammix D30"
+    },
+    {
+      "brand": "XPG",
+      "series": "Gammix D45"
+    },
+    {
+      "brand": "XPG",
+      "series": "Spectrix D40",
+      "rgb": true
+    },
+    {
+      "brand": "XPG",
+      "series": "Spectrix D41",
+      "rgb": true
+    },
+    {
+      "brand": "XPG",
+      "series": "Spectrix D45G",
+      "rgb": true
+    },
+    {
+      "brand": "XPG",
+      "series": "Spectrix D50",
+      "rgb": true
+    },
+    {
+      "brand": "XPG",
+      "series": "Spectrix D50 Xtreme",
+      "rgb": true
+    },
+    {
+      "brand": "XPG",
+      "series": "Spectrix D60G",
+      "rgb": true
+    },
+    {
+      "brand": "GeIL",
+      "series": "Pristine"
+    },
+    {
+      "brand": "GeIL",
+      "series": "Potenza"
+    },
+    {
+      "brand": "GeIL",
+      "series": "Super Luce"
+    },
+    {
+      "brand": "GeIL",
+      "series": "Super Luce RGB Sync",
+      "rgb": true
+    },
+    {
+      "brand": "GeIL",
+      "series": "EVO Potenza"
+    },
+    {
+      "brand": "GeIL",
+      "series": "EVO Spear"
+    },
+    {
+      "brand": "GeIL",
+      "series": "EVO Spear Phantom Gaming"
+    },
+    {
+      "brand": "GeIL",
+      "series": "EVO X",
+      "rgb": true
+    },
+    {
+      "brand": "GeIL",
+      "series": "EVO X II",
+      "rgb": true
+    },
+    {
+      "brand": "GeIL",
+      "series": "Orion"
+    },
+    {
+      "brand": "GeIL",
+      "series": "Orion RGB",
+      "rgb": true
+    },
+    {
+      "brand": "GeIL",
+      "series": "Dragon RAM"
+    },
+    {
+      "brand": "GeIL",
+      "series": "Polaris RGB DDR4",
+      "rgb": true
+    },
+    {
+      "brand": "PNY",
+      "series": "XLR8 Gaming DDR4"
+    },
+    {
+      "brand": "Silicon Power",
+      "series": "Gaming DDR4"
+    },
+    {
+      "brand": "KLEVV",
+      "series": "BOLT X"
+    },
+    {
+      "brand": "KLEVV",
+      "series": "CRAS X RGB",
+      "rgb": true
+    },
+    {
+      "brand": "Goodram",
+      "series": "DDR4 UDIMM"
+    },
+    {
+      "brand": "IRDM",
+      "series": "PRO DDR4"
+    },
+    {
+      "brand": "Apacer",
+      "series": "NOX DDR4"
+    },
+    {
+      "brand": "Thermaltake",
+      "series": "TOUGHRAM"
+    },
+    {
+      "brand": "Thermaltake",
+      "series": "TOUGHRAM RGB",
+      "rgb": true
+    },
+    {
+      "brand": "Mushkin",
+      "series": "Redline DDR4"
+    },
+    {
+      "brand": "OLOy",
+      "series": "Blade DDR4"
+    },
+    {
+      "brand": "Lexar",
+      "series": "THOR DDR4"
+    },
+    {
+      "brand": "Kingston",
+      "series": "Fury Beast DDR5",
+      "technology": "DDR5",
+      "rgb": false,
+      "kits": [
+        {
+          "capacity": 16,
+          "sticks": 2,
+          "speed": 4800,
+          "cas": 38,
+          "expo": false,
+          "xmp": true
+        },
+        {
+          "capacity": 32,
+          "sticks": 2,
+          "speed": 5600,
+          "cas": 36,
+          "expo": true,
+          "xmp": true
+        },
+        {
+          "capacity": 32,
+          "sticks": 2,
+          "speed": 6000,
+          "cas": 30,
+          "expo": true,
+          "xmp": false
+        },
+        {
+          "capacity": 64,
+          "sticks": 2,
+          "speed": 5600,
+          "cas": 36,
+          "expo": true,
+          "xmp": true
+        }
+      ]
+    },
+    {
+      "brand": "Kingston",
+      "series": "Fury Beast DDR5 RGB",
+      "technology": "DDR5",
+      "rgb": true,
+      "kits": [
+        {
+          "capacity": 32,
+          "sticks": 2,
+          "speed": 6000,
+          "cas": 30,
+          "expo": true,
+          "xmp": false
+        },
+        {
+          "capacity": 64,
+          "sticks": 2,
+          "speed": 5600,
+          "cas": 36,
+          "expo": true,
+          "xmp": true
+        }
+      ]
+    },
+    {
+      "brand": "Kingston",
+      "series": "Fury Renegade DDR5",
+      "technology": "DDR5",
+      "rgb": false,
+      "kits": [
+        {
+          "capacity": 32,
+          "sticks": 2,
+          "speed": 6400,
+          "cas": 32,
+          "expo": true,
+          "xmp": true
+        },
+        {
+          "capacity": 64,
+          "sticks": 2,
+          "speed": 6000,
+          "cas": 32,
+          "expo": true,
+          "xmp": true
+        }
+      ]
+    },
+    {
+      "brand": "G.Skill",
+      "series": "Flare X5",
+      "technology": "DDR5",
+      "rgb": false,
+      "kits": [
+        {
+          "capacity": 32,
+          "sticks": 2,
+          "speed": 6000,
+          "cas": 30,
+          "expo": true,
+          "xmp": false
+        },
+        {
+          "capacity": 64,
+          "sticks": 2,
+          "speed": 6000,
+          "cas": 30,
+          "expo": true,
+          "xmp": false
+        },
+        {
+          "capacity": 32,
+          "sticks": 2,
+          "speed": 5600,
+          "cas": 36,
+          "expo": true,
+          "xmp": false
+        }
+      ]
+    },
+    {
+      "brand": "G.Skill",
+      "series": "Trident Z5",
+      "technology": "DDR5",
+      "rgb": true,
+      "kits": [
+        {
+          "capacity": 32,
+          "sticks": 2,
+          "speed": 6400,
+          "cas": 32,
+          "expo": true,
+          "xmp": true
+        },
+        {
+          "capacity": 64,
+          "sticks": 2,
+          "speed": 6000,
+          "cas": 32,
+          "expo": true,
+          "xmp": true
+        },
+        {
+          "capacity": 32,
+          "sticks": 2,
+          "speed": 6000,
+          "cas": 30,
+          "expo": true,
+          "xmp": true
+        }
+      ]
+    },
+    {
+      "brand": "G.Skill",
+      "series": "Trident Z5 Neo",
+      "technology": "DDR5",
+      "rgb": true,
+      "kits": [
+        {
+          "capacity": 32,
+          "sticks": 2,
+          "speed": 6000,
+          "cas": 30,
+          "expo": true,
+          "xmp": false
+        },
+        {
+          "capacity": 64,
+          "sticks": 2,
+          "speed": 6000,
+          "cas": 30,
+          "expo": true,
+          "xmp": false
+        }
+      ]
+    },
+    {
+      "brand": "Corsair",
+      "series": "Vengeance DDR5",
+      "technology": "DDR5",
+      "rgb": false,
+      "kits": [
+        {
+          "capacity": 16,
+          "sticks": 2,
+          "speed": 5200,
+          "cas": 40,
+          "expo": false,
+          "xmp": true
+        },
+        {
+          "capacity": 32,
+          "sticks": 2,
+          "speed": 5600,
+          "cas": 36,
+          "expo": true,
+          "xmp": true
+        },
+        {
+          "capacity": 32,
+          "sticks": 2,
+          "speed": 6000,
+          "cas": 30,
+          "expo": true,
+          "xmp": false
+        },
+        {
+          "capacity": 64,
+          "sticks": 2,
+          "speed": 5600,
+          "cas": 36,
+          "expo": true,
+          "xmp": true
+        }
+      ]
+    },
+    {
+      "brand": "Corsair",
+      "series": "Vengeance DDR5 RGB",
+      "technology": "DDR5",
+      "rgb": true,
+      "kits": [
+        {
+          "capacity": 32,
+          "sticks": 2,
+          "speed": 6000,
+          "cas": 30,
+          "expo": true,
+          "xmp": false
+        },
+        {
+          "capacity": 64,
+          "sticks": 2,
+          "speed": 5600,
+          "cas": 36,
+          "expo": true,
+          "xmp": true
+        }
+      ]
+    },
+    {
+      "brand": "Corsair",
+      "series": "Dominator Titanium",
+      "technology": "DDR5",
+      "rgb": true,
+      "kits": [
+        {
+          "capacity": 32,
+          "sticks": 2,
+          "speed": 6400,
+          "cas": 32,
+          "expo": true,
+          "xmp": true
+        },
+        {
+          "capacity": 64,
+          "sticks": 2,
+          "speed": 6000,
+          "cas": 30,
+          "expo": true,
+          "xmp": true
+        }
+      ]
+    },
+    {
+      "brand": "TeamGroup",
+      "series": "Delta DDR5",
+      "technology": "DDR5",
+      "rgb": true,
+      "kits": [
+        {
+          "capacity": 32,
+          "sticks": 2,
+          "speed": 6000,
+          "cas": 30,
+          "expo": true,
+          "xmp": false
+        },
+        {
+          "capacity": 32,
+          "sticks": 2,
+          "speed": 5600,
+          "cas": 36,
+          "expo": true,
+          "xmp": true
+        }
+      ]
+    },
+    {
+      "brand": "Crucial",
+      "series": "Pro DDR5",
+      "technology": "DDR5",
+      "rgb": false,
+      "kits": [
+        {
+          "capacity": 32,
+          "sticks": 2,
+          "speed": 5600,
+          "cas": 36,
+          "expo": true,
+          "xmp": false
+        },
+        {
+          "capacity": 64,
+          "sticks": 2,
+          "speed": 5600,
+          "cas": 36,
+          "expo": true,
+          "xmp": false
+        }
+      ]
+    },
+    {
+      "brand": "Crucial",
+      "series": "Pro DDR5 RGB",
+      "technology": "DDR5",
+      "rgb": true,
+      "kits": [
+        {
+          "capacity": 32,
+          "sticks": 2,
+          "speed": 5600,
+          "cas": 36,
+          "expo": true,
+          "xmp": false
+        }
+      ]
+    }
   ],
   "supported": {
-    "per_module_gb": [4,8,16,32],
-    "module_counts": [1,2,4],
-    "speeds_mt_s": [2133,2400,2666,2800,2933,3000,3200,3333,3466,3600,3733,3800,3866,4000,4133,4266,4400,4600,4800,5000,5100,5333]
+    "per_module_gb": [
+      4,
+      8,
+      16,
+      24,
+      32
+    ],
+    "module_counts": [
+      1,
+      2,
+      4
+    ],
+    "speeds_mt_s": [
+      2133,
+      2400,
+      2666,
+      2800,
+      2933,
+      3000,
+      3200,
+      3333,
+      3466,
+      3600,
+      3733,
+      3800,
+      3866,
+      4000,
+      4133,
+      4266,
+      4400,
+      4600,
+      4800,
+      5000,
+      5100,
+      5200,
+      5333,
+      5600,
+      6000,
+      6400,
+      7200
+    ]
   },
   "rating": {
-    "weights": {"capacity":0.35,"speed":0.25,"latency":0.25,"channel":0.15},
-    "tier_order": ["SCRAPBLADE","SCRAPWRAITH","REVENANT","GHOUL","ALGHOUL"],
+    "weights": {
+      "capacity": 0.35,
+      "speed": 0.25,
+      "latency": 0.25,
+      "channel": 0.15
+    },
+    "tier_order": [
+      "SCRAPBLADE",
+      "SCRAPWRAITH",
+      "REVENANT",
+      "GHOUL",
+      "ALGHOUL"
+    ],
     "notes": "Brand, series, SKU, RGB and aesthetics do not affect performance rating."
   }
 }

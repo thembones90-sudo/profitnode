@@ -1,6 +1,6 @@
 "use strict";
 window.__PN_SCRIPTS = [
-  "app_core.js?v=myrig-v1",
+  "app_core.js?v=myrig-v2",
   "planner_retirement_extension.js?v=planner-retired-v1",
   "terminal_naming_extension.js?v=pending-sales-v1",
   "psu_extension.js?v=mobo-form-factor-v1",
@@ -16,6 +16,6 @@ window.__PN_SCRIPTS = [
   "roulette_ui_extension.js?v=rig-assembly-nav-v1",
   "treasury_extension.js?v=treasury-core-sources-v2",
   "road_to_extension.js?v=roadto-myrrig-v1",
-  "my_rig_extension.js?v=myrig-v1",
+  "my_rig_extension.js?v=myrig-v2",
   "sidebar_cleanup_extension.js?v=product-refinement-v1"
 ];
