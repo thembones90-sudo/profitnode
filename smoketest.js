@@ -903,11 +903,19 @@ const myRigProbe = `
   const out = [];
   const r0 = MyRig.ensure();
   out.push(['MY RIG defaults to LEVIATHAN, a permanent personal rig', r0.name === 'LEVIATHAN' && r0.status === 'ACTIVE' && Array.isArray(r0.history) && Array.isArray(r0.health)]);
+  out.push(['MY RIG loads the canonical CPU-Z hardware into supported slots', r0.slots.CPU.label === 'AMD Ryzen 7 9800X3D' && r0.slots.MOBO.label === 'MSI PRO B650M-P' && r0.slots.RAM.specs.indexOf('DDR5-6000') > -1 && r0.slots.GPU.label === 'EVGA GeForce RTX 3080 10GB' && r0.slots.STORAGE.specs.indexOf('Samsung 850 EVO') > -1]);
+  out.push(['MY RIG CPU-Z import marks detected fields without guessing unsupported parts', r0.slots.CPU.dataSource === 'DETECTED' && r0.slots.CPU.purchasePrice === null && !r0.slots.PSU && !r0.slots.CASE && !r0.slots.COOLER]);
+  const legacyRig = {slots:{CPU:{label:'Legacy CPU',purchasePrice:38000,purchaseDate:'2026-01-10',notes:'keep me'}},canonicalExcluded:{}};
+  MyRig.applyCanonical(legacyRig);
+  out.push(['MY RIG CPU-Z data overrides legacy conflicts while preserving ownership details', legacyRig.slots.CPU.label === 'AMD Ryzen 7 9800X3D' && legacyRig.slots.CPU.dataSource === 'DETECTED' && legacyRig.slots.CPU.purchasePrice === 38000 && legacyRig.slots.CPU.purchaseDate === '2026-01-10' && legacyRig.slots.CPU.notes === 'keep me']);
+  const protectedRig = {slots:{GPU:{label:'Manually confirmed GPU',dataSource:'MANUAL'}},canonicalExcluded:{MOBO:true}};
+  MyRig.applyCanonical(protectedRig);
+  out.push(['MY RIG canonical refresh protects manual and explicitly cleared slots', protectedRig.slots.GPU.label === 'Manually confirmed GPU' && !protectedRig.slots.MOBO && protectedRig.slots.CPU.dataSource === 'DETECTED']);
   MyRig.setSlot('GPU',{label:'NVIDIA RTX 3080 10GB',specs:'10 GB GDDR6X · 320W',purchasePrice:94000,purchaseDate:'2026-01-15',notes:'',vaultId:null});
   MyRig.setSlot('CPU',{label:'AMD Ryzen 7 5800X3D',specs:'8C/16T',purchasePrice:38000,purchaseDate:'2026-01-10',notes:'',vaultId:null});
   MyRig.setSlot('PSU',{label:'Corsair RM850x 850W',specs:'850W 80+ Gold',purchasePrice:18000,purchaseDate:'2026-01-10',notes:'',vaultId:null});
   const sl = Store.load().myRig.slots;
-  out.push(['MY RIG slots persist exact model, specs, price and purchase date', sl.GPU.label === 'NVIDIA RTX 3080 10GB' && sl.GPU.specs.indexOf('GDDR6X') > -1 && sl.GPU.purchasePrice === 94000 && sl.GPU.purchaseDate === '2026-01-15']);
+  out.push(['MY RIG slots persist exact model, specs, price, date and manual provenance', sl.GPU.label === 'NVIDIA RTX 3080 10GB' && sl.GPU.specs.indexOf('GDDR6X') > -1 && sl.GPU.purchasePrice === 94000 && sl.GPU.purchaseDate === '2026-01-15' && sl.GPU.dataSource === 'MANUAL']);
   out.push(['MY RIG current value sums only the installed loadout, never profit', MyRig.invested() === 150000 && MyRig.value().invested === 150000 && !('profit' in MyRig.value())]);
   out.push(['MY RIG value reports how many on-record parts have a price', MyRig.value().partsTotal === 3 && MyRig.value().partsPriced === 3]);
 
@@ -923,6 +931,7 @@ const myRigProbe = `
 
   const page = renderMyRig();
   out.push(['MY RIG page opens with identity hero + full loadout grid', page.indexOf('pn-myrig-hero') > -1 && page.indexOf('LEVIATHAN') > -1 && page.indexOf('COMPONENT LOADOUT') > -1 && page.indexOf('data-myrig-slot="GPU"') > -1 && page.indexOf('94.000 RSD') > -1]);
+  out.push(['MY RIG renders detected/manual markers and CPU-Z coverage', page.indexOf('pn-myrig-src is-detected') > -1 && page.indexOf('pn-myrig-src is-manual') > -1 && page.indexOf('CPU-Z DETECTED: 3 SLOTS') > -1]);
   out.push(['MY RIG value section is informational with voluntary resale', page.indexOf('INFORMATIONAL ONLY') > -1 && page.indexOf('EST. RESALE VALUE') > -1]);
   MyRig.setResale(132000);
   const v2 = MyRig.value();
@@ -938,7 +947,7 @@ const myRigProbe = `
   out.push(['MY RIG future-upgrades section surfaces the linked quest', (function(){const h=renderMyRig();return h.indexOf('data-myrig-plan="'+goal.id+'"') > -1 && h.indexOf('RTX 5080 16GB') > -1})()]);
   RoadTo.addFunds(goal.id, 100000);
   const install = MyRig.installFromGoal(RoadTo.get(goal.id),{toVault:true});
-  out.push(['MY RIG install replaces the current part and closes the quest as purchased', install.ok && Store.load().myRig.slots.GPU.label === 'RTX 5080 16GB' && RoadTo.get(goal.id).status === 'PURCHASED']);
+  out.push(['MY RIG install replaces the current part and closes the quest as purchased', install.ok && Store.load().myRig.slots.GPU.label === 'RTX 5080 16GB' && Store.load().myRig.slots.GPU.dataSource === 'MANUAL' && RoadTo.get(goal.id).status === 'PURCHASED']);
   const ih = Store.load().myRig.history[0];
   out.push(['MY RIG install logs the retired part into upgrade history', ih.oldPart === 'NVIDIA RTX 3080 10GB' && ih.newPart === 'RTX 5080 16GB' && ih.notes.indexOf('PARTS VAULT') > -1]);
   out.push(['MY RIG install moves a non-vault part into PARTS VAULT only when chosen', (function(){const it=Store.all('inventory').find(i=>i.model==='RTX 3080 10GB');return !!it && it.status === 'IN_STORAGE' && it.notes.indexOf('Retired from LEVIATHAN') > -1})()]);
