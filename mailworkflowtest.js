@@ -65,8 +65,8 @@ const results = env.run(sandbox, `
     const todayStr = now.toISOString().slice(0,10) + 'T' + String(futureH).padStart(2,'0') + ':00';
     const yesterday = new Date(now); yesterday.setDate(now.getDate()-1);
     const yestStr = yesterday.toISOString().slice(0,10) + 'T18:00';
-    const overdue = Actions.addMail({direction:'incoming', status:'ready_for_pickup', deadlineAt:yestStr, description:'overdue'});
-    const dueToday = Actions.addMail({direction:'incoming', status:'ready_for_pickup', deadlineAt:todayStr, description:'today'});
+    const overdue = Actions.addMail({direction:'incoming', status:'ready_for_pickup', pickupDeadline:yestStr, pickupDeadlineSource:'explicit', description:'overdue'});
+    const dueToday = Actions.addMail({direction:'incoming', status:'ready_for_pickup', pickupDeadline:todayStr, pickupDeadlineSource:'explicit', description:'today'});
     const uOver = mailPickupUrgency(overdue);
     const uToday = mailPickupUrgency(dueToday);
     log('D: overdue shipment flagged OVERDUE', uOver.level==='overdue');

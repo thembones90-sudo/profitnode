@@ -55,7 +55,7 @@ function mailMatchesFilter(m,key){
 
 function mailDefaultRecord(){
   return{direction:"incoming",description:"",linkedType:"none",linkedId:null,carrier:"",trackingNumber:"",trackingUrl:"",sender:"",receiver:"",
-    shippingCost:0,currency:"RSD",codAmount:0,dateSent:todayISO(),expectedDeliveryDate:"",actualDeliveryDate:"",deadlineAt:"",status:"preparing",notes:"",actionLinks:[],messageHistory:[]};
+    shippingCost:0,currency:"RSD",codAmount:0,dateSent:todayISO(),expectedDeliveryDate:"",actualDeliveryDate:"",deadlineAt:"",pickupAvailableFrom:"",pickupDeadline:"",pickupDeadlineSource:"none",status:"preparing",notes:"",actionLinks:[],messageHistory:[]};
 }
 function mailSafeUrl(u){
   const s=String(u||"").trim();
@@ -194,12 +194,51 @@ function mailExtractDeadline(raw,referenceDate){
   if(hit){let year=Number(hit[3]);year<100&&(year+=2000);const d=new Date(year,Number(hit[2])-1,Number(hit[1]));if(d.getFullYear()===year&&d.getMonth()===Number(hit[2])-1&&d.getDate()===Number(hit[1]))return{deadlineAt:mailLocalDeadline(d,Number(hit[4]),Number(hit[5]||0)),sourceText:hit[0]}}
   return{deadlineAt:"",sourceText:""};
 }
+function mailParseWindowDateTime(hit,referenceDate){
+  let year=Number(hit[3]);year<100&&(year+=2000);
+  const d=new Date(year,Number(hit[2])-1,Number(hit[1]),Number(hit[4]||0),Number(hit[5]||0));
+  if(isNaN(d)||d.getFullYear()!==year||d.getMonth()!==Number(hit[2])-1||d.getDate()!==Number(hit[1]))return null;
+  return d;
+}
+function mailExtractPickupWindow(raw,referenceDate){
+  const text=mailFoldSerbian(raw);
+  const re=/\b(?:u\s+periodu\s+)?od\s+([0-3]?\d)[.\/-]([01]?\d)[.\/-](\d{2}|\d{4})\s*(?:u\s+)?([01]?\d|2[0-3])[:.]([0-5]\d)\s+do\s+([0-3]?\d)[.\/-]([01]?\d)[.\/-](\d{2}|\d{4})\s*(?:u\s+)?([01]?\d|2[0-3])[:.]([0-5]\d)\b/;
+  const hit=text.match(re);
+  if(!hit)return{pickupAvailableFrom:"",pickupDeadline:"",sourceText:""};
+  const from=mailParseWindowDateTime([hit[0],hit[1],hit[2],hit[3],hit[4],hit[5]],referenceDate);
+  const to=mailParseWindowDateTime([hit[0],hit[6],hit[7],hit[8],hit[9],hit[10]],referenceDate);
+  if(!from||!to)return{pickupAvailableFrom:"",pickupDeadline:"",sourceText:""};
+  return{pickupAvailableFrom:mailLocalDeadline(from,from.getHours(),from.getMinutes()),pickupDeadline:mailLocalDeadline(to,to.getHours(),to.getMinutes()),sourceText:hit[0]};
+}
+function mailExtractPickupStart(raw,referenceDate){
+  const text=mailFoldSerbian(raw);
+  const re=/\b(?:u\s+periodu\s+)?od\s+([0-3]?\d)[.\/-]([01]?\d)[.\/-](\d{2}|\d{4})\s*(?:u\s+)?([01]?\d|2[0-3])[:.]([0-5]\d)\b/;
+  const hit=text.match(re);
+  if(!hit)return{pickupAvailableFrom:"",sourceText:""};
+  const from=mailParseWindowDateTime([hit[0],hit[1],hit[2],hit[3],hit[4],hit[5]],referenceDate);
+  if(!from)return{pickupAvailableFrom:"",sourceText:""};
+  return{pickupAvailableFrom:mailLocalDeadline(from,from.getHours(),from.getMinutes()),sourceText:hit[0]};
+}
+function mailPostaInferPickupDeadline(availableFromStr){
+  const s=String(availableFromStr||"");
+  if(s.length<16)return{pickupDeadline:"",pickupDeadlineSource:"none"};
+  const d=new Date(s.slice(0,10)+"T"+s.slice(11,16));
+  if(isNaN(d))return{pickupDeadline:"",pickupDeadlineSource:"none"};
+  d.setDate(d.getDate()+3);
+  return{pickupDeadline:mailLocalDeadline(d,d.getHours(),d.getMinutes()),pickupDeadlineSource:"inferred_3_day"};
+}
 function mailPostaStatus(text){
   if(/\b(?:urucena|isporucena)\b/.test(text))return"delivered";
   if(/\b(?:vracena|povrat)\b/.test(text))return"returned";
   if(/\b(?:kasnjenje|odlozena)\b/.test(text))return"delayed";
-  if(/\b(?:spremna\s+za\s+preuzimanje|ceka\s+vas|mozete\s+preuzeti)\b/.test(text))return"ready_for_pickup";
+  if(/\b(?:spremna\s+za\s+preuzimanje|ceka\s+vas|cekate\s+vas|mozete\s+preuzeti|mozete\s+podici)\b/.test(text))return"ready_for_pickup";
   return"in_transit";
+}
+function mailPostaIsRedirectOffer(text){
+  return/\b(?:preusmeri|preusmeriti)\b/.test(mailFoldSerbian(text));
+}
+function mailPostaIsPickupWindow(text){
+  return/\b(?:u\s+periodu\s+)?od\s+[0-3]?\d[.\/]\s*\d{2,4}\s*(?:u\s+)?[0-2]?\d[:.][0-5]\d\s+do\s+[0-3]?\d[.\/]/.test(mailFoldSerbian(text));
 }
 function mailGenericStatus(text){
   const f=mailFoldSerbian(text);
@@ -223,9 +262,35 @@ function mailBuildActionLinks(ctx,labelMap){
 }
 function mailParsePostaMessage(ctx){
   if(!ctx.trackingNumber)return{ok:false,error:"Pošta Srbije message found, but no valid tracking number was detected."};
-  const cod=mailExtractCod(ctx.raw),deadline=mailExtractDeadline(ctx.raw,ctx.referenceDate);
-  const labels={};ctx.urls.forEach(u=>{if(mailFoldSerbian(u).indexOf("paketomat")>-1)labels[mailFoldSerbian(u)]="PREUSMERI NA PAKETOMAT";});
-  return{ok:true,parserId:"posta-srbije-post-express-v2",carrier:"Pošta Srbije / Post Express",confidence:"high",direction:"incoming",status:mailPostaStatus(ctx.folded),trackingNumber:ctx.trackingNumber,trackingUrl:mailCarrierPresetUrl("Pošta Srbije"),sender:mailExtractSender(ctx.raw),receiver:"",codAmount:cod.amount,currency:cod.currency||"RSD",deadlineAt:deadline.deadlineAt,dateReferences:deadline.deadlineAt?[deadline.deadlineAt]:[],urls:ctx.urls,actionLinks:mailBuildActionLinks(ctx,labels),pickupLocation:"",pickupPoint:"",pickupCode:mailExtractPickupCode(ctx.raw),pickupAvailableFrom:"",pickupDeadline:"",courierPhone:"",notes:"",receivedDate:mailLocalDate(ctx.referenceDate)};
+  const cod=mailExtractCod(ctx.raw),deadline=mailExtractDeadline(ctx.raw,ctx.referenceDate),window=mailExtractPickupWindow(ctx.raw,ctx.referenceDate),start=mailExtractPickupStart(ctx.raw,ctx.referenceDate);
+  const labels={};ctx.urls.forEach(u=>{if(mailFoldSerbian(u).indexOf("paketomat")>-1)labels[mailFoldSerbian(u)]="PREUSMERI NA PAKETOMAT";else labels[mailFoldSerbian(u)]="MESSAGE LINK";});
+  const isRedirect=mailPostaIsRedirectOffer(ctx.raw);
+  let status=mailPostaStatus(ctx.folded);
+  let actionDeadline="",pickupAvailableFrom="",pickupDeadline="",pickupDeadlineSource="none";
+  const dateReferences=[];
+  if(isRedirect){
+    status="in_transit";
+    actionDeadline=deadline.deadlineAt;
+    if(actionDeadline)dateReferences.push(actionDeadline);
+  }else if(window.pickupAvailableFrom&&window.pickupDeadline){
+    if(status==="in_transit")status="ready_for_pickup";
+    pickupAvailableFrom=window.pickupAvailableFrom;
+    pickupDeadline=window.pickupDeadline;
+    pickupDeadlineSource="explicit";
+    dateReferences.push(pickupAvailableFrom,pickupDeadline);
+  }else if(start.pickupAvailableFrom){
+    if(status==="in_transit")status="ready_for_pickup";
+    pickupAvailableFrom=start.pickupAvailableFrom;
+    const inferred=mailPostaInferPickupDeadline(pickupAvailableFrom);
+    pickupDeadline=inferred.pickupDeadline;
+    pickupDeadlineSource=inferred.pickupDeadlineSource;
+    dateReferences.push(pickupAvailableFrom);
+    if(pickupDeadline)dateReferences.push(pickupDeadline);
+  }else{
+    actionDeadline=deadline.deadlineAt;
+    if(actionDeadline)dateReferences.push(actionDeadline);
+  }
+  return{ok:true,parserId:"posta-srbije-post-express-v2",carrier:"Pošta Srbije / Post Express",confidence:"high",direction:"incoming",status:status,trackingNumber:ctx.trackingNumber,trackingUrl:mailCarrierPresetUrl("Pošta Srbije"),sender:mailExtractSender(ctx.raw),receiver:"",codAmount:cod.amount,currency:cod.currency||"RSD",deadlineAt:actionDeadline,dateReferences:dateReferences,urls:ctx.urls,actionLinks:mailBuildActionLinks(ctx,labels),pickupLocation:"",pickupPoint:"",pickupCode:mailExtractPickupCode(ctx.raw),pickupAvailableFrom:pickupAvailableFrom,pickupDeadline:pickupDeadline,pickupDeadlineSource:pickupDeadlineSource,courierPhone:"",notes:"",receivedDate:mailLocalDate(ctx.referenceDate)};
 }
 function mailParseCarrierBase(ctx,carrier,parserId,confidence,trackingUrl){
   const cod=mailExtractCod(ctx.raw),status=mailGenericStatus(ctx.raw),tracking=mailExtractGenericTracking(ctx.raw)||ctx.trackingNumber;
@@ -290,7 +355,7 @@ function mailSmartImportPreview(raw,referenceDate){
   return Object.assign({},parsed,{mode:existing?"update":"create",existingId:existing?existing.id:null,confidence:parsed.confidence||"low",suggestions:suggestions,rawMessage:parsed.rawMessage||raw});
 }
 function mailMessageHistoryEntry(parsed,raw){
-  return{id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),importedAt:nowISO(),parserId:parsed.parserId,rawMessage:String(raw||""),status:parsed.status,deadlineAt:parsed.deadlineAt||"",actionLinks:mailNormalizeActionLinks(parsed.actionLinks)};
+  return{id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),importedAt:nowISO(),parserId:parsed.parserId,rawMessage:String(raw||""),status:parsed.status,deadlineAt:parsed.deadlineAt||"",pickupAvailableFrom:parsed.pickupAvailableFrom||"",pickupDeadline:parsed.pickupDeadline||"",pickupDeadlineSource:parsed.pickupDeadlineSource||"none",actionLinks:mailNormalizeActionLinks(parsed.actionLinks)};
 }
 function mailApplyParsedMessage(parsed,raw){
   if(!parsed||!parsed.ok)return null;
@@ -315,6 +380,7 @@ function mailApplyParsedMessage(parsed,raw){
   payload.pickupCode=mergeField(parsed.pickupCode,existing&&existing.pickupCode);
   payload.pickupAvailableFrom=mergeField(parsed.pickupAvailableFrom,existing&&existing.pickupAvailableFrom);
   payload.pickupDeadline=mergeField(parsed.pickupDeadline,existing&&existing.pickupDeadline);
+  payload.pickupDeadlineSource=mergeField(parsed.pickupDeadlineSource,existing&&existing.pickupDeadlineSource)||"none";
   payload.courierPhone=mergeField(parsed.courierPhone,existing&&existing.courierPhone);
   payload.notes=mergeField(parsed.notes,existing&&existing.notes);
   if(parsed.linkedType&&parsed.linkedType!=="none"){payload.linkedType=parsed.linkedType;payload.linkedId=parsed.linkedId||null}
@@ -402,8 +468,8 @@ function mailDeadlineParse(value){
   return isNaN(d)?null:d;
 }
 function mailPickupUrgency(m){
-  if(!m||!m.deadlineAt||m.status==="delivered"||m.status==="returned"||m.status==="lost")return{level:"none",label:"",hours:null};
-  const dl=mailDeadlineParse(m.deadlineAt);
+  if(!m||!m.pickupDeadline||m.status==="delivered"||m.status==="returned"||m.status==="lost")return{level:"none",label:"",hours:null};
+  const dl=mailDeadlineParse(m.pickupDeadline);
   if(!dl)return{level:"none",label:"",hours:null};
   const now=new Date();
   const ms=dl-now;
@@ -558,6 +624,10 @@ CSV_EXPORTS.mail={label:"Mail",columns:[
   {label:"Date Sent",get:e=>e.dateSent||""},
   {label:"Expected Delivery",get:e=>e.expectedDeliveryDate||""},
   {label:"Actual Delivery",get:e=>e.actualDeliveryDate||""},
+  {label:"Action Deadline",get:e=>e.deadlineAt||""},
+  {label:"Pickup Available From",get:e=>e.pickupAvailableFrom||""},
+  {label:"Pickup Deadline",get:e=>e.pickupDeadline||""},
+  {label:"Pickup Deadline Source",get:e=>e.pickupDeadlineSource||"none"},
   {label:"Linked Type",get:e=>e.linkedType||"none"},
   {label:"Linked Entity",get:e=>mailLinkedRecordLabel(e)},
   {label:"Notes",get:e=>e.notes||""}
@@ -594,7 +664,9 @@ function mailCard(m){
       "</div>":"")+
     row("SHIPPING","<b>"+money(m.shippingCost||0,m.currency)+"</b>")+
     row("SENT","<b>"+(m.dateSent?fmtDate(m.dateSent):"—")+"</b>")+
-    (m.deadlineAt?row("DEADLINE","<b>"+escHtml(mailDeadlineLabel(m.deadlineAt))+"</b>"):"")+
+    (m.deadlineAt?row("ACTION DEADLINE","<b>"+escHtml(mailDeadlineLabel(m.deadlineAt))+"</b>") :"")+
+    (m.pickupAvailableFrom?row("PICKUP FROM","<b>"+escHtml(mailDeadlineLabel(m.pickupAvailableFrom))+"</b>") :"")+
+    (m.pickupDeadline?row("PICKUP DEADLINE"+(m.pickupDeadlineSource==="inferred_3_day"?" (INFERRED)":""),"<b>"+escHtml(mailDeadlineLabel(m.pickupDeadline))+"</b>") :"")+
     (actionLinks?row("ACTIONS",'<div class="pn-mail-action-links">'+actionLinks+"</div>"):"")+
     (linked?row("LINKED",linked):"")+
     '<div class="pn-mail-card-foot">'+
@@ -612,7 +684,9 @@ function mailTimelineSummary(item){
   const status=String(item.status||"").replace(/_/g," ");
   const parts=[];
   if(status)parts.push(status.toUpperCase());
-  if(item.deadlineAt)parts.push("deadline "+mailDeadlineLabel(item.deadlineAt));
+  if(item.deadlineAt)parts.push("action deadline "+mailDeadlineLabel(item.deadlineAt));
+  if(item.pickupAvailableFrom)parts.push("pickup from "+mailDeadlineLabel(item.pickupAvailableFrom));
+  if(item.pickupDeadline)parts.push("pickup deadline "+mailDeadlineLabel(item.pickupDeadline)+(item.pickupDeadlineSource==="inferred_3_day"?" (inferred)":""));
   const links=(item.actionLinks||[]).length;
   if(links)parts.push(links+" action link"+(links===1?"":"s"));
   return parts.join(" · ")||"Message imported";
@@ -648,6 +722,9 @@ function mailModalHtml(){
     mailFieldRow("Date Sent",'<input type="date" data-mail-path="dateSent" value="'+escAttr(d.dateSent)+'">',true)+
     mailFieldRow("Expected Delivery",'<input type="date" data-mail-path="expectedDeliveryDate" value="'+escAttr(d.expectedDeliveryDate)+'">',true)+
     mailFieldRow("Action Deadline",'<input type="datetime-local" data-mail-path="deadlineAt" value="'+escAttr(d.deadlineAt||"")+'">',true)+
+    mailFieldRow("Pickup Available From",'<input type="datetime-local" data-mail-path="pickupAvailableFrom" value="'+escAttr(d.pickupAvailableFrom||"")+'">',true)+
+    mailFieldRow("Pickup Deadline",'<input type="datetime-local" data-mail-path="pickupDeadline" value="'+escAttr(d.pickupDeadline||"")+'">',true)+
+    mailFieldRow("Pickup Deadline Source",'<select data-mail-path="pickupDeadlineSource"><option value="none"'+(d.pickupDeadlineSource==="none"?" selected":"")+'>NONE</option><option value="explicit"'+(d.pickupDeadlineSource==="explicit"?" selected":"")+'>EXPLICIT</option><option value="inferred_3_day"'+(d.pickupDeadlineSource==="inferred_3_day"?" selected":"")+'>INFERRED 3 DAY</option></select>',true)+
     mailFieldRow("Actual Delivery",'<input type="date" data-mail-path="actualDeliveryDate" value="'+escAttr(d.actualDeliveryDate)+'">',true)+
     mailFieldRow("Notes",'<textarea data-mail-path="notes">'+escHtml(d.notes)+"</textarea>");
   const profitPreview=mailProfitImpactPreview(d);
@@ -667,7 +744,7 @@ function mailSmartImportPreviewHtml(p){
   const suggestions=Array.isArray(p.suggestions)&&p.suggestions.length?
     '<div class="pn-mail-import-suggestions"><span>SUGGESTED LINKS</span>'+p.suggestions.map((s,i)=>'<div class="pn-mail-import-suggest" data-mail-import-link-suggest="'+i+'"><span class="chip '+(s.confidence==="high"?"chip-green":"chip-amber")+'">'+escHtml(s.type.toUpperCase())+'</span><b>'+escHtml(s.label)+'</b><span class="pn-mail-import-suggest-reason">'+escHtml(s.reason)+'</span><button type="button" class="btn btn-sm" data-mail-import-link-apply="'+i+'">LINK</button><button type="button" class="btn btn-sm btn-ghost" data-mail-import-link-ignore="'+i+'">IGNORE</button></div>').join("")+"</div>":"";
   return'<div class="pn-mail-import-preview"><div class="pn-mail-import-verdict"><span class="chip '+(p.mode==="update"?"chip-amber":"chip-green")+'">'+(p.mode==="update"?"UPDATE EXISTING":"CREATE NEW")+'</span><span class="chip '+confChip+'">'+(p.confidence||"low").toUpperCase()+' CONFIDENCE</span><span>'+escHtml(p.parserId||"generic")+"</span></div>"+
-    row("TRACKING",p.trackingNumber)+row("SENDER",p.sender)+row("RECEIVER",p.receiver)+row("CARRIER",p.carrier)+row("DIRECTION",p.direction)+row("STATUS",mailStatusLabel(p.status))+row("COD",null==p.codAmount?"NOT PRESENT":money(p.codAmount,p.currency||"RSD"))+row("DEADLINE",p.deadlineAt?mailDeadlineLabel(p.deadlineAt):"NOT PRESENT")+row("TRACKING LINK",p.trackingUrl)+
+    row("TRACKING",p.trackingNumber)+row("SENDER",p.sender)+row("RECEIVER",p.receiver)+row("CARRIER",p.carrier)+row("DIRECTION",p.direction)+row("STATUS",mailStatusLabel(p.status))+row("COD",null==p.codAmount?"NOT PRESENT":money(p.codAmount,p.currency||"RSD"))+row("ACTION DEADLINE",p.deadlineAt?mailDeadlineLabel(p.deadlineAt):"NOT PRESENT")+row("PICKUP FROM",p.pickupAvailableFrom?mailDeadlineLabel(p.pickupAvailableFrom):"NOT PRESENT")+row("PICKUP DEADLINE",p.pickupDeadline?mailDeadlineLabel(p.pickupDeadline)+(p.pickupDeadlineSource==="inferred_3_day"?" (INFERRED)":""):"NOT PRESENT")+row("TRACKING LINK",p.trackingUrl)+
     (links.length?'<div class="pn-mail-import-links"><span>ACTION LINKS</span>'+links.map(link=>'<a href="'+escAttr(link.url)+'" target="_blank" rel="noopener noreferrer">'+escHtml(link.label)+' ↗</a>').join("")+"</div>":"")+suggestions+"</div>";
 }
 function mailSmartImportModalHtml(){
@@ -705,7 +782,7 @@ function mailDashboardSummaryHtml(){
   const outgoing=all.filter(m=>m.direction==="outgoing"&&mailIsActive(m)).length;
   const ready=all.filter(m=>m.status==="ready_for_pickup").length;
   const problem=all.filter(mailIsProblem).length;
-  const pickups=all.filter(m=>mailIsActive(m)&&m.deadlineAt);
+  const pickups=all.filter(m=>mailIsActive(m)&&m.pickupDeadline);
   const overdue=pickups.filter(m=>mailPickupUrgency(m).level==="overdue").length;
   const dueToday=pickups.filter(m=>mailPickupUrgency(m).level==="today").length;
   if(!incoming&&!outgoing&&!ready&&!problem&&!overdue&&!dueToday)return"";
@@ -740,6 +817,9 @@ function mailApplyRecordSave(){
     expectedDeliveryDate:d.expectedDeliveryDate||"",
     actualDeliveryDate:d.actualDeliveryDate||"",
     deadlineAt:d.deadlineAt||"",
+    pickupAvailableFrom:d.pickupAvailableFrom||"",
+    pickupDeadline:d.pickupDeadline||"",
+    pickupDeadlineSource:d.pickupDeadlineSource||"none",
     status:d.status||"preparing",
     notes:String(d.notes||"").trim()
   };

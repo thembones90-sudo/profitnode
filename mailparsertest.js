@@ -129,6 +129,49 @@ const results = env.run(sandbox, `
     log('Status precedence: ready_for_pickup > in_transit', mailStatusMayAdvance('in_transit', 'ready_for_pickup'));
   })();
 
+  // 14. Redirect offer: actionDeadline only, no pickupDeadline
+  (function(){
+    const msg = 'Ukoliko zelite, posiljku PX887428579RS, od posiljaoca MEDINA CORHAMZIC, mozete danas do 17:00 h preusmeriti na paketomat putem linka https://www.posta.rs/lat/alati/pracenje-posiljke.aspx';
+    const ref = new Date(2026, 8, 10, 9, 0);
+    const p = mailParseCourierMessage(msg, ref);
+    log('Redirect offer parses as Posta', p.ok && p.carrier.indexOf('Pošta') > -1);
+    log('Redirect offer status is in_transit', p.status === 'in_transit');
+    log('Redirect offer actionDeadline is today 17:00', p.deadlineAt === '2026-09-10T17:00');
+    log('Redirect offer pickupDeadline is empty', p.pickupDeadline === '');
+    log('Redirect offer pickupDeadlineSource is none', p.pickupDeadlineSource === 'none');
+  })();
+
+  // 15. Explicit pickup window
+  (function(){
+    const msg = 'Vasu posiljku PX887428580RS mozete podici na paketomatu u periodu od 10.09.2026 u 09:46 do 13.09.2026 u 07:00';
+    const p = mailParseCourierMessage(msg, new Date(2026, 8, 10, 9, 0));
+    log('Explicit pickup window status is ready_for_pickup', p.ok && p.status === 'ready_for_pickup');
+    log('Explicit pickup window pickupAvailableFrom', p.pickupAvailableFrom === '2026-09-10T09:46');
+    log('Explicit pickup window pickupDeadline', p.pickupDeadline === '2026-09-13T07:00');
+    log('Explicit pickup window source is explicit', p.pickupDeadlineSource === 'explicit');
+    log('Explicit pickup window actionDeadline is empty', p.deadlineAt === '');
+  })();
+
+  // 16. Ready-for-pickup with start only triggers inferred 3-day fallback
+  (function(){
+    const msg = 'Posta Srbije: Vasu posiljku PX887428581RS mozete podici na paketomatu od 10.09.2026 u 09:46.';
+    const p = mailParseCourierMessage(msg, new Date(2026, 8, 10, 9, 0));
+    log('Start-only pickup status is ready_for_pickup', p.ok && p.status === 'ready_for_pickup');
+    log('Start-only pickup pickupAvailableFrom', p.pickupAvailableFrom === '2026-09-10T09:46');
+    log('Start-only pickup pickupDeadline inferred +3 days', p.pickupDeadline === '2026-09-13T09:46');
+    log('Start-only pickup source is inferred_3_day', p.pickupDeadlineSource === 'inferred_3_day');
+  })();
+
+  // 17. actionDeadline must NOT trigger pickup-overdue logic
+  (function(){
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yStr = yesterday.toISOString().slice(0, 10) + 'T18:00';
+    const m = {status:'in_transit', deadlineAt:yStr, pickupDeadline:'', pickupDeadlineSource:'none'};
+    const u = mailPickupUrgency(m);
+    log('actionDeadline alone does not trigger pickup urgency', u.level === 'none');
+  })();
+
   return out;
 })()
 `);
