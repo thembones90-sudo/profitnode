@@ -4610,6 +4610,22 @@
     },
     {
       "brand": "AMD",
+      "model": "RX 460 2GB",
+      "raster": 7,
+      "ray_tracing": 0,
+      "overall": 7,
+      "family": "AMD RX 400"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 460 4GB",
+      "raster": 8,
+      "ray_tracing": 0,
+      "overall": 8,
+      "family": "AMD RX 400"
+    },
+    {
+      "brand": "AMD",
       "model": "RX 470 4GB",
       "raster": 11,
       "ray_tracing": 0,
@@ -4647,6 +4663,38 @@
       "ray_tracing": 0,
       "overall": 14,
       "family": "AMD RX 400"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 550 2GB",
+      "raster": 6,
+      "ray_tracing": 0,
+      "overall": 6,
+      "family": "AMD RX 500"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 550 4GB",
+      "raster": 7,
+      "ray_tracing": 0,
+      "overall": 7,
+      "family": "AMD RX 500"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 560 2GB",
+      "raster": 9,
+      "ray_tracing": 0,
+      "overall": 9,
+      "family": "AMD RX 500"
+    },
+    {
+      "brand": "AMD",
+      "model": "RX 560 4GB",
+      "raster": 10,
+      "ray_tracing": 0,
+      "overall": 10,
+      "family": "AMD RX 500"
     },
     {
       "brand": "AMD",
@@ -5087,6 +5135,717 @@
       "ray_tracing": 62,
       "overall": 76,
       "family": "AMD RX 9000"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X2 545",
+      "gaming": 16,
+      "workstation": 13,
+      "overall": 15,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X2 550",
+      "gaming": 17,
+      "workstation": 14,
+      "overall": 16,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X2 555",
+      "gaming": 19,
+      "workstation": 15,
+      "overall": 17,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X2 560",
+      "gaming": 21,
+      "workstation": 17,
+      "overall": 19,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X2 565",
+      "gaming": 23,
+      "workstation": 18,
+      "overall": 21,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X3 705e",
+      "gaming": 26,
+      "workstation": 22,
+      "overall": 24,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X3 710",
+      "gaming": 28,
+      "workstation": 24,
+      "overall": 26,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X3 720",
+      "gaming": 30,
+      "workstation": 25,
+      "overall": 28,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X4 805",
+      "gaming": 31,
+      "workstation": 26,
+      "overall": 29,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X4 810",
+      "gaming": 33,
+      "workstation": 28,
+      "overall": 31,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X4 820",
+      "gaming": 35,
+      "workstation": 30,
+      "overall": 33,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X4 830",
+      "gaming": 37,
+      "workstation": 32,
+      "overall": 35,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X4 840",
+      "gaming": 39,
+      "workstation": 33,
+      "overall": 36,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X4 900",
+      "gaming": 42,
+      "workstation": 35,
+      "overall": 39,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X4 910",
+      "gaming": 44,
+      "workstation": 37,
+      "overall": 41,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X4 920",
+      "gaming": 46,
+      "workstation": 39,
+      "overall": 43,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X4 925",
+      "gaming": 48,
+      "workstation": 40,
+      "overall": 44,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X4 940",
+      "gaming": 50,
+      "workstation": 42,
+      "overall": 46,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X4 945",
+      "gaming": 52,
+      "workstation": 43,
+      "overall": 47,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X4 955",
+      "gaming": 54,
+      "workstation": 45,
+      "overall": 50,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X4 960T",
+      "gaming": 56,
+      "workstation": 47,
+      "overall": 52,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X4 965",
+      "gaming": 58,
+      "workstation": 49,
+      "overall": 54,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X4 970",
+      "gaming": 60,
+      "workstation": 51,
+      "overall": 56,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X4 975",
+      "gaming": 62,
+      "workstation": 53,
+      "overall": 58,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X4 980",
+      "gaming": 64,
+      "workstation": 55,
+      "overall": 60,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X6 1035T",
+      "gaming": 64,
+      "workstation": 55,
+      "overall": 60,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X6 1045T",
+      "gaming": 66,
+      "workstation": 57,
+      "overall": 62,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X6 1055T",
+      "gaming": 68,
+      "workstation": 59,
+      "overall": 64,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X6 1065T",
+      "gaming": 70,
+      "workstation": 61,
+      "overall": 66,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X6 1075T",
+      "gaming": 72,
+      "workstation": 63,
+      "overall": 68,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X6 1090T",
+      "gaming": 74,
+      "workstation": 65,
+      "overall": 70,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Phenom II X6 1100T",
+      "gaming": 76,
+      "workstation": 67,
+      "overall": 72,
+      "platform": "AM3",
+      "generation": "Phenom II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Athlon II X2 215",
+      "gaming": 18,
+      "workstation": 14,
+      "overall": 16,
+      "platform": "AM3",
+      "generation": "Athlon II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Athlon II X2 220",
+      "gaming": 20,
+      "workstation": 16,
+      "overall": 18,
+      "platform": "AM3",
+      "generation": "Athlon II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Athlon II X2 240",
+      "gaming": 22,
+      "workstation": 18,
+      "overall": 20,
+      "platform": "AM3",
+      "generation": "Athlon II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Athlon II X2 245",
+      "gaming": 24,
+      "workstation": 19,
+      "overall": 21,
+      "platform": "AM3",
+      "generation": "Athlon II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Athlon II X2 250",
+      "gaming": 26,
+      "workstation": 20,
+      "overall": 23,
+      "platform": "AM3",
+      "generation": "Athlon II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Athlon II X2 255",
+      "gaming": 28,
+      "workstation": 21,
+      "overall": 24,
+      "platform": "AM3",
+      "generation": "Athlon II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Athlon II X2 260",
+      "gaming": 30,
+      "workstation": 22,
+      "overall": 26,
+      "platform": "AM3",
+      "generation": "Athlon II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Athlon II X2 265",
+      "gaming": 32,
+      "workstation": 23,
+      "overall": 27,
+      "platform": "AM3",
+      "generation": "Athlon II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Athlon II X2 270",
+      "gaming": 34,
+      "workstation": 25,
+      "overall": 29,
+      "platform": "AM3",
+      "generation": "Athlon II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Athlon II X3 425",
+      "gaming": 34,
+      "workstation": 27,
+      "overall": 31,
+      "platform": "AM3",
+      "generation": "Athlon II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Athlon II X3 435",
+      "gaming": 36,
+      "workstation": 29,
+      "overall": 33,
+      "platform": "AM3",
+      "generation": "Athlon II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Athlon II X3 440",
+      "gaming": 38,
+      "workstation": 30,
+      "overall": 34,
+      "platform": "AM3",
+      "generation": "Athlon II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Athlon II X3 445",
+      "gaming": 40,
+      "workstation": 31,
+      "overall": 36,
+      "platform": "AM3",
+      "generation": "Athlon II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Athlon II X3 450",
+      "gaming": 42,
+      "workstation": 32,
+      "overall": 37,
+      "platform": "AM3",
+      "generation": "Athlon II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Athlon II X3 455",
+      "gaming": 44,
+      "workstation": 33,
+      "overall": 39,
+      "platform": "AM3",
+      "generation": "Athlon II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Athlon II X3 460",
+      "gaming": 46,
+      "workstation": 35,
+      "overall": 41,
+      "platform": "AM3",
+      "generation": "Athlon II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Athlon II X4 620",
+      "gaming": 42,
+      "workstation": 35,
+      "overall": 39,
+      "platform": "AM3",
+      "generation": "Athlon II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Athlon II X4 630",
+      "gaming": 44,
+      "workstation": 37,
+      "overall": 41,
+      "platform": "AM3",
+      "generation": "Athlon II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Athlon II X4 635",
+      "gaming": 46,
+      "workstation": 38,
+      "overall": 42,
+      "platform": "AM3",
+      "generation": "Athlon II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Athlon II X4 640",
+      "gaming": 48,
+      "workstation": 40,
+      "overall": 44,
+      "platform": "AM3",
+      "generation": "Athlon II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Athlon II X4 645",
+      "gaming": 50,
+      "workstation": 42,
+      "overall": 46,
+      "platform": "AM3",
+      "generation": "Athlon II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Athlon II X4 650",
+      "gaming": 52,
+      "workstation": 44,
+      "overall": 48,
+      "platform": "AM3",
+      "generation": "Athlon II"
+    },
+    {
+      "brand": "AMD",
+      "model": "Athlon II X4 651",
+      "gaming": 53,
+      "workstation": 45,
+      "overall": 49,
+      "platform": "AM3",
+      "generation": "Athlon II"
+    },
+    {
+      "brand": "AMD",
+      "model": "FX-4000 FX-4100",
+      "gaming": 36,
+      "workstation": 30,
+      "overall": 33,
+      "platform": "AM3+",
+      "generation": "FX"
+    },
+    {
+      "brand": "AMD",
+      "model": "FX-4130",
+      "gaming": 38,
+      "workstation": 32,
+      "overall": 35,
+      "platform": "AM3+",
+      "generation": "FX"
+    },
+    {
+      "brand": "AMD",
+      "model": "FX-4170",
+      "gaming": 40,
+      "workstation": 34,
+      "overall": 37,
+      "platform": "AM3+",
+      "generation": "FX"
+    },
+    {
+      "brand": "AMD",
+      "model": "FX-4300",
+      "gaming": 42,
+      "workstation": 36,
+      "overall": 39,
+      "platform": "AM3+",
+      "generation": "FX"
+    },
+    {
+      "brand": "AMD",
+      "model": "FX-4320",
+      "gaming": 44,
+      "workstation": 38,
+      "overall": 41,
+      "platform": "AM3+",
+      "generation": "FX"
+    },
+    {
+      "brand": "AMD",
+      "model": "FX-4350",
+      "gaming": 46,
+      "workstation": 40,
+      "overall": 43,
+      "platform": "AM3+",
+      "generation": "FX"
+    },
+    {
+      "brand": "AMD",
+      "model": "FX-6100",
+      "gaming": 48,
+      "workstation": 42,
+      "overall": 45,
+      "platform": "AM3+",
+      "generation": "FX"
+    },
+    {
+      "brand": "AMD",
+      "model": "FX-6120",
+      "gaming": 50,
+      "workstation": 44,
+      "overall": 47,
+      "platform": "AM3+",
+      "generation": "FX"
+    },
+    {
+      "brand": "AMD",
+      "model": "FX-6130",
+      "gaming": 52,
+      "workstation": 46,
+      "overall": 49,
+      "platform": "AM3+",
+      "generation": "FX"
+    },
+    {
+      "brand": "AMD",
+      "model": "FX-6200",
+      "gaming": 54,
+      "workstation": 48,
+      "overall": 51,
+      "platform": "AM3+",
+      "generation": "FX"
+    },
+    {
+      "brand": "AMD",
+      "model": "FX-6300",
+      "gaming": 56,
+      "workstation": 50,
+      "overall": 53,
+      "platform": "AM3+",
+      "generation": "FX"
+    },
+    {
+      "brand": "AMD",
+      "model": "FX-6350",
+      "gaming": 58,
+      "workstation": 52,
+      "overall": 55,
+      "platform": "AM3+",
+      "generation": "FX"
+    },
+    {
+      "brand": "AMD",
+      "model": "FX-8100",
+      "gaming": 58,
+      "workstation": 52,
+      "overall": 55,
+      "platform": "AM3+",
+      "generation": "FX"
+    },
+    {
+      "brand": "AMD",
+      "model": "FX-8120",
+      "gaming": 60,
+      "workstation": 54,
+      "overall": 57,
+      "platform": "AM3+",
+      "generation": "FX"
+    },
+    {
+      "brand": "AMD",
+      "model": "FX-8150",
+      "gaming": 62,
+      "workstation": 56,
+      "overall": 59,
+      "platform": "AM3+",
+      "generation": "FX"
+    },
+    {
+      "brand": "AMD",
+      "model": "FX-8300",
+      "gaming": 64,
+      "workstation": 58,
+      "overall": 61,
+      "platform": "AM3+",
+      "generation": "FX"
+    },
+    {
+      "brand": "AMD",
+      "model": "FX-8310",
+      "gaming": 66,
+      "workstation": 60,
+      "overall": 63,
+      "platform": "AM3+",
+      "generation": "FX"
+    },
+    {
+      "brand": "AMD",
+      "model": "FX-8320",
+      "gaming": 68,
+      "workstation": 62,
+      "overall": 65,
+      "platform": "AM3+",
+      "generation": "FX"
+    },
+    {
+      "brand": "AMD",
+      "model": "FX-8320E",
+      "gaming": 70,
+      "workstation": 64,
+      "overall": 67,
+      "platform": "AM3+",
+      "generation": "FX"
+    },
+    {
+      "brand": "AMD",
+      "model": "FX-8350",
+      "gaming": 72,
+      "workstation": 66,
+      "overall": 69,
+      "platform": "AM3+",
+      "generation": "FX"
+    },
+    {
+      "brand": "AMD",
+      "model": "FX-8370",
+      "gaming": 74,
+      "workstation": 68,
+      "overall": 71,
+      "platform": "AM3+",
+      "generation": "FX"
+    },
+    {
+      "brand": "AMD",
+      "model": "FX-8370E",
+      "gaming": 76,
+      "workstation": 70,
+      "overall": 73,
+      "platform": "AM3+",
+      "generation": "FX"
+    },
+    {
+      "brand": "AMD",
+      "model": "FX-9370",
+      "gaming": 78,
+      "workstation": 72,
+      "overall": 75,
+      "platform": "AM3+",
+      "generation": "FX"
+    },
+    {
+      "brand": "AMD",
+      "model": "FX-9590",
+      "gaming": 80,
+      "workstation": 76,
+      "overall": 78,
+      "platform": "AM3+",
+      "generation": "FX"
     }
   ]
 }
