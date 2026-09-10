@@ -18,5 +18,5 @@ window.__PN_SCRIPTS = [
   "road_to_extension.js?v=roadto-myrrig-v1",
   "my_rig_extension.js?v=myrig-cpuz-canonical-v1",
   "sidebar_cleanup_extension.js?v=product-refinement-v1",
-  "mail_extension.js?v=mail-smart-import-v2"
+  "mail_extension.js?v=mail-workflow-v3"
 ];

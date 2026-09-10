@@ -13,17 +13,18 @@ Single-page browser app for a PC-flipping/inventory ledger ("Shadezy Repair Shop
 - `*_extension.js` files — feature modules loaded after core. Each appends to the global namespace. Load order matters.
 - `profitnode_*_catalog_v1.json` — hardware catalogs fetched at runtime by `loadHardwareCatalog()`
 - `assets/roulette/` — image assets for the Roulette feature, referenced by manifest JSONs
+- `mail_fixtures.js` — **test-only** anonymized Serbian courier message samples; never loaded in production
 
 ## Tests (zero deps)
 
 All tests use Node's `vm` module to run every file in `window.__PN_SCRIPTS` in a sandboxed context with browser shims. No `node_modules`, no test framework. The harness lives in `pn_test_env.js`.
 
 ```bash
-node smoketest.js && node rendertest.js && node hardwaretest.js
+node smoketest.js && node rendertest.js && node hardwaretest.js && node mailparsertest.js && node costintegritytest.js && node mailworkflowtest.js
 node browsertest.js
 ```
 
-Run all four suites. They test the exact unminified code that deploys. `browsertest.js` additionally boots a real Chrome/Edge against a local static server and takes a minute; it can be skipped on machines without a browser.
+Run all suites. They test the exact unminified code that deploys. `browsertest.js` additionally boots a real Chrome/Edge against a local static server and takes a minute; it can be skipped on machines without a browser.
 
 ## Editing rules
 
