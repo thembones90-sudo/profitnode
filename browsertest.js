@@ -102,7 +102,7 @@ async function main() {
     let wait=loadedPromise(); await cdp.send("Page.navigate",{url}); await wait; await delay(1600);
     const evaluate=async expression=>(await cdp.send("Runtime.evaluate",{expression,awaitPromise:true,returnByValue:true})).result.value;
     const shell=await evaluate(`({brand:document.title==='PROFITNODE'&&!!document.querySelector('[aria-label="PROFITNODE"]'),routes:new Set(Array.from(document.querySelectorAll('[data-route]'),e=>e.dataset.route)).size,legacy:!!document.querySelector('.brand-shop:not([data-pn-sidebar-cleanup="hidden"])'),schema:Store.load().meta.schemaVersion})`);
-    check("app loads its complete navigation in a real browser",shell.brand&&shell.routes===14,JSON.stringify(shell));
+    check("app loads its complete navigation in a real browser",shell.brand&&shell.routes===15,JSON.stringify(shell));
     check("sidebar cleanup runs in the real DOM",!shell.legacy);
     check("browser storage initializes on the current schema",shell.schema===2);
     const navVisual=await evaluate(`(()=>{const rig=document.querySelector('[data-route="rigbuild"]'),roulette=document.querySelector('[data-route="roulette"]'),chrome=getComputedStyle(rig,'::before'),lightning=getComputedStyle(rig,'::after');return {rigLabel:rig.textContent.trim(),chromeAnimation:chrome.animationName,chromeFill:chrome.webkitTextFillColor,chromeBackground:chrome.backgroundImage,chromeFilter:chrome.filter,lightningColor:lightning.backgroundColor,lightningAnimation:lightning.animationName,lightningShape:lightning.clipPath,rouletteAfter:getComputedStyle(roulette,'::after').content}})()`);

@@ -980,6 +980,33 @@ const mailProbe = `
   const mail1 = Actions.addMail({direction:'incoming', description:'GPU inbound', linkedType:'inventory', linkedId:item.id, shippingCost:1000, currency:'RSD', status:'in_transit'});
   out.push(['MAIL: addMail stores a record on its own ledger collection', Store.all('mail').length === 1 && mailGet(mail1.id).description === 'GPU inbound']);
 
+  const smartSms = 'Ukoliko zelite, posiljku PX887428579RS, od posiljaoca MEDINA CORHAMZIC, mozete danas do 17:00 h preusmeriti na paketomat putem linka https://portal.posta.rs/paketomati/redirect.html?t=UHtRJrJj';
+  const smartNow = new Date(2026,8,10,12,0,0);
+  const smartParsed = mailParseCourierMessage(smartSms, smartNow);
+  out.push(['MAIL SMART IMPORT: supplied Post Express SMS parses canonical shipment fields', smartParsed.ok && smartParsed.trackingNumber === 'PX887428579RS' && smartParsed.sender === 'MEDINA CORHAMZIC' && smartParsed.carrier === 'Pošta Srbije / Post Express' && smartParsed.direction === 'incoming' && smartParsed.status === 'in_transit']);
+  out.push(['MAIL SMART IMPORT: danas deadline resolves against the local reference date', smartParsed.deadlineAt === '2026-09-10T17:00']);
+  out.push(['MAIL SMART IMPORT: canonical tracker stays separate from the paketomat action URL', smartParsed.trackingUrl === 'https://www.posta.rs/lat/alati/pracenje-posiljke.aspx' && smartParsed.actionLinks.length === 1 && smartParsed.actionLinks[0].url === 'https://portal.posta.rs/paketomati/redirect.html?t=UHtRJrJj']);
+  const accentedParsed = mailParseCourierMessage('Pošiljku PX123456789RS, od pošiljaoca ČEDA ŠOP, možete preuzeti. Pouzeće 12.500 RSD.', smartNow);
+  out.push(['MAIL SMART IMPORT: Serbian diacritics and COD parse deterministically', accentedParsed.ok && accentedParsed.sender === 'ČEDA ŠOP' && accentedParsed.codAmount === 12500 && accentedParsed.currency === 'RSD' && accentedParsed.status === 'ready_for_pickup']);
+  const createPreview = mailSmartImportPreview(smartSms, smartNow);
+  MailUI.smartImport = {raw:smartSms,preview:createPreview,error:''};
+  const smartImportHtml = renderMail();
+  out.push(['MAIL SMART IMPORT: MAIL exposes paste action and preview before create', smartImportHtml.indexOf('data-mail-import') > -1 && smartImportHtml.indexOf('CREATE NEW') > -1 && smartImportHtml.indexOf('CREATE SHIPMENT') > -1 && smartImportHtml.indexOf('PX887428579RS') > -1]);
+  MailUI.smartImport = null;
+  const mailBeforeImport = Store.all('mail').length;
+  const smartCreated = mailApplyParsedMessage(smartParsed, smartSms);
+  out.push(['MAIL SMART IMPORT: parsed SMS creates one shipment with its action link', smartCreated.mode === 'create' && Store.all('mail').length === mailBeforeImport + 1 && smartCreated.record.actionLinks[0].label === 'PREUSMERI NA PAKETOMAT']);
+  const updateSms = 'Posiljka PX887428579RS, od posiljaoca MEDINA CORHAMZIC, je spremna za preuzimanje.';
+  const updateParsed = mailParseCourierMessage(updateSms, smartNow);
+  const updatePreview = mailSmartImportPreview(updateSms, smartNow);
+  MailUI.smartImport = {raw:updateSms,preview:updatePreview,error:''};
+  const updateImportHtml = renderMail();
+  out.push(['MAIL SMART IMPORT: preview switches to UPDATE for an existing tracking number', updatePreview.mode === 'update' && updateImportHtml.indexOf('UPDATE EXISTING') > -1 && updateImportHtml.indexOf('UPDATE SHIPMENT') > -1]);
+  MailUI.smartImport = null;
+  const smartUpdated = mailApplyParsedMessage(updateParsed, updateSms);
+  out.push(['MAIL SMART IMPORT: matching tracking number updates instead of duplicating', smartUpdated.mode === 'update' && smartUpdated.record.id === smartCreated.record.id && Store.all('mail').length === mailBeforeImport + 1 && smartUpdated.record.status === 'ready_for_pickup']);
+  out.push(['MAIL SMART IMPORT: raw messages and import events remain in shipment history and timeline', smartUpdated.record.messageHistory.length === 2 && smartUpdated.record.messageHistory[0].rawMessage === smartSms && smartUpdated.record.messageHistory[1].rawMessage === updateSms && Store.all('timeline').filter(t => t.type === 'MAIL_IMPORT' && t.relatedId === smartUpdated.record.id).length === 2]);
+
   out.push(['MAIL: mailNormalizeUrl auto-prepends https:// to a bare domain', mailNormalizeUrl('posta.rs/pracenje?ID=123') === 'https://posta.rs/pracenje?ID=123']);
   out.push(['MAIL: mailNormalizeUrl leaves a proper http(s) URL untouched', mailNormalizeUrl('http://example.com/x') === 'http://example.com/x']);
   out.push(['MAIL: mailNormalizeUrl rejects a non-http(s) scheme', mailNormalizeUrl('javascript:alert(1)') === '' && mailNormalizeUrl('ftp://example.com') === '']);
@@ -1034,7 +1061,7 @@ const mailProbe = `
   out.push(['MAIL: applying the offered transition sets the linked inventory item to IN STORAGE', Store.get('inventory',item.id).status === 'IN_STORAGE']);
 
   const page = renderMail();
-  out.push(['MAIL page renders the summary strip, filter tabs and Add Shipment action', page.indexOf('pn-mail-summary') > -1 && page.indexOf('data-mail-filter="PROBLEM"') > -1 && page.indexOf('data-mail-add') > -1]);
+  out.push(['MAIL page renders summary, filters, paste import and Add Shipment actions', page.indexOf('pn-mail-summary') > -1 && page.indexOf('data-mail-filter="PROBLEM"') > -1 && page.indexOf('data-mail-import') > -1 && page.indexOf('data-mail-add') > -1]);
 
   out.push(['MAIL: recognized by the backup inspector', !!inspectBackupFile({mail:[{id:'x'}]})]);
   out.push(['MAIL: restore carries shipments through replaceAll', (function(){Store.replaceAll({meta:{},projects:[],inventory:[],deals:[],sales:[],timeline:[],plans:[],repairs:[],rigs:[],roadTo:[],myRig:null,mail:[{id:'kept-mail',direction:'incoming',description:'kept',status:'preparing'}]});return !!(Store.all('mail')||[]).find(x=>x.id==='kept-mail')})()]);

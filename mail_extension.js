@@ -16,7 +16,7 @@ const MAIL_STATUS_META={
   lost:{chip:"chip-red"}
 };
 const MAIL_PROBLEM_STATUSES=["delayed","returned","lost"];
-const MailUI={offer:null};
+const MailUI={offer:null,smartImport:null};
 
 /* Known carrier tracking-tool base URLs, keyed by a normalized (lowercased, diacritic-stripped) carrier name.
    Only carriers whose site we've actually confirmed live here — an unverified guess is worse than no autofill.
@@ -51,7 +51,7 @@ function mailMatchesFilter(m,key){
 
 function mailDefaultRecord(){
   return{direction:"incoming",description:"",linkedType:"none",linkedId:null,carrier:"",trackingNumber:"",trackingUrl:"",sender:"",receiver:"",
-    shippingCost:0,currency:"RSD",codAmount:0,dateSent:todayISO(),expectedDeliveryDate:"",actualDeliveryDate:"",status:"preparing",notes:""};
+    shippingCost:0,currency:"RSD",codAmount:0,dateSent:todayISO(),expectedDeliveryDate:"",actualDeliveryDate:"",deadlineAt:"",status:"preparing",notes:"",actionLinks:[],messageHistory:[]};
 }
 function mailSafeUrl(u){
   const s=String(u||"").trim();
@@ -63,6 +63,101 @@ function mailNormalizeUrl(u){
   if(/^https?:\/\//i.test(s))return s;
   if(/^[a-z][a-z0-9+.-]*:/i.test(s))return"";
   return"https://"+s;
+}
+function mailFoldSerbian(s){
+  const text=String(s||"").toLowerCase();
+  return(text.normalize?text.normalize("NFD").replace(/[\u0300-\u036f]/g,""):text).replace(/đ/g,"dj");
+}
+function mailNormalizeTracking(s){return String(s||"").toUpperCase().replace(/[^A-Z0-9]/g,"")}
+function mailExtractUrls(raw){
+  const matches=String(raw||"").match(/https?:\/\/[^\s<>"']+/gi)||[];
+  return matches.map(u=>u.replace(/[),.;!?]+$/,"")).filter((u,i,a)=>mailSafeUrl(u)&&a.indexOf(u)===i);
+}
+function mailExtractTracking(raw){
+  const hit=String(raw||"").toUpperCase().match(/\b[A-Z]{2}\s*[0-9]{9}\s*RS\b/);
+  return hit?mailNormalizeTracking(hit[0]):"";
+}
+function mailExtractSender(raw){
+  const hit=String(raw||"").match(/\bod\s+po(?:s|š)iljaoca\s+([^,.;\n]+)/i);
+  return hit?String(hit[1]||"").trim():"";
+}
+function mailParseSerbianAmount(s){
+  const raw=String(s||"").replace(/\s/g,"");
+  if(!raw)return null;
+  const normalized=raw.indexOf(",")>-1?raw.replace(/\./g,"").replace(",","."):raw.replace(/\./g,"");
+  const amount=Number(normalized);
+  return Number.isFinite(amount)?amount:null;
+}
+function mailExtractCod(raw){
+  const text=mailFoldSerbian(raw),hit=text.match(/\b(?:pouzece|otkupnina|cod|iznos\s+za\s+uplatu)\s*(?:iznosi|je|:)?\s*([0-9][0-9.\s]*(?:,[0-9]{1,2})?)\s*(rsd|din(?:ara)?|eur|€)?/i);
+  if(!hit)return{amount:null,currency:null};
+  return{amount:mailParseSerbianAmount(hit[1]),currency:hit[2]&&(hit[2].toLowerCase()==="eur"||hit[2]==="€")?"EUR":"RSD"};
+}
+function mailPad2(n){return String(n).padStart(2,"0")}
+function mailLocalDate(d){return d.getFullYear()+"-"+mailPad2(d.getMonth()+1)+"-"+mailPad2(d.getDate())}
+function mailLocalDeadline(d,h,m){return mailLocalDate(d)+"T"+mailPad2(h)+":"+mailPad2(m)}
+function mailExtractDeadline(raw,referenceDate){
+  const text=mailFoldSerbian(raw),base=referenceDate instanceof Date&&!isNaN(referenceDate)?new Date(referenceDate.getTime()):new Date;
+  let hit=text.match(/\b(danas|sutra)\s+do\s+([01]?\d|2[0-3])(?:[:.]([0-5]\d))?\s*h?\b/);
+  if(hit){const d=new Date(base.getFullYear(),base.getMonth(),base.getDate()+(hit[1]==="sutra"?1:0));return{deadlineAt:mailLocalDeadline(d,Number(hit[2]),Number(hit[3]||0)),sourceText:hit[0]}}
+  hit=text.match(/\b(?:do\s+)?([0-3]?\d)[.\/-]([01]?\d)[.\/-](\d{2}|\d{4})\.?\s*(?:do\s+)?([01]?\d|2[0-3])(?:[:.]([0-5]\d))?\s*h?\b/);
+  if(hit){let year=Number(hit[3]);year<100&&(year+=2000);const d=new Date(year,Number(hit[2])-1,Number(hit[1]));if(d.getFullYear()===year&&d.getMonth()===Number(hit[2])-1&&d.getDate()===Number(hit[1]))return{deadlineAt:mailLocalDeadline(d,Number(hit[4]),Number(hit[5]||0)),sourceText:hit[0]}}
+  return{deadlineAt:"",sourceText:""};
+}
+function mailPostaStatus(text){
+  if(/\b(?:urucena|isporucena)\b/.test(text))return"delivered";
+  if(/\b(?:vracena|povrat)\b/.test(text))return"returned";
+  if(/\b(?:kasnjenje|odlozena)\b/.test(text))return"delayed";
+  if(/\b(?:spremna\s+za\s+preuzimanje|ceka\s+vas|mozete\s+preuzeti)\b/.test(text))return"ready_for_pickup";
+  return"in_transit";
+}
+function mailNormalizeActionLinks(links){
+  const out=[];
+  (Array.isArray(links)?links:[]).forEach(link=>{const url=mailSafeUrl(link&&link.url);if(!url||out.some(x=>x.url===url))return;out.push({label:String(link.label||"MESSAGE LINK").trim()||"MESSAGE LINK",url:url})});
+  return out;
+}
+/* Add carrier-specific match/parse objects here; shared extractors keep each parser small and deterministic. */
+const MAIL_MESSAGE_PARSERS=[{
+  id:"posta-srbije-post-express-v1",
+  carrier:"Pošta Srbije / Post Express",
+  matches(ctx){return ctx.urls.some(u=>mailFoldSerbian(u).indexOf("posta.rs")>-1)||/\b(?:posta\s+srbije|post\s*express)\b/.test(ctx.folded)||/^PX[0-9]{9}RS$/.test(ctx.trackingNumber)},
+  parse(ctx){
+    if(!ctx.trackingNumber)return{ok:false,error:"Pošta Srbije message found, but no valid tracking number was detected."};
+    const cod=mailExtractCod(ctx.raw),deadline=mailExtractDeadline(ctx.raw,ctx.referenceDate);
+    return{ok:true,parserId:this.id,carrier:this.carrier,direction:"incoming",status:mailPostaStatus(ctx.folded),trackingNumber:ctx.trackingNumber,trackingUrl:mailCarrierPresetUrl("Pošta Srbije"),sender:mailExtractSender(ctx.raw),codAmount:cod.amount,currency:cod.currency||"RSD",deadlineAt:deadline.deadlineAt,dateReferences:deadline.deadlineAt?[deadline.deadlineAt]:[],urls:ctx.urls,actionLinks:mailNormalizeActionLinks(ctx.urls.map(url=>({label:mailFoldSerbian(url).indexOf("paketomat")>-1?"PREUSMERI NA PAKETOMAT":"MESSAGE LINK",url:url}))),receivedDate:mailLocalDate(ctx.referenceDate)};
+  }
+}];
+function mailParseCourierMessage(raw,referenceDate){
+  const text=String(raw||"").trim();
+  if(!text)return{ok:false,error:"Paste a courier message first."};
+  const date=referenceDate instanceof Date&&!isNaN(referenceDate)?referenceDate:new Date,ctx={raw:text,folded:mailFoldSerbian(text),trackingNumber:mailExtractTracking(text),urls:mailExtractUrls(text),referenceDate:date};
+  const parser=MAIL_MESSAGE_PARSERS.find(p=>p.matches(ctx));
+  return parser?parser.parse(ctx):{ok:false,error:"No supported courier format was detected. Pošta Srbije / Post Express is supported in v1."};
+}
+function mailFindByTracking(trackingNumber){
+  const key=mailNormalizeTracking(trackingNumber);
+  return key?mailAll().find(m=>mailNormalizeTracking(m.trackingNumber)===key)||null:null;
+}
+function mailSmartImportPreview(raw,referenceDate){
+  const parsed=mailParseCourierMessage(raw,referenceDate);
+  if(!parsed.ok)return parsed;
+  const existing=mailFindByTracking(parsed.trackingNumber);
+  return Object.assign({},parsed,{mode:existing?"update":"create",existingId:existing?existing.id:null});
+}
+function mailMessageHistoryEntry(parsed,raw){
+  return{id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),importedAt:nowISO(),parserId:parsed.parserId,rawMessage:String(raw||""),status:parsed.status,deadlineAt:parsed.deadlineAt||"",actionLinks:mailNormalizeActionLinks(parsed.actionLinks)};
+}
+function mailApplyParsedMessage(parsed,raw){
+  if(!parsed||!parsed.ok)return null;
+  const existing=mailFindByTracking(parsed.trackingNumber),entry=mailMessageHistoryEntry(parsed,raw),payload={direction:parsed.direction,carrier:parsed.carrier,trackingNumber:parsed.trackingNumber,trackingUrl:parsed.trackingUrl,status:parsed.status,actionLinks:mailNormalizeActionLinks((existing&&existing.actionLinks||[]).concat(parsed.actionLinks||[])),messageHistory:(existing&&Array.isArray(existing.messageHistory)?existing.messageHistory:[]).concat([entry])};
+  parsed.sender&&(payload.sender=parsed.sender);
+  null!=parsed.codAmount&&(payload.codAmount=parsed.codAmount,payload.currency=parsed.currency||"RSD");
+  parsed.deadlineAt&&(payload.deadlineAt=parsed.deadlineAt);
+  let rec,mode;
+  if(existing){existing.description||(payload.description=parsed.sender?"Package from "+parsed.sender:"Shipment "+parsed.trackingNumber);rec=Actions.updateMail(existing.id,payload);mode="update"}
+  else{payload.description=parsed.sender?"Package from "+parsed.sender:"Shipment "+parsed.trackingNumber;payload.dateSent=parsed.receivedDate||todayISO();rec=Actions.addMail(payload);mode="create"}
+  Timeline.log("MAIL_IMPORT",(mode==="update"?"Courier message updated":"Courier message imported")+" — "+parsed.trackingNumber,String(raw||""),parsed.receivedDate||todayISO(),"mail",rec.id);
+  return{mode:mode,record:rec};
 }
 
 function mailLinkedTypeOptions(direction){
@@ -110,6 +205,13 @@ function mailLinkedChip(m){
   const label=mailLinkedEntityLabel(m.linkedType,rec);
   return'<span class="chip chip-blue-outline pn-mail-link-chip" data-open-entity="'+m.linkedType+'" data-id="'+m.linkedId+'" title="Open linked '+escAttr(m.linkedType)+'">'+escHtml(mailLinkedTypeLabel(m.linkedType).toUpperCase())+": "+escHtml(label)+"</span>";
 }
+function mailDeadlineLabel(value){
+  const s=String(value||"");
+  return s.length>=16?fmtDate(s.slice(0,10))+" · "+s.slice(11,16):s;
+}
+function mailActionLinksHtml(m){
+  return mailNormalizeActionLinks(m&&m.actionLinks).map(link=>'<a class="btn btn-sm btn-ghost" href="'+escAttr(link.url)+'" target="_blank" rel="noopener noreferrer">'+escHtml(link.label)+' ↗</a>').join("");
+}
 
 function mailShippingSum(direction,linkedType,linkedId,currency){
   if(!linkedId)return 0;
@@ -124,6 +226,8 @@ function mailIncomingShippingCostForProject(projectId,currency){return mailShipp
 Actions.addMail=function(data){
   const payload=Object.assign(mailDefaultRecord(),data);
   payload.trackingUrl=mailNormalizeUrl(payload.trackingUrl);
+  payload.actionLinks=mailNormalizeActionLinks(payload.actionLinks);
+  payload.messageHistory=Array.isArray(payload.messageHistory)?payload.messageHistory:[];
   if(payload.status==="delivered"&&!payload.actualDeliveryDate)payload.actualDeliveryDate=todayISO();
   const rec=Store.insert("mail",payload);
   Timeline.log("MAIL",(rec.direction==="incoming"?"Incoming":"Outgoing")+" shipment logged — "+(rec.description||rec.carrier||"Package"),mailStatusLabel(rec.status),rec.dateSent||todayISO(),"mail",rec.id);
@@ -134,6 +238,8 @@ Actions.updateMail=function(id,data){
   if(!before)return null;
   const payload=Object.assign({},data);
   if("trackingUrl"in payload)payload.trackingUrl=mailNormalizeUrl(payload.trackingUrl);
+  if("actionLinks"in payload)payload.actionLinks=mailNormalizeActionLinks(payload.actionLinks);
+  if("messageHistory"in payload&&!Array.isArray(payload.messageHistory))payload.messageHistory=[];
   const nextStatus=payload.status||before.status;
   if(nextStatus==="delivered"&&before.status!=="delivered"&&!payload.actualDeliveryDate&&!before.actualDeliveryDate)payload.actualDeliveryDate=todayISO();
   const result=Store.update("mail",id,payload);
@@ -232,6 +338,7 @@ function mailCard(m){
   const meta=MAIL_STATUS_META[m.status]||MAIL_STATUS_META.preparing;
   const statusChip='<span class="chip '+meta.chip+'">'+escHtml(mailStatusLabel(m.status))+"</span>";
   const linked=mailLinkedChip(m);
+  const actionLinks=mailActionLinksHtml(m);
   const canDeliver=mailIsActive(m)&&m.status!=="delivered";
   const row=(label,val)=>'<div class="pn-mail-card-row"><span>'+label+"</span>"+val+"</div>";
   return'<div class="panel pn-mail-card">'+
@@ -244,6 +351,8 @@ function mailCard(m){
       "</div>":"")+
     row("SHIPPING","<b>"+money(m.shippingCost||0,m.currency)+"</b>")+
     row("SENT","<b>"+(m.dateSent?fmtDate(m.dateSent):"—")+"</b>")+
+    (m.deadlineAt?row("DEADLINE","<b>"+escHtml(mailDeadlineLabel(m.deadlineAt))+"</b>"):"")+
+    (actionLinks?row("ACTIONS",'<div class="pn-mail-action-links">'+actionLinks+"</div>"):"")+
     (linked?row("LINKED",linked):"")+
     '<div class="pn-mail-card-foot">'+
       (canDeliver?'<button type="button" class="btn btn-sm" data-mail-mark-delivered="'+m.id+'">MARK DELIVERED</button>':"")+
@@ -255,6 +364,11 @@ function mailCard(m){
 
 function mailFieldRow(label,inputHtml,half){
   return'<label class="field'+(half?" half":"")+'"><span>'+label+"</span>"+inputHtml+"</label>";
+}
+function mailMessageHistoryHtml(d){
+  const history=Array.isArray(d.messageHistory)?d.messageHistory.slice().reverse():[];
+  if(!history.length)return"";
+  return'<details class="pn-mail-message-history"><summary>IMPORTED MESSAGES ('+history.length+")</summary>"+history.map(item=>'<div class="pn-mail-message-entry"><span>'+escHtml(String(item.importedAt||"").replace("T"," ").slice(0,16))+' · '+escHtml(item.parserId||"parser")+'</span><pre>'+escHtml(item.rawMessage||"")+"</pre></div>").join("")+"</details>";
 }
 function mailModalHtml(){
   const d=state.mailDraft,isEdit=!!d.id;
@@ -278,9 +392,21 @@ function mailModalHtml(){
     mailFieldRow("COD Amount",'<input type="number" min="0" step="0.01" data-mail-path="codAmount" value="'+escAttr(d.codAmount)+'">',true)+
     mailFieldRow("Date Sent",'<input type="date" data-mail-path="dateSent" value="'+escAttr(d.dateSent)+'">',true)+
     mailFieldRow("Expected Delivery",'<input type="date" data-mail-path="expectedDeliveryDate" value="'+escAttr(d.expectedDeliveryDate)+'">',true)+
+    mailFieldRow("Action Deadline",'<input type="datetime-local" data-mail-path="deadlineAt" value="'+escAttr(d.deadlineAt||"")+'">',true)+
     mailFieldRow("Actual Delivery",'<input type="date" data-mail-path="actualDeliveryDate" value="'+escAttr(d.actualDeliveryDate)+'">',true)+
     mailFieldRow("Notes",'<textarea data-mail-path="notes">'+escHtml(d.notes)+"</textarea>");
-  return'<div class="modal-backdrop" data-mail-close><div class="modal" role="dialog" aria-modal="true"><div class="modal-head"><h3>'+(isEdit?"EDIT SHIPMENT":"NEW SHIPMENT")+'</h3><button type="button" class="modal-close" data-mail-close aria-label="Close">✕</button></div><div class="modal-body"><div class="field-row-wrap" style="display:flex;flex-wrap:wrap;gap:0 14px">'+body+'</div></div><div class="modal-foot">'+(isEdit?'<button type="button" class="btn btn-danger" data-mail-delete="'+d.id+'">DELETE</button>':"<span></span>")+'<span style="display:flex;gap:8px"><button type="button" class="btn" data-mail-cancel>CANCEL</button><button type="button" class="btn btn-primary" data-mail-save>'+(isEdit?"SAVE CHANGES":"CREATE")+"</button></span></div></div></div>";
+  return'<div class="modal-backdrop" data-mail-close><div class="modal" role="dialog" aria-modal="true"><div class="modal-head"><h3>'+(isEdit?"EDIT SHIPMENT":"NEW SHIPMENT")+'</h3><button type="button" class="modal-close" data-mail-close aria-label="Close">✕</button></div><div class="modal-body"><div class="field-row-wrap" style="display:flex;flex-wrap:wrap;gap:0 14px">'+body+"</div>"+mailMessageHistoryHtml(d)+'</div><div class="modal-foot">'+(isEdit?'<button type="button" class="btn btn-danger" data-mail-delete="'+d.id+'">DELETE</button>':"<span></span>")+'<span style="display:flex;gap:8px"><button type="button" class="btn" data-mail-cancel>CANCEL</button><button type="button" class="btn btn-primary" data-mail-save>'+(isEdit?"SAVE CHANGES":"CREATE")+"</button></span></div></div></div>";
+}
+function mailSmartImportPreviewHtml(p){
+  if(!p||!p.ok)return"";
+  const row=(label,value)=>'<div class="pn-mail-import-row"><span>'+label+"</span><b>"+escHtml(value||"—")+"</b></div>",links=mailNormalizeActionLinks(p.actionLinks);
+  return'<div class="pn-mail-import-preview"><div class="pn-mail-import-verdict"><span class="chip '+(p.mode==="update"?"chip-amber":"chip-green")+'">'+(p.mode==="update"?"UPDATE EXISTING":"CREATE NEW")+'</span><span>'+escHtml(p.parserId)+"</span></div>"+
+    row("TRACKING",p.trackingNumber)+row("SENDER",p.sender)+row("CARRIER",p.carrier)+row("DIRECTION",p.direction)+row("STATUS",mailStatusLabel(p.status))+row("COD",null==p.codAmount?"NOT PRESENT":money(p.codAmount,p.currency||"RSD"))+row("DEADLINE",p.deadlineAt?mailDeadlineLabel(p.deadlineAt):"NOT PRESENT")+row("TRACKING LINK",p.trackingUrl)+
+    (links.length?'<div class="pn-mail-import-links"><span>ACTION LINKS</span>'+links.map(link=>'<a href="'+escAttr(link.url)+'" target="_blank" rel="noopener noreferrer">'+escHtml(link.label)+' ↗</a>').join("")+"</div>":"")+"</div>";
+}
+function mailSmartImportModalHtml(){
+  const d=MailUI.smartImport||{raw:"",preview:null,error:""},p=d.preview;
+  return'<div class="modal-backdrop" data-mail-import-close><div class="modal pn-mail-import-modal" role="dialog" aria-modal="true"><div class="modal-head"><h3>SMART IMPORT / PASTE MESSAGE</h3><button type="button" class="modal-close" data-mail-import-close aria-label="Close">✕</button></div><div class="modal-body"><label class="field"><span>COURIER SMS</span><textarea class="pn-mail-import-raw" data-mail-import-raw placeholder="Paste the complete courier message here">'+escHtml(d.raw||"")+"</textarea></label>"+(d.error?'<div class="pn-mail-import-error">'+escHtml(d.error)+"</div>":"")+mailSmartImportPreviewHtml(p)+'</div><div class="modal-foot"><span class="pn-mail-import-local">LOCAL PARSER · NO EXTERNAL API</span><span style="display:flex;gap:8px"><button type="button" class="btn" data-mail-import-cancel>CANCEL</button><button type="button" class="btn" data-mail-import-preview>PREVIEW</button>'+(p&&p.ok?'<button type="button" class="btn btn-primary" data-mail-import-apply>'+(p.mode==="update"?"UPDATE SHIPMENT":"CREATE SHIPMENT")+"</button>":"")+"</span></div></div></div>";
 }
 
 function renderMail(){
@@ -299,9 +425,10 @@ function renderMail(){
 
   const cards=items.length?'<div class="pn-mail-grid">'+items.map(mailCard).join("")+"</div>":'<div class="panel"><div class="panel-body"><div class="hint" style="margin:0">No shipments match this filter.</div></div></div>';
 
-  return pageHeader("MAIL",items.length+" of "+mailAll().length+" shipments",'<button type="button" class="btn btn-primary" data-mail-add>+ ADD SHIPMENT</button>')+
+  const headerActions='<span class="pn-mail-head-actions"><button type="button" class="btn" data-mail-import>PASTE MESSAGE</button><button type="button" class="btn btn-primary" data-mail-add>+ ADD SHIPMENT</button></span>';
+  return pageHeader("MAIL",items.length+" of "+mailAll().length+" shipments",headerActions)+
     '<div class="content">'+mailSummaryHtml()+offer+controls+cards+"</div>"+
-    (state.mailDraft?mailModalHtml():"");
+    (state.mailDraft?mailModalHtml():"")+(MailUI.smartImport?mailSmartImportModalHtml():"");
 }
 
 function mailDashboardSummaryHtml(){
@@ -340,6 +467,7 @@ function mailApplyRecordSave(){
     dateSent:d.dateSent||"",
     expectedDeliveryDate:d.expectedDeliveryDate||"",
     actualDeliveryDate:d.actualDeliveryDate||"",
+    deadlineAt:d.deadlineAt||"",
     status:d.status||"preparing",
     notes:String(d.notes||"").trim()
   };
@@ -351,6 +479,16 @@ function mailApplyRecordSave(){
 function mailCloseModal(){state.mailDraft=null;render()}
 
 function mailClick(e){
+  const importOpen=e.target.closest("[data-mail-import]");
+  if(importOpen){state.mailDraft=null;MailUI.smartImport={raw:"",preview:null,error:""};render();return}
+  const importPreview=e.target.closest("[data-mail-import-preview]");
+  if(importPreview&&MailUI.smartImport){const p=mailSmartImportPreview(MailUI.smartImport.raw,new Date);MailUI.smartImport.preview=p.ok?p:null;MailUI.smartImport.error=p.ok?"":p.error;render();return}
+  const importApply=e.target.closest("[data-mail-import-apply]");
+  if(importApply&&MailUI.smartImport&&MailUI.smartImport.preview){mailApplyParsedMessage(MailUI.smartImport.preview,MailUI.smartImport.raw);MailUI.smartImport=null;render();return}
+  const importCancel=e.target.closest("[data-mail-import-cancel]");
+  if(importCancel){MailUI.smartImport=null;render();return}
+  const importClose=e.target.closest("[data-mail-import-close]");
+  if(importClose&&e.target===importClose){MailUI.smartImport=null;render();return}
   const add=e.target.closest("[data-mail-add]");
   if(add){state.mailDraft=mailDefaultRecord();render();return}
   const edit=e.target.closest("[data-mail-edit]");
@@ -420,6 +558,8 @@ function mailTrack(id,btn){
   }
 }
 function mailFormInput(e){
+  const importRaw=e.target.closest("[data-mail-import-raw]");
+  if(importRaw&&MailUI.smartImport){MailUI.smartImport.raw=importRaw.value;MailUI.smartImport.preview=null;MailUI.smartImport.error="";return}
   const el=e.target.closest("[data-mail-path]");
   if(!el||!state.mailDraft)return;
   state.mailDraft[el.dataset.mailPath]=el.value;
@@ -464,7 +604,8 @@ document.addEventListener("change",mailFormChange);
   ".pn-mail-offer{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:10px 14px;margin-bottom:14px;border:1px solid var(--amber-dim);background:var(--amber-wash);border-radius:var(--radius);font-family:var(--mono);font-size:11.5px;color:var(--text-dim)}.pn-mail-offer-actions{display:flex;gap:8px;flex-shrink:0}"+
   ".pn-mail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}.pn-mail-card{padding:14px}.pn-mail-card-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:9px}.pn-mail-card-desc{font-size:13.5px;color:var(--text);font-weight:600;margin-bottom:10px}.pn-mail-card-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--border);font-size:11.5px}.pn-mail-card-row span{font-family:var(--stamp);font-size:9.5px;letter-spacing:.08em;color:var(--text-mute);text-transform:uppercase;width:70px;flex:0 0 70px}.pn-mail-card-row b{color:var(--text-dim);font-weight:600}.pn-mail-track b.mono{font-family:var(--mono);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pn-mail-card-foot{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}.pn-mail-link-chip{cursor:pointer}.pn-mail-link-chip:hover{background:var(--panel-hover)}"+
   ".pn-mail-dash{display:flex;align-items:center;gap:12px;margin:0 0 14px;padding:11px 15px;border:1px solid var(--blue);background:var(--blue-wash);border-radius:var(--radius);cursor:pointer;flex-wrap:wrap}.pn-mail-dash.is-problem{border-color:var(--red-dim);background:var(--red-wash)}.pn-mail-dash-label{font-family:var(--stamp);font-size:10px;letter-spacing:.16em;color:var(--blue);font-weight:700}.pn-mail-dash.is-problem .pn-mail-dash-label{color:var(--red)}.pn-mail-dash-line{font-family:var(--mono);font-size:12px;color:var(--text-dim);flex:1;min-width:0}.pn-mail-dash-cta{font-family:var(--stamp);font-size:10px;letter-spacing:.06em;color:var(--text-mute)}"+
+  ".pn-mail-head-actions,.pn-mail-action-links{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.pn-mail-import-modal{max-width:720px}.pn-mail-import-raw{min-height:160px;resize:vertical;font-family:var(--mono);line-height:1.5}.pn-mail-import-local{font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--text-mute)}.pn-mail-import-error{padding:10px 12px;border:1px solid var(--red-dim);background:var(--red-wash);color:var(--red);font-family:var(--mono);font-size:11px}.pn-mail-import-preview{margin-top:14px;border:1px solid var(--border);background:var(--panel);padding:12px}.pn-mail-import-verdict{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;font-family:var(--mono);font-size:9px;color:var(--text-mute)}.pn-mail-import-row{display:grid;grid-template-columns:120px 1fr;gap:10px;padding:6px 0;border-top:1px solid var(--border)}.pn-mail-import-row span,.pn-mail-import-links>span{font-family:var(--stamp);font-size:9px;letter-spacing:.08em;color:var(--text-mute)}.pn-mail-import-row b{font-family:var(--mono);font-size:11px;color:var(--text-dim);overflow-wrap:anywhere}.pn-mail-import-links{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--border)}.pn-mail-import-links a{font-family:var(--mono);font-size:10px;color:var(--blue)}.pn-mail-message-history{margin-top:14px;border-top:1px solid var(--border);padding-top:12px}.pn-mail-message-history summary{cursor:pointer;font-family:var(--stamp);font-size:10px;letter-spacing:.08em;color:var(--text-mute)}.pn-mail-message-entry{margin-top:10px}.pn-mail-message-entry>span{font-family:var(--mono);font-size:9px;color:var(--text-mute)}.pn-mail-message-entry pre{white-space:pre-wrap;overflow-wrap:anywhere;margin:5px 0 0;padding:9px;border:1px solid var(--border);background:var(--panel);font-family:var(--mono);font-size:10px;color:var(--text-dim)}"+
   "@media(max-width:1180px){.pn-mail-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.pn-mail-summary-cell:nth-child(2n){border-right:0}}"+
-  "@media(max-width:720px){.pn-mail-controls{flex-direction:column;align-items:stretch}.pn-mail-controls input{width:100%}.pn-mail-filters{width:100%}.pn-mail-filter{flex:1}}";
+  "@media(max-width:720px){.pn-mail-controls{flex-direction:column;align-items:stretch}.pn-mail-controls input{width:100%}.pn-mail-filters{width:100%}.pn-mail-filter{flex:1}.pn-mail-import-row{grid-template-columns:1fr}.pn-mail-head-actions{width:100%}}";
   document.head.appendChild(style);
 })();
