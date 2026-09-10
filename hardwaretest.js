@@ -47,6 +47,9 @@ const results = env.run(sandbox, `(() => {
   out.push(['canonical tier order preserved', PN_GEAR_TIERS.join('>')==='SCRAPBLADE>SCRAPWRAITH>REVENANT>GHOUL>ALGHOUL']);
   out.push(['catalog suggestions wait for 2 characters', catalogSearch('MOBO','B').length===0]);
   out.push(['catalog suggestions are capped at 12', catalogSearch('MOBO','B5').length<=12]);
+  out.push(['catalog search matches brand + chipset even with a sub-line name between them', catalogSearch('MOBO','MSI B650').some(b=>b.brand==='MSI'&&b.model==='MAG B650 TOMAHAWK WIFI')]);
+  out.push(['catalogSearchAll matches brand + chipset even with a sub-line name between them', catalogSearchAll('MSI B650').some(m=>m.cat==='MOTHERBOARD'&&m.item.model==='MAG B650 TOMAHAWK WIFI')]);
+  out.push(['catalog search word order does not matter', catalogSearch('MOBO','TOMAHAWK MSI').some(b=>b.model==='MAG B650 TOMAHAWK WIFI')]);
   out.push(['Deal Score remains a separate 0-10 system', DealScore.auto({purchasePrice:50,estimatedMarketValue:100,condition:'WORKING',category:'GPU'}).score<=10]);
   out.push(['PARTS VAULT visual tiers are a separate five-level system', Object.keys(PN_PART_NAME_TIERS).join('>')==='1>2>3>4>5'&&PN_PART_NAME_TIERS[5].label==='Restrained Gold']);
   out.push(['GPU visual tiers follow the strict category examples', pnPartNameTier({category:'GPU',manufacturer:'NVIDIA',model:'GTX 1070 Hercules'}).key==='T3'&&pnPartNameTier({category:'GPU',manufacturer:'AMD',model:'RX 6600'}).key==='T4'&&pnPartNameTier({category:'GPU',manufacturer:'NVIDIA',model:'RTX 3080'}).key==='T5']);

@@ -14,25 +14,18 @@ catalogEntriesForSlot = function(slotKey){
   return PNCoreCatalogEntriesForSlot(slotKey);
 };
 
+/* Delegates to the core search (CPU/GPU/MOBO/RAM/STORAGE, with its token-AND matching) and adds PSU
+   on top — rather than re-implementing the whole thing, so a future search-quality fix in app_core.js
+   doesn't have to be repeated here too. */
 const PNCoreCatalogSearchAll = catalogSearchAll;
 catalogSearchAll = function(query){
+  const out = PNCoreCatalogSearchAll(query);
   const r = pnNorm(query);
-  if (r.length < 2) return [];
-  const cats = [
-    ["CPU",HardwareCatalog.cpus],
-    ["GPU",HardwareCatalog.gpus],
-    ["MOTHERBOARD",HardwareCatalog.boards],
-    ["RAM",HardwareCatalog.ramFamilies],
-    ["PSU",HardwareCatalog.psus],
-    ["STORAGE",HardwareCatalog.storage]
-  ];
-  let out = [];
-  cats.forEach(pair=>{
-    const cat=pair[0], list=pair[1]||[];
-    list.forEach(item=>{
-      const label=pnNorm((item.brand||"")+" "+item.model);
-      if(label.includes(r)) out.push({cat,item,label});
-    });
+  if (r.length < 2) return out;
+  const tokens = r.split(" ").filter(Boolean);
+  (HardwareCatalog.psus||[]).forEach(item=>{
+    const label=pnNorm((item.brand||"")+" "+item.model);
+    if(pnLabelMatches(label,tokens)) out.push({cat:"PSU",item,label});
   });
   return out.sort((a,b)=>(a.label.startsWith(r)?0:1)-(b.label.startsWith(r)?0:1)||a.label.localeCompare(b.label)).slice(0,10);
 };

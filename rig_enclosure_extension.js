@@ -561,10 +561,11 @@ catalogSearchAll=function(query){
   let out=PNEnclosureCoreCatalogSearchAll(query);
   const r=pnNorm(query);
   if(r.length<2) return out;
+  const tokens=r.split(" ").filter(Boolean);
   [["CASE",HardwareCatalog.cases],["COOLER",HardwareCatalog.coolers]].forEach(pair=>{
     (pair[1]||[]).forEach(item=>{
       const label=pnNorm((item.brand||"")+" "+item.model);
-      if(label.includes(r)) out.push({cat:pair[0],item:item,label:label});
+      if(pnLabelMatches(label,tokens)) out.push({cat:pair[0],item:item,label:label});
     });
   });
   return out.sort((a,b)=>(a.label.startsWith(r)?0:1)-(b.label.startsWith(r)?0:1)||a.label.localeCompare(b.label)).slice(0,12);
