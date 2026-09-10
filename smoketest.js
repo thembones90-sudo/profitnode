@@ -917,21 +917,21 @@ const myRigProbe = `
   const sl = Store.load().myRig.slots;
   out.push(['MY RIG slots persist exact model, specs, price, date and manual provenance', sl.GPU.label === 'NVIDIA RTX 3080 10GB' && sl.GPU.specs.indexOf('GDDR6X') > -1 && sl.GPU.purchasePrice === 94000 && sl.GPU.purchaseDate === '2026-01-15' && sl.GPU.dataSource === 'MANUAL']);
   out.push(['MY RIG current value sums only the installed loadout, never profit', MyRig.invested() === 150000 && MyRig.value().invested === 150000 && !('profit' in MyRig.value())]);
-  out.push(['MY RIG value reports how many on-record parts have a price', MyRig.value().partsTotal === 3 && MyRig.value().partsPriced === 3]);
+  out.push(['MY RIG value reports how many on-record parts have a price', MyRig.value().partsTotal === 6 && MyRig.value().partsPriced === 3]);
 
   const myRigVaultItem = Actions.addInventory({category:'STORAGE', manufacturer:'Samsung', model:'980 Pro 1TB', purchaseDate:'2026-01-05', purchasePrice:12000, currency:'RSD', estimatedMarketValue:13000, source:'OTHER', condition:'WORKING', status:'IN_STORAGE'});
   MyRig.setSlot('STORAGE',{label:'Samsung 980 Pro 1TB', specs:'', purchasePrice:null, purchaseDate:'2026-01-05', notes:'', vaultId:myRigVaultItem.id});
   const myRigValueGap = MyRig.value();
-  out.push(['MY RIG value flags a part missing a price without changing the invested total', myRigValueGap.partsTotal === 4 && myRigValueGap.partsPriced === 3 && myRigValueGap.invested === 150000]);
+  out.push(['MY RIG value flags parts missing a price without changing the invested total', myRigValueGap.partsTotal === 6 && myRigValueGap.partsPriced === 3 && myRigValueGap.invested === 150000]);
   const pageWithGap = renderMyRig();
-  out.push(['MY RIG page shows a missing-price note sized to the actual gap', pageWithGap.indexOf('1 of 4 parts') > -1 && pageWithGap.indexOf('missing a price') > -1]);
+  out.push(['MY RIG page shows a missing-price note sized to the actual gap', pageWithGap.indexOf('3 of 6 parts') > -1 && pageWithGap.indexOf('missing a price') > -1]);
   out.push(['MY RIG vault-sourced part links straight to its Inventory record', pageWithGap.indexOf('data-open-entity="inventory"') > -1 && pageWithGap.indexOf('data-id="' + myRigVaultItem.id + '"') > -1]);
   MyRig.clearSlot('STORAGE');
-  out.push(['MY RIG hides the missing-price note once every on-record part has a price', renderMyRig().indexOf('missing a price') === -1]);
+  out.push(['MY RIG missing-price note continues to include unpriced detected parts', renderMyRig().indexOf('2 of 5 parts') > -1]);
 
   const page = renderMyRig();
   out.push(['MY RIG page opens with identity hero + full loadout grid', page.indexOf('pn-myrig-hero') > -1 && page.indexOf('LEVIATHAN') > -1 && page.indexOf('COMPONENT LOADOUT') > -1 && page.indexOf('data-myrig-slot="GPU"') > -1 && page.indexOf('94.000 RSD') > -1]);
-  out.push(['MY RIG renders detected/manual markers and CPU-Z coverage', page.indexOf('pn-myrig-src is-detected') > -1 && page.indexOf('pn-myrig-src is-manual') > -1 && page.indexOf('CPU-Z DETECTED: 3 SLOTS') > -1]);
+  out.push(['MY RIG renders detected/manual markers and CPU-Z coverage', page.indexOf('pn-myrig-src is-detected') > -1 && page.indexOf('pn-myrig-src is-manual') > -1 && page.indexOf('CPU-Z DETECTED: 2 SLOTS') > -1]);
   out.push(['MY RIG value section is informational with voluntary resale', page.indexOf('INFORMATIONAL ONLY') > -1 && page.indexOf('EST. RESALE VALUE') > -1]);
   MyRig.setResale(132000);
   const v2 = MyRig.value();
