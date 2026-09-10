@@ -285,7 +285,7 @@ rigWarnings = function(e){
   s.push(...psuMatchProfile(e).warnings);
 
   if(!m) s.push("No primary storage selected.");
-  const gen=c?detectMoboPcieGeneration(n(c)):null;
+  const gen=c?(moboStoragePcieGen(c.pn&&c.pn.data)||detectMoboStoragePcieGeneration(n(c))):null;
   [m].concat(v).forEach(drive=>{
     const dg=storagePcieGeneration(drive);
     if(dg&&gen&&dg>gen) s.push("COMPATIBLE — PCIe SPEED LIMITED: "+drive.label+" is Gen "+dg+" on a Gen "+gen+" motherboard platform.");

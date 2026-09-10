@@ -362,7 +362,7 @@ function rigIntegrity(rig){
   }
 
   if(s.GPU&&s.MOBO){
-    const gen=detectMoboPcieGeneration(pnNorm(mobo&&mobo.label||""));
+    const gen=moboGpuPcieGen(mobo&&mobo.pn&&mobo.pn.data)||detectMoboPcieGeneration(pnNorm(mobo&&mobo.label||""));
     if(!gen){
       push("GPU_PLATFORM","UNVERIFIED","GPU platform","GPU/MOTHERBOARD PLATFORM UNVERIFIED — could not read the motherboard PCIe generation.");
     }else{
