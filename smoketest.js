@@ -959,6 +959,18 @@ const mailProbe = `
   const mail1 = Actions.addMail({direction:'incoming', description:'GPU inbound', linkedType:'inventory', linkedId:item.id, shippingCost:1000, currency:'RSD', status:'in_transit'});
   out.push(['MAIL: addMail stores a record on its own ledger collection', Store.all('mail').length === 1 && mailGet(mail1.id).description === 'GPU inbound']);
 
+  out.push(['MAIL: mailNormalizeUrl auto-prepends https:// to a bare domain', mailNormalizeUrl('posta.rs/pracenje?ID=123') === 'https://posta.rs/pracenje?ID=123']);
+  out.push(['MAIL: mailNormalizeUrl leaves a proper http(s) URL untouched', mailNormalizeUrl('http://example.com/x') === 'http://example.com/x']);
+  out.push(['MAIL: mailNormalizeUrl rejects a non-http(s) scheme', mailNormalizeUrl('javascript:alert(1)') === '' && mailNormalizeUrl('ftp://example.com') === '']);
+  out.push(['MAIL: mailNormalizeUrl returns empty for blank input', mailNormalizeUrl('') === '' && mailNormalizeUrl('   ') === '']);
+  out.push(['MAIL: mailSafeUrl only allows http(s) through to rendering', mailSafeUrl('https://example.com') === 'https://example.com' && mailSafeUrl('javascript:alert(1)') === '']);
+
+  const mail1b = Actions.updateMail(mail1.id, {trackingUrl:'posta.rs/pracenje?ID=123'});
+  out.push(['MAIL: saved trackingUrl is normalized to a full https link', mail1b.trackingUrl === 'https://posta.rs/pracenje?ID=123']);
+  const cardWithLink = mailCard(mail1b);
+  out.push(['MAIL card renders a TRACK ONLINE link for a stored tracking URL', cardWithLink.indexOf('TRACK ONLINE') > -1 && cardWithLink.indexOf('href="https://posta.rs/pracenje?ID=123"') > -1 && cardWithLink.indexOf('target="_blank"') > -1 && cardWithLink.indexOf('rel="noopener noreferrer"') > -1]);
+  out.push(['MAIL CSV export includes the Tracking Link column', CSV_EXPORTS.mail.columns.some(c => c.label === 'Tracking Link' && c.get(mail1b) === 'https://posta.rs/pracenje?ID=123')]);
+
   Actions.addMail({direction:'incoming', description:'Deal parts', linkedType:'deal', linkedId:deal.id, shippingCost:1500, currency:'RSD', status:'preparing'});
   const dealAfter = dealDerived(deal);
   out.push(['MAIL: incoming shipping folds into dealDerived via the existing Calc helpers, never mutating the stored deal', Math.abs(dealAfter.amountSaved - (15000-11500)) < 0.001 && Math.abs(dealAfter.discountPct - ((15000-11500)/15000*100)) < 0.001 && Store.get('deals',deal.id).purchasePrice === 10000]);

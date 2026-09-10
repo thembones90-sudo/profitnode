@@ -33,8 +33,19 @@ function mailMatchesFilter(m,key){
 }
 
 function mailDefaultRecord(){
-  return{direction:"incoming",description:"",linkedType:"none",linkedId:null,carrier:"",trackingNumber:"",sender:"",receiver:"",
+  return{direction:"incoming",description:"",linkedType:"none",linkedId:null,carrier:"",trackingNumber:"",trackingUrl:"",sender:"",receiver:"",
     shippingCost:0,currency:"RSD",codAmount:0,dateSent:todayISO(),expectedDeliveryDate:"",actualDeliveryDate:"",status:"preparing",notes:""};
+}
+function mailSafeUrl(u){
+  const s=String(u||"").trim();
+  return/^https?:\/\//i.test(s)?s:"";
+}
+function mailNormalizeUrl(u){
+  const s=String(u||"").trim();
+  if(!s)return"";
+  if(/^https?:\/\//i.test(s))return s;
+  if(/^[a-z][a-z0-9+.-]*:/i.test(s))return"";
+  return"https://"+s;
 }
 
 function mailLinkedTypeOptions(direction){
@@ -95,6 +106,7 @@ function mailIncomingShippingCostForProject(projectId,currency){return mailShipp
 /* Timeline + inventory/financial integration lives on the Actions object, following the app's own convention. */
 Actions.addMail=function(data){
   const payload=Object.assign(mailDefaultRecord(),data);
+  payload.trackingUrl=mailNormalizeUrl(payload.trackingUrl);
   if(payload.status==="delivered"&&!payload.actualDeliveryDate)payload.actualDeliveryDate=todayISO();
   const rec=Store.insert("mail",payload);
   Timeline.log("MAIL",(rec.direction==="incoming"?"Incoming":"Outgoing")+" shipment logged — "+(rec.description||rec.carrier||"Package"),mailStatusLabel(rec.status),rec.dateSent||todayISO(),"mail",rec.id);
@@ -104,6 +116,7 @@ Actions.updateMail=function(id,data){
   const before=Store.get("mail",id);
   if(!before)return null;
   const payload=Object.assign({},data);
+  if("trackingUrl"in payload)payload.trackingUrl=mailNormalizeUrl(payload.trackingUrl);
   const nextStatus=payload.status||before.status;
   if(nextStatus==="delivered"&&before.status!=="delivered"&&!payload.actualDeliveryDate&&!before.actualDeliveryDate)payload.actualDeliveryDate=todayISO();
   const result=Store.update("mail",id,payload);
@@ -171,6 +184,7 @@ CSV_EXPORTS.mail={label:"Mail",columns:[
   {label:"Status",get:e=>mailStatusLabel(e.status)},
   {label:"Carrier",get:e=>e.carrier||""},
   {label:"Tracking Number",get:e=>e.trackingNumber||""},
+  {label:"Tracking Link",get:e=>e.trackingUrl||""},
   {label:"Sender",get:e=>e.sender||""},
   {label:"Receiver",get:e=>e.receiver||""},
   {label:"Shipping Cost",get:e=>e.shippingCost||0},
@@ -207,7 +221,10 @@ function mailCard(m){
     '<div class="pn-mail-card-head">'+dirChip+statusChip+"</div>"+
     '<div class="pn-mail-card-desc">'+escHtml(m.description||"(no description)")+"</div>"+
     row("CARRIER","<b>"+escHtml(m.carrier||"—")+"</b>")+
-    (m.trackingNumber?'<div class="pn-mail-card-row pn-mail-track"><span>TRACKING</span><b class="mono">'+escHtml(m.trackingNumber)+'</b><button type="button" class="btn btn-sm btn-ghost" data-mail-copy="'+escAttr(m.trackingNumber)+'">COPY TRACKING</button></div>':"")+
+    (m.trackingNumber||mailSafeUrl(m.trackingUrl)?'<div class="pn-mail-card-row pn-mail-track"><span>TRACKING</span>'+
+      (m.trackingNumber?'<b class="mono">'+escHtml(m.trackingNumber)+'</b><button type="button" class="btn btn-sm btn-ghost" data-mail-copy="'+escAttr(m.trackingNumber)+'">COPY TRACKING</button>':"<b class=\"mono\">—</b>")+
+      (mailSafeUrl(m.trackingUrl)?'<a class="btn btn-sm btn-ghost" href="'+escAttr(mailSafeUrl(m.trackingUrl))+'" target="_blank" rel="noopener noreferrer">TRACK ONLINE ↗</a>':"")+
+      "</div>":"")+
     row("SHIPPING","<b>"+money(m.shippingCost||0,m.currency)+"</b>")+
     row("SENT","<b>"+(m.dateSent?fmtDate(m.dateSent):"—")+"</b>")+
     (linked?row("LINKED",linked):"")+
@@ -236,6 +253,7 @@ function mailModalHtml(){
     linkedIdField+
     mailFieldRow("Carrier",'<input type="text" data-mail-path="carrier" value="'+escAttr(d.carrier)+'" placeholder="e.g. Post Express, Bex, DHL">',true)+
     mailFieldRow("Tracking Number",'<input type="text" data-mail-path="trackingNumber" value="'+escAttr(d.trackingNumber)+'">',true)+
+    mailFieldRow("Tracking Link",'<input type="text" data-mail-path="trackingUrl" value="'+escAttr(d.trackingUrl)+'" placeholder="Paste the carrier’s tracking page URL">')+
     mailFieldRow("Sender",'<input type="text" data-mail-path="sender" value="'+escAttr(d.sender)+'">',true)+
     mailFieldRow("Receiver",'<input type="text" data-mail-path="receiver" value="'+escAttr(d.receiver)+'">',true)+
     mailFieldRow("Shipping Cost",'<input type="number" min="0" step="0.01" data-mail-path="shippingCost" value="'+escAttr(d.shippingCost)+'">',true)+
@@ -296,6 +314,7 @@ function mailApplyRecordSave(){
     linkedId:mailLinkedEntityCollection(d.linkedType)?(d.linkedId||null):null,
     carrier:String(d.carrier||"").trim(),
     trackingNumber:String(d.trackingNumber||"").trim(),
+    trackingUrl:String(d.trackingUrl||"").trim(),
     sender:String(d.sender||"").trim(),
     receiver:String(d.receiver||"").trim(),
     shippingCost:Number(d.shippingCost)||0,
