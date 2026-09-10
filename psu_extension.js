@@ -24,6 +24,7 @@ catalogSearchAll = function(query){
   if (r.length < 2) return out;
   const tokens = r.split(" ").filter(Boolean);
   (HardwareCatalog.psus||[]).forEach(item=>{
+    if(item.availability_status==="DOCUMENTED_UNRELEASED") return;
     const label=pnNorm((item.brand||"")+" "+item.model);
     if(pnLabelMatches(label,tokens)) out.push({cat:"PSU",item,label});
   });
