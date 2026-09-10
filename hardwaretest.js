@@ -36,7 +36,7 @@ const results = env.run(sandbox, `(() => {
   const out=[];
   out.push(['canonical CPU count is 279', HardwareCatalog.cpus.length===279]);
   out.push(['canonical GPU count is 123', HardwareCatalog.gpus.length===123]);
-  out.push(['canonical motherboard count is 1050 (935 legacy + ASUS AM5 registry)', HardwareCatalog.boards.length===1050]);
+  out.push(['canonical motherboard count is 1107 (935 legacy + ASUS + MSI AM5 registries)', HardwareCatalog.boards.length===1107]);
   out.push(['canonical DDR4 family catalog is loaded', HardwareCatalog.ramFamilies.length>=100]);
   out.push(['canonical storage catalog has 1,324 entries', HardwareCatalog.storage.length===1324]);
   out.push(['storage type counts are preserved', HardwareCatalog.storage.filter(e=>e.drive_type==='NVMe SSD').length===658&&HardwareCatalog.storage.filter(e=>e.drive_type==='SATA SSD').length===462&&HardwareCatalog.storage.filter(e=>e.drive_type==='HDD').length===204]);
@@ -154,6 +154,26 @@ const results = env.run(sandbox, `(() => {
   out.push(['every ASUS AM5 board is RELEASED (no fabricated HOLD)', asusAm5.every(b=>b.availability_status==='RELEASED')]);
   out.push(['price never enters the board score', asusAm5.every(b=>!('price_eur' in b)&&!('price_rsd' in b)&&b.pn_score===b.overall&&Number.isFinite(b.overall))]);
   out.push(['ASUS high-tier boards land ALGHOUL, entry boards stay below', catalogFind('MOBO','ASUS ROG CROSSHAIR X870E GLACIAL').pn_tier==='ALGHOUL'&&catalogFind('MOBO','ASUS PRIME A620M-K').pn_tier!=='ALGHOUL'&&catalogFind('MOBO','ASUS ROG CROSSHAIR X870E HERO').pn_score>=80]);
+
+  const msiAm5 = HardwareCatalog.boards.filter(b=>b.brand==='MSI'&&b.socket==='AM5');
+  out.push(['MSI AM5 registry is live with 64 verified SKUs', msiAm5.length===64]);
+  out.push(['every MSI AM5 board carries PN_AM5_MOBO_V2 rating', msiAm5.every(b=>b.rating_method==='PN_AM5_MOBO_V2'&&typeof b.pn_score==='number'&&b.pn_score>=0&&b.pn_score<=100&&b.pn_tier)]);
+  out.push(['every MSI AM5 board resolves to a valid tier on a valid chipset', msiAm5.every(b=>['SCRAPBLADE','SCRAPWRAITH','REVENANT','GHOUL','ALGHOUL'].includes(b.pn_tier)&&['X870E','X870','B850','B840','B650E','B650','X670E','X670','A620'].includes(b.chipset)&&b.pn_tier!==b.chipset)]);
+  out.push(['every MSI AM5 board has per-board PCIe generation and M.2 detail', msiAm5.every(b=>Number.isFinite(Number(b.primary_pcie_generation))&&b.m2_details&&b.m2_details!=='UNKNOWN'&&b.source_url)]);
+  out.push(['no duplicate MSI AM5 model keys', (function(){const s=new Set();let dup=0;msiAm5.forEach(b=>{const k=(b.brand+' '+b.model).toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();s.has(k)&&dup++,s.add(k)});return dup===0})()]);
+  out.push(['every MSI AM5 board is RELEASED (no fabricated HOLD)', msiAm5.every(b=>b.availability_status==='RELEASED')]);
+  out.push(['price never enters the MSI board score', msiAm5.every(b=>!('price_eur' in b)&&!('price_rsd' in b)&&b.pn_score===b.overall&&Number.isFinite(b.overall))]);
+  out.push(['all seven legacy MSI AM5 rows are covered by the new registry', ['MAG B650 TOMAHAWK WIFI','PRO B650M-A WIFI','MEG X670E ACE','MAG B850 TOMAHAWK WIFI','MPG X870E EDGE TI WIFI','PRO A620M-B','PRO B840M-P WIFI'].every(m=>{const b=catalogFind('MOBO','MSI '+m);return b&&b.socket==='AM5'&&b.rating_method==='PN_AM5_MOBO_V2'})]);
+  out.push(['MSI flagships land ALGHOUL while entry boards stay below', catalogFind('MOBO','MSI MEG X870E GODLIKE').pn_tier==='ALGHOUL'&&catalogFind('MOBO','MSI MEG X870E GODLIKE').pn_score>=85&&catalogFind('MOBO','MSI PRO A620M-B').pn_tier!=='ALGHOUL'&&catalogFind('MOBO','MSI MAG B650 TOMAHAWK WIFI').pn_score>=75]);
+  out.push(['MSI submodels resolve independently (MAX vs non-MAX, PZ)', catalogFind('MOBO','MSI MAG B650 TOMAHAWK WIFI').model!==catalogFind('MOBO','MSI MAG B650 TOMAHAWK MAX WIFI').model&&catalogFind('MOBO','MSI MAG B850 TOMAHAWK WIFI').model!==catalogFind('MOBO','MSI MAG B850 TOMAHAWK MAX WIFI').model&&catalogFind('MOBO','MSI MAG X870E TOMAHAWK PZ WIFI').chipset==='X870E']);
+  out.push(['unconfirmable MSI SKUs were dropped, real boards keep distinct entries', !msiAm5.some(b=>/X870I CARBON|X870 GAMING MAX/.test(b.model))&&catalogFind('MOBO','MSI MPG X870I EDGE TI EVO WIFI').model==='MPG X870I EDGE TI EVO WIFI']);
+  const carbWifi=catalogFind('MOBO','MSI MPG X870E CARBON WIFI');
+  out.push(['MPG X870E CARBON WIFI carries the verified 5G + 2.5G network stack', carbWifi&&carbWifi.ethernet_speed==='5G + 2.5G'&&carbWifi.usb4===true&&carbWifi.vrm_phases===18&&carbWifi.pn_score>=80]);
+  const b650m=catalogFind('MOBO','MSI MAG B650M MORTAR WIFI');
+  out.push(['MSI M-series boards normalize to Micro-ATX', b650m.form_factor==='Micro-ATX'&&motherboardCatalogFormFactor({pn:{data:b650m}})==='MATX'&&catalogFind('MOBO','MSI PRO B650M-A WIFI').form_factor==='Micro-ATX'&&catalogFind('MOBO','MSI PRO B840M-P WIFI').form_factor==='Micro-ATX'&&catalogFind('MOBO','MSI PRO A620M-B').form_factor==='Micro-ATX']);
+  out.push(['MSI X870E resolves Gen5 GPU / Gen5 M.2 through the PCIe matrix', detectMoboPcieGeneration('MSI MPG X870E CARBON WIFI')===5&&detectMoboStoragePcieGeneration('MSI MPG X870E CARBON WIFI')===5]);
+  out.push(['MSI B840 micro resolves Gen4 GPU / Gen4 M.2 through the PCIe matrix', detectMoboPcieGeneration('MSI PRO B840M-P WIFI')===4&&detectMoboStoragePcieGeneration('MSI PRO B840M-P WIFI')===4]);
+  out.push(['MSI X870 TOMAHAWK carries verified Gen5 PCB, USB4 and RTL8126-CG facts', (function(){const b=catalogFind('MOBO','MSI MAG X870 TOMAHAWK WIFI');return b&&b.primary_pcie_generation===5&&b.m2_slots===4&&b.usb4===true&&String(b.ethernet_controller).includes('RTL8126')})()]);
 
   const hero=catalogFind('MOBO','ASUS ROG CROSSHAIR X870E HERO');
   out.push(['X870E HERO carries verified board facts', hero&&hero.socket==='AM5'&&hero.chipset==='X870E'&&hero.primary_pcie_generation===5&&hero.wifi===true&&hero.usb4===true&&hero.m2_slots===5&&hero.form_factor==='ATX']);
