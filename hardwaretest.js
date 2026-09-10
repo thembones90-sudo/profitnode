@@ -36,7 +36,7 @@ const results = env.run(sandbox, `(() => {
   const out=[];
   out.push(['canonical CPU count is 279', HardwareCatalog.cpus.length===279]);
   out.push(['canonical GPU count is 123', HardwareCatalog.gpus.length===123]);
-  out.push(['canonical motherboard count is 1326 (935 legacy + ASUS + MSI + Gigabyte + ASRock + NZXT AM5 registries)', HardwareCatalog.boards.length===1326]);
+  out.push(['canonical motherboard count is 1361 (935 legacy + ASUS + MSI + Gigabyte + ASRock + NZXT + Biostar + Colorful AM5 registries)', HardwareCatalog.boards.length===1361]);
   out.push(['canonical DDR4 family catalog is loaded', HardwareCatalog.ramFamilies.length>=100]);
   out.push(['canonical storage catalog has 1,324 entries', HardwareCatalog.storage.length===1324]);
   out.push(['storage type counts are preserved', HardwareCatalog.storage.filter(e=>e.drive_type==='NVMe SSD').length===658&&HardwareCatalog.storage.filter(e=>e.drive_type==='SATA SSD').length===462&&HardwareCatalog.storage.filter(e=>e.drive_type==='HDD').length===204]);
@@ -224,6 +224,41 @@ const results = env.run(sandbox, `(() => {
   out.push(['NZXT X870E resolves Gen5 GPU / Gen5 M.2 through the PCIe matrix', detectMoboPcieGeneration('NZXT N9 X870E')===5&&detectMoboStoragePcieGeneration('NZXT N9 X870E')===5]);
   out.push(['NZXT B650E resolves Gen5 GPU / Gen5 M.2 through the PCIe matrix', detectMoboPcieGeneration('NZXT N7 B650E')===5&&detectMoboStoragePcieGeneration('NZXT N7 B650E')===5]);
   out.push(['ASRock AM5 rows no longer carry NZXT N-series co-branded boards', HardwareCatalog.boards.filter(b=>b.brand==='ASRock'&&/^N7|^N9/.test(b.model||'')).length===0]);
+
+  const biostarAm5=HardwareCatalog.boards.filter(b=>b.brand==='Biostar'&&b.socket==='AM5');
+  out.push(['Biostar AM5 registry is live with 22 verified SKUs', biostarAm5.length===22]);
+  out.push(['every Biostar AM5 board carries PN_AM5_MOBO_V2 rating', biostarAm5.every(b=>b.rating_method==='PN_AM5_MOBO_V2'&&typeof b.pn_score==='number'&&b.pn_score>=0&&b.pn_score<=100&&b.pn_tier)]);
+  out.push(['every Biostar AM5 board resolves to a valid tier on a valid chipset', biostarAm5.every(b=>['SCRAPBLADE','SCRAPWRAITH','REVENANT','GHOUL','ALGHOUL'].includes(b.pn_tier)&&['X870E','X670E','X670','B850','B840','B650E','B650','A620A','A620'].includes(b.chipset))]);
+  out.push(['every Biostar AM5 board links out to its official S_ID page', biostarAm5.every(b=>b.source_url.indexOf('biostar.com.tw/app/en/mb/introduction.php?S_ID=')!==-1&&Number.isInteger(Number(b.source_url.split('S_ID=')[1]))&&Number(b.source_url.split('S_ID=')[1])>0)]);
+  out.push(['every Biostar AM5 board has per-board PCIe generation and M.2 detail', biostarAm5.every(b=>Number.isFinite(Number(b.primary_pcie_generation))&&b.m2_details&&b.m2_details!=='UNKNOWN'&&b.source_url)]);
+  out.push(['no duplicate Biostar AM5 model names', biostarAm5.every(b=>biostarAm5.filter(x=>x.model===b.model).length===1)]);
+  out.push(['every Biostar AM5 board is RELEASED (no fabricated HOLD)', biostarAm5.every(b=>b.availability_status==='RELEASED')]);
+  out.push(['price never enters the Biostar board score', biostarAm5.every(b=>!('price_eur' in b)&&!('price_rsd' in b)&&b.pn_score===b.overall&&Number.isFinite(b.overall))]);
+  out.push(['Biostar X870E VALKYRIE carries verified 18+2+2 VRM, 110A, USB4 and 4x M.2 facts', (function(){const b=catalogFind('MOBO','Biostar X870E VALKYRIE');return b&&b.vrm_phases===22&&b.power_stage_rating===110&&b.usb4===true&&b.m2_slots===4&&b.sata_ports===6&&b.pn_score>=85})()]);
+  out.push(['Biostar X670E VALKYRIE carries verified 22-phase, 105A VRM and 4x M.2', (function(){const b=catalogFind('MOBO','Biostar X670E VALKYRIE');return b&&b.chipset==='X670E'&&b.vrm_phases===22&&b.power_stage_rating===105&&b.m2_slots===4&&b.pn_score>=80})()]);
+  out.push(['Biostar B650EGTQ carries verified B650E chipset, 14-phase VRM and Micro-ATX form', (function(){const b=catalogFind('MOBO','Biostar B650EGTQ');return b&&b.chipset==='B650E'&&b.vrm_phases===14&&b.power_stage_rating===90&&b.form_factor==='Micro-ATX'&&b.m2_slots===3&&b.pn_score>=70})()]);
+  out.push(['Biostar B840MT-E carries verified Gen4 PCIe and 2-DIMM DDR5 up to 128GB', (function(){const b=catalogFind('MOBO','Biostar B840MT-E');return b&&b.chipset==='B840'&&b.primary_pcie_generation===4&&b.memory_slots===2&&b.max_memory===128&&b.form_factor==='Micro-ATX'})()]);
+  out.push(['Biostar X870E resolves Gen5 GPU / Gen5 M.2 through the PCIe matrix', detectMoboPcieGeneration('Biostar X870E VALKYRIE')===5&&detectMoboStoragePcieGeneration('Biostar X870E VALKYRIE')===5]);
+  out.push(['Biostar B650E resolves Gen5 GPU / Gen5 M.2 through the PCIe matrix', detectMoboPcieGeneration('Biostar B650EGTQ')===5&&detectMoboStoragePcieGeneration('Biostar B650EGTQ')===5]);
+  out.push(['Biostar B650 resolves Gen4 GPU / Gen4 M.2 through the PCIe matrix', detectMoboPcieGeneration('Biostar B650M-SILVER')===4&&detectMoboStoragePcieGeneration('Biostar B650M-SILVER')===4]);
+  out.push(['Biostar A620A and B840 boards resolve Gen4 GPU / Gen4 M.2 through the PCIe matrix', detectMoboPcieGeneration('Biostar A620MH AURORA')===4&&detectMoboStoragePcieGeneration('Biostar A620MH AURORA')===4&&detectMoboPcieGeneration('Biostar B840MT-E')===4&&detectMoboStoragePcieGeneration('Biostar B840MT-E')===4]);
+
+  const colorfulAm5=HardwareCatalog.boards.filter(b=>b.brand==='Colorful'&&b.socket==='AM5');
+  out.push(['Colorful AM5 registry is live with 13 verified SKUs', colorfulAm5.length===13]);
+  out.push(['every Colorful AM5 board carries PN_AM5_MOBO_V2 rating', colorfulAm5.every(b=>b.rating_method==='PN_AM5_MOBO_V2'&&typeof b.pn_score==='number'&&b.pn_score>=0&&b.pn_score<=100&&b.pn_tier)]);
+  out.push(['every Colorful AM5 board resolves to a valid tier on a valid chipset', colorfulAm5.every(b=>['SCRAPBLADE','SCRAPWRAITH','REVENANT','GHOUL','ALGHOUL'].includes(b.pn_tier)&&['X870E','X870','B850','B650','A620'].includes(b.chipset))]);
+  out.push(['every Colorful AM5 board links out to an official Colorful series page', colorfulAm5.every(b=>b.source_url.indexOf('colorfulgroup.com/en/home/productlist?mid=')!==-1&&b.source_url.indexOf('https://')===0)]);
+  out.push(['every Colorful AM5 board has per-board PCIe generation and M.2 detail', colorfulAm5.every(b=>Number.isFinite(Number(b.primary_pcie_generation))&&b.m2_details&&b.m2_details!=='UNKNOWN'&&b.source_url)]);
+  out.push(['no duplicate Colorful AM5 model names', colorfulAm5.every(b=>colorfulAm5.filter(x=>x.model===b.model).length===1)]);
+  out.push(['every Colorful AM5 board is RELEASED (no fabricated HOLD)', colorfulAm5.every(b=>b.availability_status==='RELEASED')]);
+  out.push(['price never enters the Colorful board score', colorfulAm5.every(b=>!('price_eur' in b)&&!('price_rsd' in b)&&b.pn_score===b.overall&&Number.isFinite(b.overall))]);
+  out.push(['Colorful iGame X870E VULCAN OC V14 carries verified 18+2+2 VRM, 110A, USB4 and 5x M.2 facts', (function(){const b=catalogFind('MOBO','Colorful iGame X870E VULCAN OC V14');return b&&b.vrm_phases===22&&b.power_stage_rating===110&&b.usb4===true&&b.m2_slots===5&&b.wifi_standard==='Wi-Fi 7'&&b.ethernet_speed==='5G'&&b.pcb_layers===10&&b.pn_score>=85})()]);
+  out.push(['Colorful iGame X870 Senna V14 carries verified 14+2+1 VRM, Wi-Fi 7 and 3x M.2', (function(){const b=catalogFind('MOBO','Colorful iGame X870 Senna V14');return b&&b.vrm_phases===17&&b.wifi_standard==='Wi-Fi 7'&&b.usb4===true&&b.m2_slots===3&&b.ethernet_speed==='5G'&&b.pn_score>=80})()]);
+  out.push(['Colorful CVN B850M ARK FROZEN V14 carries verified 14+2+1 VRM, Wi-Fi 7 and 8-layer PCB', (function(){const b=catalogFind('MOBO','Colorful CVN B850M ARK FROZEN V14');return b&&b.vrm_phases===17&&b.wifi_standard==='Wi-Fi 7'&&b.pcb_layers===8&&b.m2_slots===3&&b.form_factor==='Micro-ATX'&&b.pn_score>=80})()]);
+  out.push(['stored Colorful board PCIe gen overrides the B650 label fallback', (function(){const b=catalogFind('MOBO','Colorful CVN B650M GAMING FROZEN V14');return b&&moboGpuPcieGen(b)===Number(b.primary_pcie_generation)&&moboGpuPcieGen(b)===5})()]);
+  out.push(['Colorful X870E resolves Gen5 GPU / Gen5 M.2 through the PCIe matrix', detectMoboPcieGeneration('Colorful iGame X870E VULCAN OC V14')===5&&detectMoboStoragePcieGeneration('Colorful iGame X870E VULCAN OC V14')===5]);
+  out.push(['Colorful B850M resolves Gen4 GPU / Gen5 M.2 through the PCIe matrix', detectMoboPcieGeneration('Colorful CVN B850M ARK FROZEN V14')===4&&detectMoboStoragePcieGeneration('Colorful CVN B850M ARK FROZEN V14')===5]);
+  out.push(['Colorful B650 and A620 boards resolve Gen4 GPU / Gen4 M.2 through the PCIe matrix', detectMoboPcieGeneration('Colorful CVN B650M GAMING FROZEN V14')===4&&detectMoboStoragePcieGeneration('Colorful CVN B650M GAMING FROZEN V14')===4&&detectMoboPcieGeneration('Colorful BATTLE-AX A620M-GHA WIFI V14')===4&&detectMoboStoragePcieGeneration('Colorful BATTLE-AX A620M-GHA WIFI V14')===4]);
 
   const hero=catalogFind('MOBO','ASUS ROG CROSSHAIR X870E HERO');
   out.push(['X870E HERO carries verified board facts', hero&&hero.socket==='AM5'&&hero.chipset==='X870E'&&hero.primary_pcie_generation===5&&hero.wifi===true&&hero.usb4===true&&hero.m2_slots===5&&hero.form_factor==='ATX']);
