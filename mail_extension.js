@@ -24,7 +24,8 @@ const MailUI={offer:null,smartImport:null};
    only open the tool, not jump straight to the result — see mailTrack() below for the copy+open combo that gets
    as close to one-click as the site allows. */
 const MAIL_CARRIER_URL_PRESETS={
-  "postasrbije":"https://www.posta.rs/lat/alati/pracenje-posiljke.aspx"
+  "postasrbije":"https://www.posta.rs/lat/alati/pracenje-posiljke.aspx",
+  "dhl":"https://www.dhl.com/rs-en/home/tracking/tracking-express.html?submit=1&tracking-id="
 };
 function mailNormalizeCarrierKey(s){
   return String(s||"").toLowerCase()
@@ -36,6 +37,9 @@ function mailCarrierPresetUrl(carrierText){
 }
 
 function mailStatusLabel(s){return String(s||"").replace(/_/g," ")}
+const MAIL_STATUS_PRECEDENCE={preparing:0,sent:10,in_transit:20,delayed:25,ready_for_pickup:30,delivered:40,returned:40,lost:40};
+function mailStatusPrecedence(s){return MAIL_STATUS_PRECEDENCE[s]||0}
+function mailStatusMayAdvance(from,to){if(!from)return true;if(!to)return false;return mailStatusPrecedence(to)>=mailStatusPrecedence(from)}
 function mailAll(){return Store.all("mail")}
 function mailGet(id){return Store.get("mail",id)}
 function mailIsActive(m){return["delivered","returned","lost"].indexOf(m.status)===-1}
@@ -77,9 +81,28 @@ function mailExtractTracking(raw){
   const hit=String(raw||"").toUpperCase().match(/\b[A-Z]{2}\s*[0-9]{9}\s*RS\b/);
   return hit?mailNormalizeTracking(hit[0]):"";
 }
+function mailExtractGenericTracking(raw){
+  const text=String(raw||"");
+  const rs=mailExtractTracking(text);if(rs)return rs;
+  const up=text.toUpperCase();
+  const candidates=(up.match(/\b(?:[A-Z]{2,4}[0-9]{8,16}|[0-9]{9,16})\b/g)||[]).filter(x=>!/^[0-9]+$/.test(x)||x.length>=10);
+  return candidates.length?mailNormalizeTracking(candidates[0]):"";
+}
 function mailExtractSender(raw){
   const hit=String(raw||"").match(/\bod\s+po(?:s|š)iljaoca\s+([^,.;\n]+)/i);
   return hit?String(hit[1]||"").trim():"";
+}
+function mailExtractReceiver(raw){
+  const hit=String(raw||"").match(/\bza\s+([^,.;\n]{2,40})\s*(?:\(|\-|adresa|ulica|telefon|br\.|mob)/i);
+  return hit?String(hit[1]||"").trim():"";
+}
+function mailExtractPickupCode(raw){
+  const hit=String(raw||"").match(/\b(?:kod\s*za\s*preuzimanje|preuzimanje\s*kod|pickup\s*code|kod)[\s:]*([A-Z0-9]{4,10})\b/i);
+  return hit?String(hit[1]||"").trim():"";
+}
+function mailExtractCourierPhone(raw){
+  const hit=String(raw||"").match(/(?:kurir|vozac|dostavljac|dostavljač)\s*(?:\+?\d[\d\s\-\/]{6,20}\d)/i);
+  return hit?String(hit[0]||"").replace(/[^\d+]/g,"").slice(0,16):"";
 }
 function mailParseSerbianAmount(s){
   const raw=String(s||"").replace(/\s/g,"");
@@ -108,6 +131,47 @@ function mailDetectPostaScore(ctx){
   if(/\bips\s+pokazi\b/.test(folded)||/\bips\s+pokaži\b/.test(folded))score+=10;
   return score;
 }
+function mailDetectBexScore(ctx){
+  let score=0;const f=ctx.folded,u=ctx.urls,t=ctx.trackingNumber;
+  if(/\bbex\b/.test(f))score+=35;
+  if(u.some(x=>mailFoldSerbian(x).indexOf("bex.rs")>-1))score+=30;
+  if(/\bbrza\s+express\s+spedicija\b/.test(f))score+=25;
+  if(/^BEX[0-9]{9,12}$/.test(t))score+=40;
+  if(/\b(?:kurir|dostava|preuzimanje|posiljka|pošiljka)\b/.test(f))score+=5;
+  return score;
+}
+function mailDetectDExpressScore(ctx){
+  let score=0;const f=ctx.folded,u=ctx.urls,t=ctx.trackingNumber;
+  if(/\bd\s*express\b/.test(f))score+=35;
+  if(u.some(x=>mailFoldSerbian(x).indexOf("dexpress.rs")>-1||mailFoldSerbian(x).indexOf("dex.rs")>-1))score+=30;
+  if(/^DEX[0-9]{9,12}$/.test(t))score+=40;
+  if(/\b(?:kurir|dostava|preuzimanje|posiljka|pošiljka)\b/.test(f))score+=5;
+  return score;
+}
+function mailDetectAksScore(ctx){
+  let score=0;const f=ctx.folded,u=ctx.urls,t=ctx.trackingNumber;
+  if(/\baks\b/.test(f))score+=35;
+  if(u.some(x=>mailFoldSerbian(x).indexOf("aks.co.rs")>-1))score+=30;
+  if(/^AKS[0-9]{9,12}$/.test(t))score+=40;
+  if(/\b(?:kurir|dostava|preuzimanje|posiljka|pošiljka)\b/.test(f))score+=5;
+  return score;
+}
+function mailDetectCityExpressScore(ctx){
+  let score=0;const f=ctx.folded,u=ctx.urls,t=ctx.trackingNumber;
+  if(/\bcity\s*express\b/.test(f))score+=35;
+  if(u.some(x=>mailFoldSerbian(x).indexOf("cityexpress.rs")>-1))score+=30;
+  if(/^CE[0-9]{9,12}$/.test(t))score+=40;
+  if(/\b(?:kurir|dostava|preuzimanje|posiljka|pošiljka)\b/.test(f))score+=5;
+  return score;
+}
+function mailDetectDhlScore(ctx){
+  let score=0;const f=ctx.folded,u=ctx.urls,t=ctx.trackingNumber;
+  if(/\bdhl\b/.test(f))score+=40;
+  if(u.some(x=>mailFoldSerbian(x).indexOf("dhl.com")>-1))score+=30;
+  if(/^\d{10}$/.test(t))score+=30;
+  if(/\b(?:express|worldwide|tracking)\b/.test(f))score+=5;
+  return score;
+}
 function mailPad2(n){return String(n).padStart(2,"0")}
 function mailLocalDate(d){return d.getFullYear()+"-"+mailPad2(d.getMonth()+1)+"-"+mailPad2(d.getDate())}
 function mailLocalDeadline(d,h,m){return mailLocalDate(d)+"T"+mailPad2(h)+":"+mailPad2(m)}
@@ -126,28 +190,78 @@ function mailPostaStatus(text){
   if(/\b(?:spremna\s+za\s+preuzimanje|ceka\s+vas|mozete\s+preuzeti)\b/.test(text))return"ready_for_pickup";
   return"in_transit";
 }
+function mailGenericStatus(text){
+  const f=mailFoldSerbian(text);
+  if(/\b(?:urucena|isporucena|isporucena\s+vama|delivered)\b/.test(f))return"delivered";
+  if(/\b(?:vraca\s+se\s+posiljaocu|vraca\s+se\s+pošiljaocu|povrat|returned)\b/.test(f))return"returned";
+  if(/\b(?:nestala|izgubljena|lost)\b/.test(f))return"lost";
+  if(/\b(?:spremna\s+za\s+preuzimanje|mozete\s+preuzeti|možete\s+preuzeti|cekate\s+vas|čeka\s+vas|ready\s+for\s+pickup|pickup\s+location|paketomat)\b/.test(f))return"ready_for_pickup";
+  if(/\b(?:neuspesna\s+dostava|neuspešna\s+dostava|nije\s+dostavljena|delayed|kasnjenje|odlozeno|odloženo)\b/.test(f))return"delayed";
+  if(/\b(?:kurir\s+je\s+preuzeo|na\s+dostavi|u\s+transportu|in\s+transit|otpremljena|poslata)\b/.test(f))return"in_transit";
+  if(/\b(?:poslato|otpremljeno|sent|shipped)\b/.test(f))return"sent";
+  return"preparing";
+}
 function mailNormalizeActionLinks(links){
   const out=[];
   (Array.isArray(links)?links:[]).forEach(link=>{const url=mailSafeUrl(link&&link.url);if(!url||out.some(x=>x.url===url))return;out.push({label:String(link.label||"MESSAGE LINK").trim()||"MESSAGE LINK",url:url})});
   return out;
 }
-/* Add carrier-specific match/parse objects here; shared extractors keep each parser small and deterministic. */
-const MAIL_MESSAGE_PARSERS=[{
-  id:"posta-srbije-post-express-v1",
-  carrier:"Pošta Srbije / Post Express",
-  matches(ctx){return ctx.urls.some(u=>mailFoldSerbian(u).indexOf("posta.rs")>-1)||/\b(?:posta\s+srbije|post\s*express)\b/.test(ctx.folded)||/^PX[0-9]{9}RS$/.test(ctx.trackingNumber)},
-  parse(ctx){
-    if(!ctx.trackingNumber)return{ok:false,error:"Pošta Srbije message found, but no valid tracking number was detected."};
-    const cod=mailExtractCod(ctx.raw),deadline=mailExtractDeadline(ctx.raw,ctx.referenceDate);
-    return{ok:true,parserId:this.id,carrier:this.carrier,direction:"incoming",status:mailPostaStatus(ctx.folded),trackingNumber:ctx.trackingNumber,trackingUrl:mailCarrierPresetUrl("Pošta Srbije"),sender:mailExtractSender(ctx.raw),codAmount:cod.amount,currency:cod.currency||"RSD",deadlineAt:deadline.deadlineAt,dateReferences:deadline.deadlineAt?[deadline.deadlineAt]:[],urls:ctx.urls,actionLinks:mailNormalizeActionLinks(ctx.urls.map(url=>({label:mailFoldSerbian(url).indexOf("paketomat")>-1?"PREUSMERI NA PAKETOMAT":"MESSAGE LINK",url:url}))),receivedDate:mailLocalDate(ctx.referenceDate)};
-  }
-}];
+function mailBuildActionLinks(ctx,labelMap){
+  const map=labelMap||{};
+  return mailNormalizeActionLinks(ctx.urls.map(url=>({label:map[mailFoldSerbian(url)]||"MESSAGE LINK",url:url})));
+}
+function mailParsePostaMessage(ctx){
+  if(!ctx.trackingNumber)return{ok:false,error:"Pošta Srbije message found, but no valid tracking number was detected."};
+  const cod=mailExtractCod(ctx.raw),deadline=mailExtractDeadline(ctx.raw,ctx.referenceDate);
+  const labels={};ctx.urls.forEach(u=>{if(mailFoldSerbian(u).indexOf("paketomat")>-1)labels[mailFoldSerbian(u)]="PREUSMERI NA PAKETOMAT";});
+  return{ok:true,parserId:"posta-srbije-post-express-v2",carrier:"Pošta Srbije / Post Express",confidence:"high",direction:"incoming",status:mailPostaStatus(ctx.folded),trackingNumber:ctx.trackingNumber,trackingUrl:mailCarrierPresetUrl("Pošta Srbije"),sender:mailExtractSender(ctx.raw),receiver:"",codAmount:cod.amount,currency:cod.currency||"RSD",deadlineAt:deadline.deadlineAt,dateReferences:deadline.deadlineAt?[deadline.deadlineAt]:[],urls:ctx.urls,actionLinks:mailBuildActionLinks(ctx,labels),pickupLocation:"",pickupPoint:"",pickupCode:mailExtractPickupCode(ctx.raw),pickupAvailableFrom:"",pickupDeadline:"",courierPhone:"",notes:"",receivedDate:mailLocalDate(ctx.referenceDate)};
+}
+function mailParseCarrierBase(ctx,carrier,parserId,confidence,trackingUrl){
+  const cod=mailExtractCod(ctx.raw),status=mailGenericStatus(ctx.raw),tracking=mailExtractGenericTracking(ctx.raw)||ctx.trackingNumber;
+  return{ok:true,parserId:parserId,carrier:carrier,confidence:confidence,direction:"incoming",status:status,trackingNumber:tracking,trackingUrl:trackingUrl||"",sender:mailExtractSender(ctx.raw),receiver:mailExtractReceiver(ctx.raw),codAmount:cod.amount,currency:cod.currency||"RSD",urls:ctx.urls,actionLinks:mailBuildActionLinks(ctx),pickupLocation:"",pickupPoint:"",pickupCode:mailExtractPickupCode(ctx.raw),pickupAvailableFrom:"",pickupDeadline:"",courierPhone:mailExtractCourierPhone(ctx.raw),notes:"",receivedDate:mailLocalDate(ctx.referenceDate)};
+}
+function mailParseBexMessage(ctx){return mailParseCarrierBase(ctx,"BEX","bex-v1","medium","");}
+function mailParseDExpressMessage(ctx){return mailParseCarrierBase(ctx,"D Express","dexpress-v1","medium","");}
+function mailParseAksMessage(ctx){return mailParseCarrierBase(ctx,"AKS","aks-v1","medium","");}
+function mailParseCityExpressMessage(ctx){return mailParseCarrierBase(ctx,"City Express","cityexpress-v1","medium","");}
+function mailParseDhlMessage(ctx){
+  const base=mailParseCarrierBase(ctx,"DHL","dhl-v1","high","");
+  if(base.trackingNumber)base.trackingUrl=mailCarrierPresetUrl("dhl")+encodeURIComponent(base.trackingNumber);
+  return base;
+}
+function mailGenericParse(ctx){
+  const tracking=mailExtractGenericTracking(ctx.raw);
+  if(!tracking)return{ok:false,error:"No tracking number detected."};
+  const base=mailParseCarrierBase(ctx,"","generic-v1","low","");
+  base.parserId="generic-v1";base.carrier="";base.confidence="low";
+  return base;
+}
+
+/* Carrier-specific detection objects. score() returns 0-100+; threshold is 30 for a confident match. */
+const MAIL_CARRIER_DETECTORS=[
+  {id:"posta-srbije-post-express-v2",carrier:"Pošta Srbije / Post Express",score:mailDetectPostaScore,parse:mailParsePostaMessage},
+  {id:"dhl-v1",carrier:"DHL",score:mailDetectDhlScore,parse:mailParseDhlMessage},
+  {id:"bex-v1",carrier:"BEX",score:mailDetectBexScore,parse:mailParseBexMessage},
+  {id:"dexpress-v1",carrier:"D Express",score:mailDetectDExpressScore,parse:mailParseDExpressMessage},
+  {id:"aks-v1",carrier:"AKS",score:mailDetectAksScore,parse:mailParseAksMessage},
+  {id:"cityexpress-v1",carrier:"City Express",score:mailDetectCityExpressScore,parse:mailParseCityExpressMessage}
+];
+const MAIL_CARRIER_SCORE_THRESHOLD=30;
+
 function mailParseCourierMessage(raw,referenceDate){
   const text=String(raw||"").trim();
   if(!text)return{ok:false,error:"Paste a courier message first."};
-  const date=referenceDate instanceof Date&&!isNaN(referenceDate)?referenceDate:new Date,ctx={raw:text,folded:mailFoldSerbian(text),trackingNumber:mailExtractTracking(text),urls:mailExtractUrls(text),referenceDate:date};
-  const parser=MAIL_MESSAGE_PARSERS.find(p=>p.matches(ctx));
-  return parser?parser.parse(ctx):{ok:false,error:"No supported courier format was detected. Pošta Srbije / Post Express is supported in v1."};
+  const date=referenceDate instanceof Date&&!isNaN(referenceDate)?referenceDate:new Date,
+  ctx={raw:text,folded:mailFoldSerbian(text),trackingNumber:mailExtractTracking(text),urls:mailExtractUrls(text),referenceDate:date};
+  if(!ctx.trackingNumber)ctx.trackingNumber=mailExtractGenericTracking(text);
+  const scores=MAIL_CARRIER_DETECTORS.map(d=>({detector:d,score:Math.max(0,Number(d.score(ctx))||0)})).sort((a,b)=>b.score-a.score);
+  const best=scores[0];
+  if(best&&best.score>=MAIL_CARRIER_SCORE_THRESHOLD){
+    const parsed=best.detector.parse(ctx);
+    if(parsed&&parsed.ok){parsed.confidence=best.score>=60?"high":"medium";return parsed}
+    if(parsed&&!parsed.ok)return parsed;
+  }
+  return mailGenericParse(ctx);
 }
 function mailFindByTracking(trackingNumber){
   const key=mailNormalizeTracking(trackingNumber);
@@ -157,17 +271,37 @@ function mailSmartImportPreview(raw,referenceDate){
   const parsed=mailParseCourierMessage(raw,referenceDate);
   if(!parsed.ok)return parsed;
   const existing=mailFindByTracking(parsed.trackingNumber);
-  return Object.assign({},parsed,{mode:existing?"update":"create",existingId:existing?existing.id:null});
+  return Object.assign({},parsed,{mode:existing?"update":"create",existingId:existing?existing.id:null,confidence:parsed.confidence||"low"});
 }
 function mailMessageHistoryEntry(parsed,raw){
   return{id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),importedAt:nowISO(),parserId:parsed.parserId,rawMessage:String(raw||""),status:parsed.status,deadlineAt:parsed.deadlineAt||"",actionLinks:mailNormalizeActionLinks(parsed.actionLinks)};
 }
 function mailApplyParsedMessage(parsed,raw){
   if(!parsed||!parsed.ok)return null;
-  const existing=mailFindByTracking(parsed.trackingNumber),entry=mailMessageHistoryEntry(parsed,raw),payload={direction:parsed.direction,carrier:parsed.carrier,trackingNumber:parsed.trackingNumber,trackingUrl:parsed.trackingUrl,status:parsed.status,actionLinks:mailNormalizeActionLinks((existing&&existing.actionLinks||[]).concat(parsed.actionLinks||[])),messageHistory:(existing&&Array.isArray(existing.messageHistory)?existing.messageHistory:[]).concat([entry])};
-  parsed.sender&&(payload.sender=parsed.sender);
-  null!=parsed.codAmount&&(payload.codAmount=parsed.codAmount,payload.currency=parsed.currency||"RSD");
-  parsed.deadlineAt&&(payload.deadlineAt=parsed.deadlineAt);
+  const existing=mailFindByTracking(parsed.trackingNumber),entry=mailMessageHistoryEntry(parsed,raw);
+  function mergeField(newVal,oldVal){return newVal!==undefined&&newVal!==null&&String(newVal).trim()!==""?newVal:oldVal}
+  const payload={
+    direction:mergeField(parsed.direction,existing&&existing.direction)||"incoming",
+    carrier:mergeField(parsed.carrier,existing&&existing.carrier)||"",
+    trackingNumber:parsed.trackingNumber,
+    trackingUrl:mergeField(parsed.trackingUrl,existing&&existing.trackingUrl)||"",
+    status:parsed.status,
+    actionLinks:mailNormalizeActionLinks((existing&&existing.actionLinks||[]).concat(parsed.actionLinks||[])),
+    messageHistory:(existing&&Array.isArray(existing.messageHistory)?existing.messageHistory:[]).concat([entry])
+  };
+  payload.sender=mergeField(parsed.sender,existing&&existing.sender);
+  payload.receiver=mergeField(parsed.receiver,existing&&existing.receiver);
+  if(null!=parsed.codAmount&&parsed.codAmount>0){payload.codAmount=parsed.codAmount;payload.currency=parsed.currency||existing&&existing.currency||"RSD"}
+  else if(existing){payload.codAmount=existing.codAmount;payload.currency=existing.currency}
+  payload.deadlineAt=mergeField(parsed.deadlineAt,existing&&existing.deadlineAt);
+  payload.pickupLocation=mergeField(parsed.pickupLocation,existing&&existing.pickupLocation);
+  payload.pickupPoint=mergeField(parsed.pickupPoint,existing&&existing.pickupPoint);
+  payload.pickupCode=mergeField(parsed.pickupCode,existing&&existing.pickupCode);
+  payload.pickupAvailableFrom=mergeField(parsed.pickupAvailableFrom,existing&&existing.pickupAvailableFrom);
+  payload.pickupDeadline=mergeField(parsed.pickupDeadline,existing&&existing.pickupDeadline);
+  payload.courierPhone=mergeField(parsed.courierPhone,existing&&existing.courierPhone);
+  payload.notes=mergeField(parsed.notes,existing&&existing.notes);
+  if(existing&&!mailStatusMayAdvance(existing.status,payload.status)){payload.status=existing.status;entry.status=payload.status}
   let rec,mode;
   if(existing){existing.description||(payload.description=parsed.sender?"Package from "+parsed.sender:"Shipment "+parsed.trackingNumber);rec=Actions.updateMail(existing.id,payload);mode="update"}
   else{payload.description=parsed.sender?"Package from "+parsed.sender:"Shipment "+parsed.trackingNumber;payload.dateSent=parsed.receivedDate||todayISO();rec=Actions.addMail(payload);mode="create"}
@@ -426,8 +560,9 @@ function mailModalHtml(){
 function mailSmartImportPreviewHtml(p){
   if(!p||!p.ok)return"";
   const row=(label,value)=>'<div class="pn-mail-import-row"><span>'+label+"</span><b>"+escHtml(value||"—")+"</b></div>",links=mailNormalizeActionLinks(p.actionLinks);
-  return'<div class="pn-mail-import-preview"><div class="pn-mail-import-verdict"><span class="chip '+(p.mode==="update"?"chip-amber":"chip-green")+'">'+(p.mode==="update"?"UPDATE EXISTING":"CREATE NEW")+'</span><span>'+escHtml(p.parserId)+"</span></div>"+
-    row("TRACKING",p.trackingNumber)+row("SENDER",p.sender)+row("CARRIER",p.carrier)+row("DIRECTION",p.direction)+row("STATUS",mailStatusLabel(p.status))+row("COD",null==p.codAmount?"NOT PRESENT":money(p.codAmount,p.currency||"RSD"))+row("DEADLINE",p.deadlineAt?mailDeadlineLabel(p.deadlineAt):"NOT PRESENT")+row("TRACKING LINK",p.trackingUrl)+
+  const confChip=p.confidence==="high"?"chip-green":p.confidence==="medium"?"chip-amber":"chip-muted";
+  return'<div class="pn-mail-import-preview"><div class="pn-mail-import-verdict"><span class="chip '+(p.mode==="update"?"chip-amber":"chip-green")+'">'+(p.mode==="update"?"UPDATE EXISTING":"CREATE NEW")+'</span><span class="chip '+confChip+'">'+(p.confidence||"low").toUpperCase()+' CONFIDENCE</span><span>'+escHtml(p.parserId||"generic")+"</span></div>"+
+    row("TRACKING",p.trackingNumber)+row("SENDER",p.sender)+row("RECEIVER",p.receiver)+row("CARRIER",p.carrier)+row("DIRECTION",p.direction)+row("STATUS",mailStatusLabel(p.status))+row("COD",null==p.codAmount?"NOT PRESENT":money(p.codAmount,p.currency||"RSD"))+row("DEADLINE",p.deadlineAt?mailDeadlineLabel(p.deadlineAt):"NOT PRESENT")+row("TRACKING LINK",p.trackingUrl)+
     (links.length?'<div class="pn-mail-import-links"><span>ACTION LINKS</span>'+links.map(link=>'<a href="'+escAttr(link.url)+'" target="_blank" rel="noopener noreferrer">'+escHtml(link.label)+' ↗</a>').join("")+"</div>":"")+"</div>";
 }
 function mailSmartImportModalHtml(){

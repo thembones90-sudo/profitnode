@@ -1020,7 +1020,7 @@ const mailProbe = `
   out.push(['MAIL CSV export includes the Tracking Link column', CSV_EXPORTS.mail.columns.some(c => c.label === 'Tracking Link' && c.get(mail1b) === 'https://posta.rs/pracenje?ID=123')]);
 
   out.push(['MAIL: mailCarrierPresetUrl recognizes Posta Srbije regardless of accents/casing', mailCarrierPresetUrl('Pošta Srbije') === 'https://www.posta.rs/lat/alati/pracenje-posiljke.aspx' && mailCarrierPresetUrl('POSTA SRBIJE') === 'https://www.posta.rs/lat/alati/pracenje-posiljke.aspx' && mailCarrierPresetUrl('posta  srbije') === 'https://www.posta.rs/lat/alati/pracenje-posiljke.aspx']);
-  out.push(['MAIL: mailCarrierPresetUrl returns empty for an unknown carrier', mailCarrierPresetUrl('DHL') === '']);
+  out.push(['MAIL: mailCarrierPresetUrl returns empty for an unknown carrier', mailCarrierPresetUrl('UPS') === '']);
 
   let calledOpenWith = null;
   window.open = (u) => { calledOpenWith = u; };
