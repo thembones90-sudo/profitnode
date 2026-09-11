@@ -17,14 +17,14 @@ const CANONICAL_ORDER = [
   'rig_bench_navigation_extension.js', 'command_financial_model_extension.js',
   'profitnode_intelligence_extension.js', 'command_separator_tune.js',
   'roulette_extension.js', 'roulette_ui_extension.js', 'treasury_extension.js',
-  'road_to_extension.js', 'my_rig_extension.js', 'sidebar_cleanup_extension.js', 'mail_extension.js', 'treasury_flow_extension.js'
+  'road_to_extension.js', 'my_rig_extension.js', 'sidebar_cleanup_extension.js', 'mail_extension.js', 'treasury_flow_extension.js', 'project_build_extension.js'
 ];
-checks.push(['manifest has 20 scripts', entries.length === 20]);
-checks.push(['manifest order matches canonical 20-file load order',
+checks.push(['manifest has 21 scripts', entries.length === 21]);
+checks.push(['manifest order matches canonical 21-file load order',
   entries.map(e => e.split('?')[0]).join(',') === CANONICAL_ORDER.join(',')]);
 checks.push(['first script is app_core.js', entries[0].split('?')[0] === 'app_core.js']);
-checks.push(['last script is treasury_flow_extension.js',
-  entries[entries.length - 1].split('?')[0] === 'treasury_flow_extension.js']);
+checks.push(['last script is project_build_extension.js',
+  entries[entries.length - 1].split('?')[0] === 'project_build_extension.js']);
 checks.push(['every manifest entry has a cache-busting ?v= suffix',
   entries.every(e => /\.js\?v=.+/.test(e))]);
 checks.push(['every manifest entry maps to a real file on disk',
@@ -62,7 +62,7 @@ const meta = env.run(sandbox, `(() => ({
 
 const routes = meta.routes.map(r => r.split('|'));
 const routeKeys = routes.map(r => r[0]);
-checks.push(['ROUTES has 15 entries (treasury + roulette + road-to + my-rig + mail; planner retired)', routes.length === 15]);
+checks.push(['ROUTES has 16 entries (treasury + roulette + road-to + my-rig + mail + hidden build workspace; planner retired)', routes.length === 16]);
 checks.push(['no Build Planner route', !routeKeys.includes('planner')]);
 checks.push(['roulette route present', routeKeys.includes('roulette')]);
 checks.push(['road-to route present', routeKeys.includes('roadto')]);
@@ -72,16 +72,20 @@ const expectedSeq = [
   ['dashboard','COMMAND'], ['treasury','TREASURY'], ['analytics','INTEL'], ['rigbuild','RIG ASSEMBLY'], ['myrig','MY RIG'],
   ['projects','BUILDS'], ['inventory','PARTS VAULT'], ['repairs','REPAIR BAY'],
   ['deals','THE HUNT'], ['roadto','ROAD TO'], ['sales','LEDGER'], ['mail','MAIL'], ['history','ARCHIVE'],
-  ['roulette','THE ROULETTE'], ['backup','BLACKBOX']
+  ['roulette','THE ROULETTE'], ['backup','BLACKBOX'], ['projectbuild','Build Workspace']
 ];
-checks.push(['nav order/labels match terminal rename + roulette insert + mail insert',
+checks.push(['nav order/labels match terminal rename + roulette insert + mail insert + hidden build workspace route',
   routes.map(r => r.join('|')).join(',') === expectedSeq.map(r => r.join('|')).join(',')]);
+checks.push(['the build workspace route is nav-hidden (not part of the sidebar button set)', (() => {
+  const hidden = env.run(sandbox, `ROUTES.find(r => r.key === 'projectbuild').hidden`);
+  return hidden === true;
+})()]);
 checks.push(['plans CSV export retired', !meta.csvKeys.includes('plans')]);
 checks.push(['roulette ledger CSV export registered', meta.csvKeys.includes('rouletteLedger')]);
 checks.push(['mail CSV export registered', meta.csvKeys.includes('mail')]);
 checks.push(['PN_SALE_TYPES = RIG,COMPONENT,OTHER', meta.saleTypes === 'RIG,COMPONENT,OTHER']);
 checks.push(['currencies remain RSD,EUR', meta.curren === 'RSD,EUR']);
-checks.push(['manifest declares 20 scripts in sandbox', meta.manifestLen === 20]);
+checks.push(['manifest declares 21 scripts in sandbox', meta.manifestLen === 21]);
 const migrationProbe = env.run(sandbox, `(() => {
   const legacy={meta:{seeded:true},inventory:[
     {id:'healthy',category:'STORAGE',driveHealthPercent:120,catalogOverride:'  Samsung 970 EVO Plus 1TB  '},
@@ -99,7 +103,7 @@ const migrationProbe = env.run(sandbox, `(() => {
     blankVersion:emptyLedger().meta.schemaVersion
   };
 })()`);
-checks.push(['ledger migrations upgrade legacy data to schema v2', migrationProbe.version===2&&migrationProbe.from===0&&migrationProbe.to===2&&migrationProbe.changed&&migrationProbe.meta===2&&migrationProbe.blankVersion===2]);
+checks.push(['ledger migrations upgrade legacy data to schema v3', migrationProbe.version===3&&migrationProbe.from===0&&migrationProbe.to===3&&migrationProbe.changed&&migrationProbe.meta===3&&migrationProbe.blankVersion===3]);
 checks.push(['storage health migration clamps values and trims catalog overrides', migrationProbe.high===100&&migrationProbe.low===0&&migrationProbe.override==='Samsung 970 EVO Plus 1TB']);
 checks.push(['ledger migration restores canonical collection arrays', migrationProbe.collections]);
 const futureMigration = env.run(sandbox, `migrateLedger({meta:{schemaVersion:9},inventory:[]})`);
@@ -1277,7 +1281,104 @@ const treasuryFlowProbe = `
 `;
 const treasuryFlowResults = env.run(sandbox, treasuryFlowProbe);
 
-const all = checks.concat(results).concat(interactionResults).concat(volumeResults).concat(rigResults).concat(doctrineResults).concat(enclosureResults).concat(roadToResults).concat(roadToOpenResults).concat(roadToReasonResults).concat(myRigResults).concat(mailResults).concat(treasuryFlowResults);
+const projectBuildProbe = `
+(() => {
+  const out = [];
+  Store.load();
+
+  const p = Actions.addProject({name:'PARANOIA', startDate: todayISO(), completionDate:null, status:'PLANNING', purpose:'FAMILY_GIFT', currency:'RSD', additionalCosts:0, estimatedMarketValue:0, listingPrice:null, salePrice:null, notes:''});
+  out.push(['new project defaults to an empty RIG_SLOTS-shaped slots object and no extras', p.slots && RIG_SLOTS.every(k => k in p.slots) && p.slots.CPU === null && Array.isArray(p.extras) && p.extras.length === 0]);
+  out.push(['new project keeps the requested purpose when valid', p.purpose === 'FAMILY_GIFT']);
+  const badPurpose = Actions.addProject({name:'BADPURPOSE', startDate: todayISO(), status:'PLANNING', purpose:'NOT_A_PURPOSE', currency:'RSD'});
+  out.push(['an invalid purpose falls back to FLIP', badPurpose.purpose === 'FLIP']);
+
+  const mobo = Actions.addInventory({category:'MOTHERBOARD', manufacturer:'Biostar', model:'TB250-BTC', purchaseDate: todayISO(), purchasePrice:9000, currency:'RSD', estimatedMarketValue:11000, source:'OTHER', condition:'WORKING', status:'IN_STORAGE'});
+  const cpu = Actions.addInventory({category:'CPU', manufacturer:'Intel', model:'Celeron G3900', purchaseDate: todayISO(), purchasePrice:3500, currency:'RSD', estimatedMarketValue:4500, source:'OTHER', condition:'WORKING', status:'IN_STORAGE'});
+  const ram = Actions.addInventory({category:'RAM', manufacturer:'Kingston', model:'8GB DDR4', purchaseDate: todayISO(), purchasePrice:2500, currency:'RSD', estimatedMarketValue:3000, source:'OTHER', condition:'WORKING', status:'IN_STORAGE'});
+  const cooler = Actions.addInventory({category:'COOLING', manufacturer:'Intel', model:'Stock Cooler', purchaseDate: todayISO(), purchasePrice:0, currency:'RSD', estimatedMarketValue:0, source:'OTHER', condition:'WORKING', status:'IN_STORAGE'});
+
+  const r1 = Actions.setProjectSlot(p.id, 'MOBO', 'INVENTORY', {inventoryItemId: mobo.id});
+  out.push(['selecting a vault part into a slot succeeds and stores the inventory link', r1.ok && r1.project.slots.MOBO.kind === 'INVENTORY' && r1.project.slots.MOBO.inventoryItemId === mobo.id]);
+  out.push(['reserving a part immediately flips it to IN_BUILD and assigns the project', Store.get('inventory', mobo.id).status === 'IN_BUILD' && Store.get('inventory', mobo.id).assignedProjectId === p.id]);
+
+  const p2 = Actions.addProject({name:'OTHER BUILD', startDate: todayISO(), status:'PLANNING', purpose:'FLIP', currency:'RSD'});
+  const conflict = Actions.setProjectSlot(p2.id, 'MOBO', 'INVENTORY', {inventoryItemId: mobo.id});
+  out.push(['a part already reserved on another build cannot be double-reserved', !conflict.ok && /already reserved/.test(conflict.error)]);
+
+  Actions.setProjectSlot(p.id, 'CPU', 'INVENTORY', {inventoryItemId: cpu.id});
+  Actions.setProjectSlot(p.id, 'RAM', 'INVENTORY', {inventoryItemId: ram.id});
+  Actions.setProjectSlot(p.id, 'COOLER', 'INVENTORY', {inventoryItemId: cooler.id});
+  out.push(['componentIds mirrors every inventory item reserved through slots', (function(){const proj=Store.get('projects',p.id);return proj.componentIds.length===4 && [mobo.id,cpu.id,ram.id,cooler.id].every(id=>proj.componentIds.includes(id))})()]);
+
+  const swap = Actions.setProjectSlot(p.id, 'RAM', 'PLANNED', {label:'Corsair Vengeance 16GB', cost:5000, currency:'RSD'});
+  out.push(['swapping a slot from an owned part to a planned part releases the old reservation', swap.ok && Store.get('inventory', ram.id).status === 'IN_STORAGE' && Store.get('inventory', ram.id).assignedProjectId === null]);
+  out.push(['a planned (not-yet-owned) slot never touches inventory', swap.project.slots.RAM.kind === 'PLANNED' && swap.project.slots.RAM.label === 'Corsair Vengeance 16GB']);
+
+  const stats = Actions.projectBuildStats(Store.get('projects', p.id));
+  out.push(['project build stats separate owned parts from planned cost', stats.slotsOwned === 3 && stats.slotsPlanned === 1 && stats.plannedCost === 5000]);
+  out.push(['project build stats report completion against the 8-slot bench', stats.slotsTotal === PROJECT_BUILD_SLOTS.length && stats.completionPct === Math.round(100 * 4 / PROJECT_BUILD_SLOTS.length)]);
+
+  const clr = Actions.clearProjectSlot(p.id, 'COOLER');
+  out.push(['clearing a slot releases its reserved inventory item back to storage', clr.ok && Store.get('inventory', cooler.id).status === 'IN_STORAGE' && clr.project.slots.COOLER === null]);
+
+  const psu = Actions.addInventory({category:'PSU', manufacturer:'Corsair', model:'CX450', purchaseDate: todayISO(), purchasePrice:4000, currency:'RSD', estimatedMarketValue:5000, source:'OTHER', condition:'WORKING', status:'IN_STORAGE'});
+  const extraRes = Actions.addProjectExtra(p.id, {inventoryItemId: psu.id});
+  out.push(['an extra sourced from the vault reserves that inventory item too', extraRes.ok && Store.get('inventory', psu.id).status === 'IN_BUILD' && Store.get('inventory', psu.id).assignedProjectId === p.id]);
+  out.push(['a vault-sourced extra auto-fills its name and cost from the inventory item', extraRes.project.extras[0].label.indexOf('CX450') > -1 && extraRes.project.extras[0].cost === 4000]);
+  const extraManual = Actions.addProjectExtra(p.id, {label:'RGB fan pack', cost:1500});
+  out.push(['a manual extra requires only a name', extraManual.ok && extraManual.project.extras.length === 2]);
+  const extraNoLabel = Actions.addProjectExtra(p.id, {label:''});
+  out.push(['a manual extra without a name is rejected', !extraNoLabel.ok]);
+  const removedExtra = Actions.removeProjectExtra(p.id, extraRes.project.extras[0].id);
+  out.push(['removing a vault-sourced extra releases the reservation', removedExtra.ok && Store.get('inventory', psu.id).status === 'IN_STORAGE' && Store.get('inventory', psu.id).assignedProjectId === null]);
+
+  HardwareCatalog.gpus = [{ brand:'MSI', model:'RTX 3060' }];
+  const catalogSlot = Actions.setProjectSlot(p2.id, 'GPU', 'PLANNED', {label:'MSI RTX 3060', cost:30000, currency:'RSD', catalogType:'GPU'});
+  out.push(['a planned slot saved with catalogType resolves PN tier data from the hardware catalog', catalogSlot.ok && !!rigSlotResolved(catalogSlot.project.slots.GPU, 'RSD', 'GPU').pn]);
+  out.push(['PB_CATALOG_SLOTS (which slots get catalogType auto-tagged when saved) matches the catalog-searchable slot set', PB_CATALOG_SLOTS.slice().sort().join(',') === ['CPU','GPU','MOBO','RAM','STORAGE'].sort().join(',')]);
+
+  const compat = buildCheckModel({id:p.id, currency:'RSD', slots: Store.get('projects', p.id).slots});
+  out.push(['a project\\'s slots plug directly into the shared Build Check engine', !!compat && ['PASS','WARNING','FAIL','UNVERIFIED'].indexOf(compat.verdict) > -1]);
+
+  const emptyProject = Actions.addProject({name:'EMPTY', startDate: todayISO(), status:'PLANNING', purpose:'FLIP', currency:'RSD'});
+  const noParts = Actions.markProjectBuildComplete(emptyProject.id);
+  out.push(['a build with no components on record cannot be marked complete', !noParts.ok]);
+
+  const complete = Actions.markProjectBuildComplete(p.id);
+  out.push(['marking a build complete flips it to COMPLETED and locks it', complete.ok && complete.project.status === 'COMPLETED' && complete.project.buildLocked === true]);
+  out.push(['marking a build complete stamps a completion date', !!complete.project.completionDate]);
+  out.push(['reserved (IN_BUILD) parts flip to INSTALLED on completion, not before', Store.get('inventory', mobo.id).status === 'INSTALLED' && Store.get('inventory', cpu.id).status === 'INSTALLED']);
+  const again = Actions.markProjectBuildComplete(p.id);
+  out.push(['a build already marked complete cannot be completed twice', !again.ok]);
+
+  state.pbId = p.id;
+  const pageDone = renderProjectBuild();
+  out.push(['a completed workspace renders read-only — no edit/remove affordances on its slots', pageDone.indexOf('data-pb-edit-slot') === -1 && pageDone.indexOf('data-pb-remove-slot') === -1 && pageDone.indexOf('BUILD LOCKED') > -1]);
+
+  state.pbId = p2.id;
+  const pageOpen = renderProjectBuild();
+  out.push(['an in-progress workspace shows the bench grid with add-slot affordances and empty slots', pageOpen.indexOf('pn-pb-grid') > -1 && pageOpen.indexOf('EMPTY SLOT') > -1 && pageOpen.indexOf('data-pb-edit-slot=') > -1]);
+  out.push(['the bench grid lists exactly the 8 requested primary slots in the requested layout order', PROJECT_BUILD_SLOTS.join(',') === 'MOBO,CPU,RAM,GPU,STORAGE,PSU,CASE,COOLER']);
+  state.pbId = null;
+
+  const projectsPage = renderProjects();
+  out.push(['the Projects overview table still exists and now also shows a Purpose column', projectsPage.indexOf('<th>Purpose</th>') > -1]);
+  out.push(['a FAMILY / GIFT project shows its purpose chip in the overview table', projectsPage.indexOf('FAMILY / GIFT') > -1]);
+  out.push(['a project row links straight into its build workspace via data-open-entity', projectsPage.indexOf('data-open-entity="project"') > -1]);
+
+  out.push(['PROJECT_STATUSES includes a terminal COMPLETED state distinct from the sale-flow statuses', PROJECT_STATUSES.includes('COMPLETED')]);
+  out.push(['INVENTORY_STATUSES includes INSTALLED for physically-built parts', INVENTORY_STATUSES.includes('INSTALLED')]);
+
+  const legacyLedger = {meta:{seeded:true,schemaVersion:0}, projects:[{id:'legacy1', name:'REVENANT', componentIds:[cpu.id]}], inventory:[{id:cpu.id, category:'CPU', manufacturer:'AMD', model:'Legacy CPU', status:'IN_STORAGE'}]};
+  const migrated = migrateLedger(legacyLedger).ledger.projects[0];
+  out.push(['migrating a pre-workspace project backfills a slots object and default purpose', migrated.slots && migrated.slots.CPU && migrated.slots.CPU.inventoryItemId === cpu.id && migrated.purpose === 'FLIP' && Array.isArray(migrated.extras)]);
+
+  return out;
+})()
+`;
+const projectBuildResults = env.run(sandbox, projectBuildProbe);
+
+const all = checks.concat(results).concat(interactionResults).concat(volumeResults).concat(rigResults).concat(doctrineResults).concat(enclosureResults).concat(roadToResults).concat(roadToOpenResults).concat(roadToReasonResults).concat(myRigResults).concat(mailResults).concat(treasuryFlowResults).concat(projectBuildResults);
 let fail = 0;
 for (const [name, ok] of all){
   console.log((ok ? 'PASS' : 'FAIL') + ' - ' + name);
