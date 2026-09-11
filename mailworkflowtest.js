@@ -251,6 +251,81 @@ const results = env.run(sandbox, `
     Actions.removeMail(m.id);
   })();
 
+  // U. Bottom button hierarchy: MARK DELIVERED primary, EDIT secondary, DELETE danger
+  (function(){
+    reset();
+    const m = Actions.addMail({direction:'incoming', status:'in_transit', carrier:'BEX', description:'buttons'});
+    const html = mailCard(m);
+    log('U: MARK DELIVERED is the primary bottom action', html.indexOf('btn-primary" data-mail-mark-delivered=') > -1);
+    log('U: EDIT is the secondary ghost action', html.indexOf('btn-ghost" data-mail-edit=') > -1);
+    log('U: DELETE is the danger action', html.indexOf('btn-danger" data-mail-delete=') > -1);
+    const born = html.indexOf('data-mail-mark-delivered');
+    const edit = html.indexOf('data-mail-edit');
+    const del = html.indexOf('data-mail-delete');
+    log('U: button order is DELIVERED then EDIT then DELETE', born > -1 && born < edit && edit < del);
+    Actions.removeMail(m.id);
+  })();
+
+  // V. Carrier + Tracking share one compact metadata group
+  (function(){
+    reset();
+    const m = Actions.addMail({direction:'incoming', status:'in_transit', carrier:'BEX', trackingNumber:'BEX777', description:'meta group'});
+    const html = mailCard(m);
+    log('V: card opens a meta group for carrier+tracking', html.indexOf('<div class="pn-mail-meta">') > -1);
+    log('V: CARRIER appears before TRACKING inside the meta group', html.indexOf('CARRIER') > -1 && html.indexOf('CARRIER') < html.indexOf('TRACKING'));
+    log('V: meta group sits above SHIPPING', html.indexOf('pn-mail-meta') < html.indexOf('>SHIPPING<'));
+    Actions.removeMail(m.id);
+  })();
+
+  // W. Deadline hierarchy: urgent pickup rows get subtle emphasis
+  (function(){
+    reset();
+    const now = new Date();
+    const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
+    const later = new Date(now); later.setDate(now.getDate() + 10);
+    const mUrg = Actions.addMail({direction:'incoming', status:'ready_for_pickup', pickupDeadline: yesterday.toISOString().slice(0,10) + 'T18:00', pickupDeadlineSource:'explicit', description:'urgent pickup'});
+    const htmlUrg = mailCard(mUrg);
+    log('W: overdue pickup deadline row carries is-urgent emphasis', htmlUrg.indexOf('pn-mail-pickup-deadline is-urgent') > -1);
+    Actions.removeMail(mUrg.id);
+    const mCalm = Actions.addMail({direction:'incoming', status:'ready_for_pickup', pickupDeadline: later.toISOString().slice(0,10) + 'T18:00', pickupDeadlineSource:'explicit', description:'calm pickup'});
+    const htmlCalm = mailCard(mCalm);
+    log('W: far-future pickup deadline stays quiet (no emphasis class)', htmlCalm.indexOf('is-urgent') === -1 && htmlCalm.indexOf('is-soon') === -1);
+    Actions.removeMail(mCalm.id);
+  })();
+
+  // X. Action deadline carries a small non-pickup accent
+  (function(){
+    reset();
+    const m = Actions.addMail({direction:'incoming', status:'in_transit', deadlineAt:'2026-09-30T17:00', pickupDeadline:'', description:'action deadline'});
+    const html = mailCard(m);
+    log('X: action deadline row has its own subtle accent class', html.indexOf('pn-mail-action-deadline') > -1);
+    log('X: action deadline must not be mistaken for pickup expiry', html.indexOf('pn-mail-action-deadline') < html.indexOf('pn-mail-pickup-deadline') || html.indexOf('pn-mail-pickup-deadline') === -1);
+    Actions.removeMail(m.id);
+  })();
+
+  // Y. Paketomat action renders as a real actionable control
+  (function(){
+    reset();
+    const m = Actions.addMail({direction:'incoming', status:'in_transit', actionLinks:[{url:'https://www.posta.rs/lat/alati/pracenje-posiljke.aspx', label:'Preusmeri na paketomat'}], description:'action link'});
+    const html = mailCard(m);
+    log('Y: ACTIONS row hosts the action link', html.indexOf('pn-mail-action-row') > -1 && html.indexOf('pn-mail-action-links') > -1);
+    log('Y: action link keeps its URL and label intact', html.indexOf('https://www.posta.rs/lat/alati/pracenje-posiljke.aspx') > -1 && html.indexOf('Preusmeri na paketomat') > -1);
+    log('Y: action link opens in a new tab safely', html.indexOf('target="_blank"') > -1 && html.indexOf('rel="noopener noreferrer"') > -1);
+    Actions.removeMail(m.id);
+  })();
+
+  // Z. Tracking line keeps number, COPY TRACKING and TRACK ONLINE
+  (function(){
+    reset();
+    const m = Actions.addMail({direction:'incoming', status:'in_transit', carrier:'Posta Srbije', trackingNumber:'PX123456705RS', trackingUrl:'posta.rs/lat/alati/pracenje-posiljke.aspx', description:'tracking line'});
+    const html = mailCard(m);
+    log('Z: tracking number present on card', html.indexOf('PX123456705RS') > -1);
+    log('Z: COPY TRACKING present on card', html.indexOf('COPY TRACKING') > -1 && html.indexOf('data-mail-copy="PX123456705RS"') > -1);
+    log('Z: TRACK ONLINE present on card', html.indexOf('TRACK ONLINE') > -1 && html.indexOf('data-mail-track="'+m.id+'"') > -1);
+    log('Z: tracking keeps its own compact row styling', html.indexOf('pn-mail-track') > -1);
+    Actions.removeMail(m.id);
+  })();
+
   return out;
 })()
 `);
@@ -260,5 +335,5 @@ for (const [name, ok] of results) {
 }
 
 console.log('');
-console.log('MAIL WORKFLOW V4: ' + passed + ' passed, ' + failed + ' failed');
+console.log('MAIL WORKFLOW V5: ' + passed + ' passed, ' + failed + ' failed');
 process.exit(failed === 0 ? 0 : 1);
