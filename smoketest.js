@@ -1359,6 +1359,29 @@ const projectBuildProbe = `
   const pageOpen = renderProjectBuild();
   out.push(['an in-progress workspace shows the bench grid with add-slot affordances and empty slots', pageOpen.indexOf('pn-pb-grid') > -1 && pageOpen.indexOf('EMPTY SLOT') > -1 && pageOpen.indexOf('data-pb-edit-slot=') > -1]);
   out.push(['the bench grid lists exactly the 8 requested primary slots in the requested layout order', PROJECT_BUILD_SLOTS.join(',') === 'MOBO,CPU,RAM,GPU,STORAGE,PSU,CASE,COOLER']);
+
+  const addCpuBtn = __pnEl({ tag:'button', attrs:{'data-pb-edit-slot':'CPU'} });
+  pbClick({ target: addCpuBtn, preventDefault(){}, stopPropagation(){} });
+  out.push(['clicking + ADD on an empty catalog-searchable slot (CPU) jumps straight into type-to-search mode, not the vault picker', PBUI.slotKey === 'CPU' && PBUI.slot && PBUI.slot.mode === 'PLANNED']);
+  const cpuEditorHtml = renderProjectBuild();
+  out.push(['the CPU editor renders one merged type-to-search field, not a separate name field plus an optional search field', cpuEditorHtml.indexOf('data-pb-catalog-search="CPU"') > -1 && cpuEditorHtml.indexOf('CATALOG SEARCH (OPTIONAL)') === -1]);
+
+  const addPsuBtn = __pnEl({ tag:'button', attrs:{'data-pb-edit-slot':'PSU'} });
+  pbClick({ target: addPsuBtn, preventDefault(){}, stopPropagation(){} });
+  out.push(['clicking + ADD on an empty non-catalog slot (PSU) also defaults straight to the name-entry form', PBUI.slotKey === 'PSU' && PBUI.slot && PBUI.slot.mode === 'PLANNED']);
+  const psuEditorHtml = renderProjectBuild();
+  out.push(['the PSU editor (no catalog search available for this slot) still renders a single part-name field', psuEditorHtml.indexOf('data-pb-field="label"') > -1 && psuEditorHtml.indexOf('data-pb-catalog-search') === -1]);
+
+  const cpuSearchInput = __pnEl({ tag:'input', attrs:{'data-pb-catalog-search':'CPU'}, value:'' });
+  PBUI.slotKey = 'CPU'; PBUI.slot = {mode:'PLANNED', label:'', cost:0, notes:''};
+  HardwareCatalog.cpus = [{ brand:'Intel', model:'Celeron G3900' }];
+  cpuSearchInput.value = 'celeron g3900';
+  pbInput({ target: cpuSearchInput });
+  out.push(['typing in the merged field both narrows catalog suggestions and stores the typed text as the part label', PBUI.slot.label === 'celeron g3900' && PBUI.catalogHits.length === 1 && PBUI.catalogHits[0].model === 'Celeron G3900']);
+
+  const cancelBtn = __pnEl({ tag:'button', attrs:{'data-pb-cancel-slot':''} });
+  pbClick({ target: cancelBtn, preventDefault(){}, stopPropagation(){} });
+  out.push(['canceling the slot editor clears the open editor state', PBUI.slotKey === null && PBUI.slot === null]);
   state.pbId = null;
 
   const projectsPage = renderProjects();

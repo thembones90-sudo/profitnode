@@ -10,6 +10,12 @@ function pbVerdictMeta(level){
   return{word:"AMBER",chip:"chip-amber-outline"}
 }
 function pbNoticeHtml(){const n=PBUI.notice;return n?'<div class="pn-myrig-notice'+("ok"===n.tone?" ok":"")+'">'+escHtml(n.text)+"</div>":""}
+function pbFocusSlotField(k){
+  if(!PBUI.slot)return
+  const sel="VAULT"===PBUI.slot.mode?"select[data-pb-vault-item]":PB_CATALOG_SLOTS.includes(k)?'[data-pb-catalog-search="'+k+'"]':'[data-pb-field="label"]'
+  const el=document.querySelector(sel)
+  if(el&&el.focus){el.focus();if("function"==typeof el.select)el.select()}
+}
 function pbAvailableVaultItems(project,category){
   return Store.all("inventory").filter(i=>i.category===category&&(!i.assignedProjectId||i.assignedProjectId===project.id)&&"SOLD"!==i.status)
     .slice().sort((a,b)=>(a.manufacturer+a.model).localeCompare(b.manufacturer+b.model))
@@ -37,10 +43,9 @@ function pbSlotEditorHtml(project){
     }).join("")+"</select></label>":'<p class="hint" style="flex:1 1 100%">No compatible unreserved '+cat.toLowerCase()+' in the Parts Vault — add one to Inventory first, or add a planned part below.</p>'
   }else{
     const hits=PBUI.catalogHits||[]
-    body='<label class="field" style="flex:1 1 100%"><span>PART NAME</span><input type="text" data-pb-field="label" value="'+escAttr(d.label||"")+'" placeholder="e.g. NVIDIA RTX 3080 10GB"></label>'
-      +(isCat?'<label class="field" style="flex:1 1 100%"><span>CATALOG SEARCH (OPTIONAL)</span><input type="text" data-pb-catalog-search="'+k+'" value="'+escAttr(d.catalogQuery||"")+'" placeholder="Type 2+ characters to search…"></label>'
+    body=(isCat?'<label class="field" style="flex:1 1 100%"><span>PART NAME</span><input type="text" data-pb-catalog-search="'+k+'" value="'+escAttr(d.label||"")+'" placeholder="Start typing to search the catalog…" autocomplete="off"></label>'
         +(hits.length?'<div class="myrig-catalog-results" style="flex:1 1 100%;max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);padding:4px">'+hits.map((h,i)=>'<button type="button" class="btn btn-sm btn-ghost" data-pb-catalog-pick="'+i+'" style="display:flex;justify-content:space-between;width:100%;text-align:left;padding:5px 8px">'+escHtml(h.brand+" "+h.model)+"</button>").join("")+"</div>":"")
-        :"")
+      :'<label class="field" style="flex:1 1 100%"><span>PART NAME</span><input type="text" data-pb-field="label" value="'+escAttr(d.label||"")+'" placeholder="e.g. BeQuiet Pure Power 750W" autocomplete="off"></label>')
       +'<label class="field"><span>ESTIMATED COST ('+project.currency+')</span><input type="number" min="0" step="1" data-pb-field="cost" value="'+escAttr(d.cost||"")+'"></label>'
       +'<label class="field" style="flex:1 1 100%"><span>NOTES</span><input type="text" data-pb-field="notes" value="'+escAttr(d.notes||"")+'"></label>'
   }
@@ -82,8 +87,8 @@ function pbClick(e){
   if(e.target.closest("[data-pb-edit-details]")){const p=pbProject();return p?void openForm("project",p.id):void 0}
   const es=e.target.closest("[data-pb-edit-slot]");if(es){const p=pbProject();if(!p)return;const k=es.dataset.pbEditSlot,cur=p.slots&&p.slots[k]||null
     PBUI.slotKey=k;PBUI.catalogHits=[]
-    PBUI.slot=cur?("INVENTORY"===cur.kind?{mode:"VAULT",inventoryItemId:cur.inventoryItemId}:{mode:"PLANNED",label:cur.label||"",cost:cur.cost||0,notes:cur.notes||"",catalogQuery:""}):{mode:"VAULT",inventoryItemId:"",label:"",cost:0,notes:"",catalogQuery:""}
-    return void render()}
+    PBUI.slot=cur?("INVENTORY"===cur.kind?{mode:"VAULT",inventoryItemId:cur.inventoryItemId}:{mode:"PLANNED",label:cur.label||"",cost:cur.cost||0,notes:cur.notes||""}):{mode:"PLANNED",inventoryItemId:"",label:"",cost:0,notes:""}
+    render();return void pbFocusSlotField(k)}
   if(e.target.closest("[data-pb-cancel-slot]"))return PBUI.slotKey=null,PBUI.slot=null,void render()
   const ss=e.target.closest("[data-pb-save-slot]");if(ss){const p=pbProject();if(!p)return;const k=ss.dataset.pbSaveSlot,d=PBUI.slot||{}
     let res
@@ -97,7 +102,7 @@ function pbClick(e){
     const p=pbProject();if(!p)return;const res=Actions.clearProjectSlot(p.id,rs.dataset.pbRemoveSlot)
     return pbSetNotice(res.ok?"ok":"err",res.ok?"Component removed.":res.error),void render()}
   if(e.target.closest("[data-pb-catalog-pick]")){const btn=e.target.closest("[data-pb-catalog-pick]"),idx=+btn.dataset.pbCatalogPick,hit=(PBUI.catalogHits||[])[idx]
-    if(hit&&PBUI.slot){PBUI.slot.label=hit.brand+" "+hit.model;PBUI.slot.catalogQuery="";PBUI.catalogHits=[];return void render()}}
+    if(hit&&PBUI.slot){PBUI.slot.label=hit.brand+" "+hit.model;PBUI.catalogHits=[];return void render()}}
   if(e.target.closest("[data-pb-extra-new]"))return PBUI.extraDraft={label:"",cost:0,notes:"",inventoryItemId:null},void render()
   if(e.target.closest("[data-pb-extra-cancel]"))return PBUI.extraDraft=null,void render()
   if(e.target.closest("[data-pb-extra-save]")){const p=pbProject();if(!p)return;const d=PBUI.extraDraft||{},res=Actions.addProjectExtra(p.id,d)
@@ -112,7 +117,7 @@ function pbClick(e){
 function pbInput(e){
   const t=e.target
   if(t.matches&&t.matches("[data-pb-catalog-search]")){const val=t.value||"",k=t.dataset.pbCatalogSearch
-    if(PBUI.slot)PBUI.slot.catalogQuery=val
+    if(PBUI.slot)PBUI.slot.label=val
     PBUI.catalogHits=val.length>=2&&typeof catalogSearch==="function"?catalogSearch(k,val,8):[]
     render();const next=document.querySelector('[data-pb-catalog-search="'+k+'"]')
     if(next){next.focus();if(next.setSelectionRange)next.setSelectionRange(next.value.length,next.value.length)}
@@ -126,7 +131,7 @@ function pbInput(e){
     return void(PBUI.extraDraft[f]=t.value)}
 }
 function pbChange(e){
-  const m=e.target.closest("select[data-pb-slot-mode]");if(m&&PBUI.slot){PBUI.slot.mode=m.value;PBUI.catalogHits=[];return void render()}
+  const m=e.target.closest("select[data-pb-slot-mode]");if(m&&PBUI.slot){PBUI.slot.mode=m.value;PBUI.catalogHits=[];render();return void pbFocusSlotField(PBUI.slotKey)}
   const vi=e.target.closest("select[data-pb-vault-item]");if(vi&&PBUI.slot){PBUI.slot.inventoryItemId=vi.value;return void render()}
   const ef=e.target.closest("select[data-pb-extra-field]");if(ef)return void pbInput(e)
 }
