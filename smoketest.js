@@ -942,6 +942,41 @@ const roadToOpenProbe = `
 `;
 const roadToOpenResults = env.run(sandbox, roadToOpenProbe);
 
+const roadToReasonProbe = `
+(() => {
+  const out = [];
+  const g = RoadTo.create({name:'RTX 5070 Ti',category:'GPU',target:110000,refType:'catalog'});
+  const a1 = RoadTo.addFunds(g.id, 1000, 'Sold spare GPU');
+  out.push(['ROAD TO add funds persists the manual WHY reason', a1.ok && (function(){const h=RoadTo.get(g.id).history;return h.length===1 && h[0].amount===1000 && h[0].reason==='Sold spare GPU'})()]);
+  const a2 = RoadTo.removeFunds(g.id, 500, 'Bought cooler');
+  out.push(['ROAD TO remove funds persists the manual WHY reason', a2.ok && (function(){const h=RoadTo.get(g.id).history;return h.length===2 && h[1].amount===-500 && h[1].reason==='Bought cooler'})()]);
+  const a3 = RoadTo.addFunds(g.id, 250);
+  out.push(['ROAD TO movement without a reason stores an empty reason without breaking the record', a3.ok && RoadTo.get(g.id).history[2].reason === '']);
+  RoadToUI.focusId = g.id;
+  const detail = renderRoadTo();
+  out.push(['ROAD TO history displays the stored reason next to each movement', detail.indexOf('+1.000 RSD') > -1 && detail.indexOf('Sold spare GPU') > -1 && detail.indexOf('Bought cooler') > -1]);
+  out.push(['ROAD TO funds row exposes a compact WHY reason input', detail.indexOf('data-roadto-reason') > -1 && detail.indexOf('WHY') > -1]);
+  const legacy = {id:'lg',name:'Legacy Goal',category:'CPU',target:50000,saved:500,status:'ACTIVE',refType:'custom',targetSlot:null,history:[{id:'h0',amount:500,at:'2026-09-10'}]};
+  const legacyHtml = roadToDetail(legacy);
+  out.push(['legacy history without a reason renders cleanly with no reason row', legacyHtml.indexOf('+500 RSD') > -1 && legacyHtml.indexOf('pn-roadto-hist-reason') === -1]);
+  const exported = JSON.parse(JSON.stringify(Store.all('roadTo')));
+  const gx = exported.find(x=>x.id===g.id);
+  out.push(['ROAD TO export/import preserves every reason through the round trip', !!(gx && gx.history[0].reason==='Sold spare GPU' && gx.history[1].reason==='Bought cooler' && gx.history[2].reason==='')]);
+  RoadToUI.focusId = null;
+  const D = window.__pnRouletteDoctrine;
+  if (D && typeof D.fundAdd === 'function') {
+    D.fundAdd('WIN', 1000, 'RSD', 'BET', 'Roulette win');
+    D.fundAdd('SAVED', 500, 'RSD', 'SAVE MONEY', 'Roulette save');
+    let entries = [];
+    try { entries = JSON.parse(localStorage.getItem(D.FUND_KEY) || '{"entries":[]}').entries || []; } catch(e) {}
+    out.push(['roulette WIN auto-records the reason as Roulette win', entries.some(x => x.kind === 'WIN' && x.note === 'Roulette win')]);
+    out.push(['roulette SAVE auto-records the reason as Roulette save', entries.some(x => x.kind === 'SAVED' && x.note === 'Roulette save')]);
+  }
+  return out;
+})()
+`;
+const roadToReasonResults = env.run(sandbox, roadToReasonProbe);
+
 const myRigProbe = `
 (() => {
   const out = [];
@@ -1190,7 +1225,7 @@ const treasuryFlowProbe = `
 `;
 const treasuryFlowResults = env.run(sandbox, treasuryFlowProbe);
 
-const all = checks.concat(results).concat(interactionResults).concat(volumeResults).concat(rigResults).concat(doctrineResults).concat(enclosureResults).concat(roadToResults).concat(roadToOpenResults).concat(myRigResults).concat(mailResults).concat(treasuryFlowResults);
+const all = checks.concat(results).concat(interactionResults).concat(volumeResults).concat(rigResults).concat(doctrineResults).concat(enclosureResults).concat(roadToResults).concat(roadToOpenResults).concat(roadToReasonResults).concat(myRigResults).concat(mailResults).concat(treasuryFlowResults);
 let fail = 0;
 for (const [name, ok] of all){
   console.log((ok ? 'PASS' : 'FAIL') + ' - ' + name);

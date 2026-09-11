@@ -787,7 +787,7 @@ function rouletteChamber(){
     rouletteDoctrineCompleteRound();
 
     if (verdict==="SAVE MONEY"){
-      rouletteFundAdd("SAVED",row.avoidedStake,row.currency,verdict,"SAVE MONEY verdict routed into PC BUILD FUND");
+      rouletteFundAdd("SAVED",row.avoidedStake,row.currency,verdict,"Roulette save");
       state.rouletteNotice = {tone:"ok",text:"VERDICT FINAL. "+rouletteMoney(row.avoidedStake,row.currency)+" SAVED INTO PC BUILD FUND."};
     } else {
       state.rouletteNotice = {tone:"ok",text:"VERDICT FINAL. THE NODE REJECTS THIS NONSENSE. MONEY REMAINS YOURS."};
@@ -835,7 +835,7 @@ function rouletteChamber(){
     rouletteDoctrineCompleteRound();
 
     if (net>0){
-      rouletteFundAdd("WIN",net,row.currency,"BET",row.wager);
+      rouletteFundAdd("WIN",net,row.currency,"BET","Roulette win");
     }
 
     state.rouletteNotice = {
