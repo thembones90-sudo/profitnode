@@ -898,6 +898,50 @@ const roadToProbe = `
 `;
 const roadToResults = env.run(sandbox, roadToProbe);
 
+const roadToOpenProbe = `
+(() => {
+  const out = [];
+  const listeners = window.__pnDocListeners;
+  const root = document.getElementById('root');
+  function fire(ev, node){
+    const evObj = { type: ev, target: node, key: null, _prevented:false, preventDefault(){ this._prevented = true; }, stopPropagation(){} };
+    (listeners[ev] || []).slice().forEach(fn => fn(evObj));
+    return evObj;
+  }
+  function openBtn(id){
+    const btn = __pnEl({ tag:'button', attrs:{ 'data-roadto-open': id } });
+    root.appendChild(btn);
+    return btn;
+  }
+  const q1 = RoadTo.create({name:'NVIDIA RTX 5070 Ti 16GB',category:'GPU',target:110000,saved:0,status:'ACTIVE',refType:'catalog',targetSlot:null,history:[]});
+  const q2 = RoadTo.create({name:'RX 7900 XTX',category:'GPU',target:160000,saved:0,status:'ACTIVE',refType:'catalog',targetSlot:'GPU',history:[]});
+
+  const feat = roadToFeaturedCard();
+  out.push(['OPEN QUEST renders on the ROAD TO card with the active quest id', (function(){const prim=RoadTo.primary();return feat.indexOf('pn-roadto-feat') > -1 && prim && feat.indexOf('data-roadto-open="' + prim.id + '"') > -1 && feat.indexOf('>OPEN QUEST<') > -1})()]);
+
+  state.route = 'dashboard';
+  RoadToUI.focusId = null;
+  fire('click', openBtn(q1.id));
+  out.push(['clicking OPEN QUEST routes to ROAD TO and focuses the exact quest', state.route === 'roadto' && RoadToUI.focusId === q1.id]);
+  const detail = renderRoadTo();
+  out.push(['OPEN QUEST detail shows target, saved, remaining, history and controls', detail.indexOf(q1.name) > -1 && detail.indexOf('TARGET PRICE') > -1 && detail.indexOf('SAVED') > -1 && detail.indexOf('REMAINING') > -1 && detail.indexOf('QUEST HISTORY') > -1 && detail.indexOf('data-roadto-add') > -1 && detail.indexOf('data-roadto-remove') > -1 && detail.indexOf('data-roadto-back') > -1]);
+
+  state.route = 'dashboard';
+  RoadToUI.focusId = null;
+  fire('click', openBtn(q2.id));
+  out.push(['OPEN QUEST opens the exact quest among multiple, with its linked MY RIG slot', state.route === 'roadto' && RoadToUI.focusId === q2.id && renderRoadTo().indexOf('RX 7900 XTX') > -1 && renderRoadTo().indexOf('FOR:') > -1]);
+
+  state.route = 'dashboard';
+  RoadToUI.focusId = null;
+  fire('click', openBtn('missing-quest-id'));
+  const missing = renderRoadTo();
+  out.push(['OPEN QUEST for a deleted quest degrades to the quest list without crashing', state.route === 'roadto' && RoadToUI.focusId === 'missing-quest-id' && missing.indexOf('data-roadto-create') > -1 && missing.indexOf('data-roadto-open="' + q1.id + '"') > -1]);
+
+  return out;
+})()
+`;
+const roadToOpenResults = env.run(sandbox, roadToOpenProbe);
+
 const myRigProbe = `
 (() => {
   const out = [];
@@ -1146,7 +1190,7 @@ const treasuryFlowProbe = `
 `;
 const treasuryFlowResults = env.run(sandbox, treasuryFlowProbe);
 
-const all = checks.concat(results).concat(interactionResults).concat(volumeResults).concat(rigResults).concat(doctrineResults).concat(enclosureResults).concat(roadToResults).concat(myRigResults).concat(mailResults).concat(treasuryFlowResults);
+const all = checks.concat(results).concat(interactionResults).concat(volumeResults).concat(rigResults).concat(doctrineResults).concat(enclosureResults).concat(roadToResults).concat(roadToOpenResults).concat(myRigResults).concat(mailResults).concat(treasuryFlowResults);
 let fail = 0;
 for (const [name, ok] of all){
   console.log((ok ? 'PASS' : 'FAIL') + ' - ' + name);
