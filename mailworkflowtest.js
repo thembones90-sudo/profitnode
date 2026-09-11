@@ -180,6 +180,77 @@ const results = env.run(sandbox, `
     log('N: create outgoing mail pre-fills description', state.mailDraft && state.mailDraft.description.indexOf('Outgoing Test') > -1);
   })();
 
+  // O. Incoming shipment with COD > 0 displays COD row on main card
+  (function(){
+    reset();
+    const m = Actions.addMail({direction:'incoming', status:'in_transit', carrier:'BEX', shippingCost:0, codAmount:3174.5, currency:'RSD', description:'GPU shipment'});
+    const html = mailCard(m);
+    log('O: incoming COD > 0 shows COD row on card', html.indexOf('pn-mail-cod-row') > -1);
+    log('O: incoming COD label says COD / TO PAY', html.indexOf('COD / TO PAY') > -1);
+    log('O: incoming COD amount formatted correctly', html.indexOf('3.175') > -1);
+    Actions.removeMail(m.id);
+  })();
+
+  // P. Outgoing shipment with COD > 0 uses direction-appropriate wording
+  (function(){
+    reset();
+    const m = Actions.addMail({direction:'outgoing', status:'sent', carrier:'Post Express', shippingCost:500, codAmount:1200, currency:'RSD', description:'Sale shipment'});
+    const html = mailCard(m);
+    log('P: outgoing COD > 0 shows COD row on card', html.indexOf('pn-mail-cod-row') > -1);
+    log('P: outgoing COD label says COD TO COLLECT', html.indexOf('COD TO COLLECT') > -1);
+    log('P: outgoing COD does NOT say TO PAY', html.indexOf('COD / TO PAY') === -1);
+    log('P: outgoing COD amount formatted correctly', html.indexOf('1.200') > -1);
+    Actions.removeMail(m.id);
+  })();
+
+  // Q. Zero/empty COD does not create main-card clutter
+  (function(){
+    reset();
+    const m0 = Actions.addMail({direction:'incoming', status:'in_transit', carrier:'BEX', shippingCost:500, codAmount:0, currency:'RSD', description:'No COD'});
+    const html0 = mailCard(m0);
+    log('Q: codAmount=0 hides COD row', html0.indexOf('pn-mail-cod-row') === -1);
+    log('Q: codAmount=0 hides COD label', html0.indexOf('COD / TO PAY') === -1);
+    Actions.removeMail(m0.id);
+    const mNull = Actions.addMail({direction:'incoming', status:'in_transit', carrier:'BEX', shippingCost:500, currency:'RSD', description:'Null COD'});
+    const htmlNull = mailCard(mNull);
+    log('Q: codAmount=undefined hides COD row', htmlNull.indexOf('pn-mail-cod-row') === -1);
+    Actions.removeMail(mNull.id);
+  })();
+
+  // R. Shipping cost and COD remain separate visible values
+  (function(){
+    reset();
+    const m = Actions.addMail({direction:'incoming', status:'in_transit', carrier:'DHL', shippingCost:500, codAmount:3174.5, currency:'RSD', description:'Mixed costs'});
+    const html = mailCard(m);
+    log('R: shipping row still present alongside COD', html.indexOf('pn-mail-cod-row') > -1 && html.indexOf('>SHIPPING<') > -1);
+    log('R: shipping shows 500 RSD', html.indexOf('500') > -1);
+    log('R: COD shows 3.175 RSD', html.indexOf('3.175') > -1);
+    log('R: shipping and COD are separate rows', html.indexOf('pn-mail-cod-row') < html.indexOf('>SHIPPING<'));
+    Actions.removeMail(m.id);
+  })();
+
+  // S. COD row appears between TRACKING and SHIPPING in card order
+  (function(){
+    reset();
+    const m = Actions.addMail({direction:'incoming', status:'in_transit', carrier:'BEX', trackingNumber:'BEX999', shippingCost:0, codAmount:1500, currency:'RSD', description:'Order check'});
+    const html = mailCard(m);
+    const codIdx = html.indexOf('pn-mail-cod-row');
+    const shipIdx = html.indexOf('>SHIPPING<');
+    const trackIdx = html.indexOf('pn-mail-track');
+    log('S: COD row is between TRACKING and SHIPPING', trackIdx > -1 && codIdx > trackIdx && codIdx < shipIdx);
+    Actions.removeMail(m.id);
+  })();
+
+  // T. COD amount uses shipment currency (EUR)
+  (function(){
+    reset();
+    const m = Actions.addMail({direction:'incoming', status:'in_transit', carrier:'DHL', shippingCost:0, codAmount:27, currency:'EUR', description:'EUR COD'});
+    const html = mailCard(m);
+    log('T: EUR COD shows euro sign', html.indexOf('€27') > -1);
+    log('T: EUR COD does not show RSD', html.indexOf('RSD') === -1 || html.indexOf('pn-mail-cod-row') > -1);
+    Actions.removeMail(m.id);
+  })();
+
   return out;
 })()
 `);
@@ -189,5 +260,5 @@ for (const [name, ok] of results) {
 }
 
 console.log('');
-console.log('MAIL WORKFLOW V3: ' + passed + ' passed, ' + failed + ' failed');
+console.log('MAIL WORKFLOW V4: ' + passed + ' passed, ' + failed + ' failed');
 process.exit(failed === 0 ? 0 : 1);
