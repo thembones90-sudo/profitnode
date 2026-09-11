@@ -42,7 +42,11 @@ const results = env.run(sandbox, `(() => {
   const out=[];
   out.push(['canonical CPU count is 279', HardwareCatalog.cpus.length===279]);
   out.push(['canonical GPU count is 208', HardwareCatalog.gpus.length===208]);
-  out.push(['canonical motherboard count is 1361 (935 legacy + ASUS + MSI + Gigabyte + ASRock + NZXT + Biostar + Colorful AM5 registries)', HardwareCatalog.boards.length===1361]);
+  out.push(['canonical motherboard count is 1362 (936 legacy + ASUS + MSI + Gigabyte + ASRock + NZXT + Biostar + Colorful AM5 registries)', HardwareCatalog.boards.length===1362]);
+  const tb250=catalogFind('MOBO','Biostar TB250-BTC');
+  out.push(['BIOSTAR TB250-BTC is added to the canonical B250 roster as a functional desktop board', tb250&&tb250.brand==='Biostar'&&tb250.model==='TB250-BTC'&&tb250.chipset==='B250'&&tb250.socket==='LGA1151-v1'&&tb250.form_factor==='ATX'&&tb250.overall===49&&PN_GEAR_TIERS[motherboardGearTier(tb250)]==='VANGUARD']);
+  out.push(['BIOSTAR TB250-BTC is not conflated with any TB250 mining-variant submodel', (function(){const all=canonicalBoards.boards.filter(x=>/^TB250/i.test(x.model||''));return all.length===1&&all[0].model==='TB250-BTC'})()]);
+  out.push(['BIOSTAR TB250-BTC is findable through motherboard search and lookup', catalogSearch('MOBO','TB250 BTC').some(b=>b.model==='TB250-BTC')&&catalogSearch('MOBO','BIOSTAR TB250').some(b=>b.model==='TB250-BTC')]);
   out.push(['canonical DDR4 family catalog is loaded', HardwareCatalog.ramFamilies.length>=100]);
   out.push(['canonical storage catalog has 1,324 entries', HardwareCatalog.storage.length===1324]);
   out.push(['storage type counts are preserved', HardwareCatalog.storage.filter(e=>e.drive_type==='NVMe SSD').length===658&&HardwareCatalog.storage.filter(e=>e.drive_type==='SATA SSD').length===462&&HardwareCatalog.storage.filter(e=>e.drive_type==='HDD').length===204]);

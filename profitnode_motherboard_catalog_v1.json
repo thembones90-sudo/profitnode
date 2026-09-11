@@ -8198,6 +8198,20 @@
       "confidence": "medium"
     },
     {
+      "brand": "Biostar",
+      "model": "TB250-BTC",
+      "chipset": "B250",
+      "socket": "LGA1151-v1",
+      "form_factor": "ATX",
+      "vrm_power": 44,
+      "features": 53,
+      "upgrade_headroom": 53,
+      "overall": 49,
+      "source_url": "https://www.biostar.com.tw/app/en/mb/",
+      "rating_method": "PN heuristic v1: exact-series tier + chipset capability + form factor/features",
+      "confidence": "medium"
+    },
+    {
       "brand": "ASUS",
       "model": "PRIME H270-PLUS",
       "chipset": "H270",
