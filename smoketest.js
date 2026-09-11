@@ -904,7 +904,12 @@ const myRigProbe = `
   const r0 = MyRig.ensure();
   out.push(['MY RIG defaults to LEVIATHAN, a permanent personal rig', r0.name === 'LEVIATHAN' && r0.status === 'ACTIVE' && Array.isArray(r0.history) && Array.isArray(r0.health)]);
   out.push(['MY RIG loads the canonical CPU-Z hardware into supported slots', r0.slots.CPU.label === 'AMD Ryzen 7 9800X3D' && r0.slots.MOBO.label === 'MSI PRO B650M-P' && r0.slots.RAM.specs.indexOf('DDR5-6000') > -1 && r0.slots.GPU.label === 'EVGA GeForce RTX 3080 10GB' && r0.slots.STORAGE.specs.indexOf('Samsung 850 EVO') > -1]);
-  out.push(['MY RIG CPU-Z import marks detected fields without guessing unsupported parts', r0.slots.CPU.dataSource === 'DETECTED' && r0.slots.CPU.purchasePrice === null && !r0.slots.PSU && !r0.slots.CASE && !r0.slots.COOLER]);
+  out.push(['MY RIG seeds the full canonical Leviathan loadout into every slot', r0.slots.CPU.label === 'AMD Ryzen 7 9800X3D' && r0.slots.CPU.purchasePrice === null && r0.slots.PSU.label === 'Kolink Regulator Gold 1200W' && r0.slots.CASE.label === 'Fractal Design Torrent' && r0.slots.COOLER.label === 'Noctua NH-D15' && r0.slots.MONITOR.label === 'ASUS ROG Strix XG27UCS' && r0.slots.KEYBOARD.label === 'HyperX Alloy Elite 2' && r0.slots.MOUSE.label === 'SteelSeries Aerox 5']);
+  const canonPage = renderMyRig();
+  out.push(['MY RIG renders the canonical tier on every loadout card', canonPage.indexOf('pn-tier-leviathan') > -1 && canonPage.indexOf('pn-tier-spectre') > -1 && canonPage.indexOf('pn-tier-reaper') > -1 && canonPage.indexOf('pn-tier-n7') > -1]);
+  out.push(['MY RIG overall rig class is REAPER, decoupled from stale rig profile logic', canonPage.indexOf('OVERALL RIG CLASS</span><span class="chip pn-tier-reaper">REAPER') > -1]);
+  out.push(['MY RIG storage card expands into the full drive stack with health', canonPage.indexOf('970 EVO Plus 250GB') > -1 && canonPage.indexOf('850 EVO 250GB') > -1 && canonPage.indexOf('1TB HDD') > -1 && canonPage.indexOf('76%') > -1 && canonPage.indexOf('94%') > -1 && canonPage.indexOf('4 DRIVES') > -1 && canonPage.indexOf('~2.5TB') > -1]);
+  out.push(['MY RIG hero summary names the Leviathan line-up', canonPage.indexOf('Ryzen 7 9800X3D') > -1 && canonPage.indexOf('RTX 3080 10GB') > -1 && canonPage.indexOf('32GB DDR5-6000') > -1 && canonPage.indexOf('~2.5TB Storage') > -1]);
   const legacyRig = {slots:{CPU:{label:'Legacy CPU',purchasePrice:38000,purchaseDate:'2026-01-10',notes:'keep me'}},canonicalExcluded:{}};
   MyRig.applyCanonical(legacyRig);
   out.push(['MY RIG CPU-Z data overrides legacy conflicts while preserving ownership details', legacyRig.slots.CPU.label === 'AMD Ryzen 7 9800X3D' && legacyRig.slots.CPU.dataSource === 'DETECTED' && legacyRig.slots.CPU.purchasePrice === 38000 && legacyRig.slots.CPU.purchaseDate === '2026-01-10' && legacyRig.slots.CPU.notes === 'keep me']);
@@ -917,12 +922,12 @@ const myRigProbe = `
   const sl = Store.load().myRig.slots;
   out.push(['MY RIG slots persist exact model, specs, price, date and manual provenance', sl.GPU.label === 'NVIDIA RTX 3080 10GB' && sl.GPU.specs.indexOf('GDDR6X') > -1 && sl.GPU.purchasePrice === 94000 && sl.GPU.purchaseDate === '2026-01-15' && sl.GPU.dataSource === 'MANUAL']);
   out.push(['MY RIG current value sums only the installed loadout, never profit', MyRig.invested() === 150000 && MyRig.value().invested === 150000 && !('profit' in MyRig.value())]);
-  out.push(['MY RIG value reports how many on-record parts have a price', MyRig.value().partsTotal === 6 && MyRig.value().partsPriced === 3]);
+  out.push(['MY RIG value reports how many on-record parts have a price', MyRig.value().partsTotal === 11 && MyRig.value().partsPriced === 3]);
 
   const myRigVaultItem = Actions.addInventory({category:'STORAGE', manufacturer:'Samsung', model:'980 Pro 1TB', purchaseDate:'2026-01-05', purchasePrice:12000, currency:'RSD', estimatedMarketValue:13000, source:'OTHER', condition:'WORKING', status:'IN_STORAGE'});
   MyRig.setSlot('STORAGE',{label:'Samsung 980 Pro 1TB', specs:'', purchasePrice:null, purchaseDate:'2026-01-05', notes:'', vaultId:myRigVaultItem.id});
   const myRigValueGap = MyRig.value();
-  out.push(['MY RIG value flags parts missing a price without changing the invested total', myRigValueGap.partsTotal === 6 && myRigValueGap.partsPriced === 3 && myRigValueGap.invested === 150000]);
+  out.push(['MY RIG value flags parts missing a price without changing the invested total', myRigValueGap.partsTotal === 11 && myRigValueGap.partsPriced === 3 && myRigValueGap.invested === 150000]);
   const pageWithGap = renderMyRig();
   out.push(['MY RIG personal view keeps value chatter out of the page entirely', pageWithGap.indexOf('missing a price') === -1 && pageWithGap.indexOf('TOTAL INVESTED') === -1]);
   out.push(['MY RIG vault-sourced part links straight to its Inventory record', pageWithGap.indexOf('data-open-entity="inventory"') > -1 && pageWithGap.indexOf('data-id="' + myRigVaultItem.id + '"') > -1]);
@@ -931,7 +936,7 @@ const myRigProbe = `
 
   const page = renderMyRig();
   out.push(['MY RIG page opens with identity hero + equipment screen and no slot price', page.indexOf('pn-myrig-hero') > -1 && page.indexOf('LEVIATHAN') > -1 && page.indexOf('COMPONENT LOADOUT') > -1 && page.indexOf('data-myrig-slot="GPU"') > -1 && page.indexOf('94.000 RSD') === -1]);
-  out.push(['MY RIG renders detected/manual markers and CPU-Z coverage', page.indexOf('pn-myrig-src is-detected') > -1 && page.indexOf('pn-myrig-src is-manual') > -1 && page.indexOf('CPU-Z DETECTED: 2 SLOTS') > -1]);
+  out.push(['MY RIG keeps detection/source jargon out of the page entirely', page.indexOf('pn-myrig-src') === -1 && page.indexOf('CPU-Z DETECTED') === -1 && page.indexOf('DETECTED') === -1 && page.indexOf('MANUAL') === -1 && page.indexOf('CATALOG') === -1]);
   out.push(['MY RIG resale readout stays model-side only, never rendered as finance', page.indexOf('INFORMATIONAL ONLY') === -1 && page.indexOf('EST. RESALE VALUE') === -1]);
   MyRig.setResale(132000);
   const v2 = MyRig.value();
@@ -939,6 +944,9 @@ const myRigProbe = `
   const compat = MyRig.compat();
   out.push(['MY RIG compatibility reuses the rig-assembly Build Check verdict', !!compat && ['EMPTY','PASS','WARN','FAIL'].indexOf(compat.level) > -1]);
   out.push(['MY RIG compatibility suppresses generic unverified warnings', !!compat && compat.rows.every(r => r.status === 'WARN' || r.status === 'FAIL')]);
+  MyRig.setSlot('STORAGE',{label:'Samsung 990 Pro 2TB',specs:'2TB NVMe · PCIe 4.0',purchasePrice:null,purchaseDate:null,notes:'',vaultId:null});
+  out.push(['MY RIG manual storage swap clears the canonical drive stack', (function(){const st=Store.load().myRig.slots.STORAGE;return st.label === 'Samsung 990 Pro 2TB' && !st.stack && !st.stackTotal})()]);
+  MyRig.clearSlot('STORAGE');
   MyRig.logUpgrade({slotKey:'GPU',oldPart:'GTX 1070 8GB',newPart:'NVIDIA RTX 3080 10GB',date:'2026-01-15',cost:94000,notes:'Found on KP, sealed'});
   const hist = Store.load().myRig.history[0];
   out.push(['MY RIG upgrade history preserves old/new/cost/date', hist.oldPart === 'GTX 1070 8GB' && hist.newPart === 'NVIDIA RTX 3080 10GB' && hist.cost === 94000 && hist.date === '2026-01-15']);
