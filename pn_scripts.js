@@ -1,6 +1,6 @@
 "use strict";
 window.__PN_SCRIPTS = [
-  "app_core.js?v=cost-integrity-v1",
+  "app_core.js?v=cost-integrity-v3",
   "planner_retirement_extension.js?v=planner-retired-v1",
   "terminal_naming_extension.js?v=pending-sales-v1",
   "psu_extension.js?v=mobo-pcie-perboard-v1",
@@ -17,7 +17,7 @@ window.__PN_SCRIPTS = [
   "treasury_extension.js?v=treasury-core-sources-v2",
   "road_to_extension.js?v=roadto-reason-v1",
   "my_rig_extension.js?v=myrig-leviathan-canonical-v1",
-"sidebar_cleanup_extension.js?v=product-refinement-v1",
+"sidebar_cleanup_extension.js?v=product-refinement-v3",
   "mail_extension.js?v=mail-card-polish-v1",
   "treasury_flow_extension.js?v=treasury-fund-flow-v1"
 ];

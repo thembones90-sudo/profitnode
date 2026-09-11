@@ -1,17 +1,20 @@
 "use strict";
 
 const PN_PART_NAME_TIERS = Object.freeze({
-  1:{key:"T1",label:"Dark Bronze",className:"pn-part-name-t1"},
-  2:{key:"T2",label:"Light Bronze / Champagne",className:"pn-part-name-t2"},
-  3:{key:"T3",label:"Soft Silver",className:"pn-part-name-t3"},
-  4:{key:"T4",label:"Airy Bright Silver",className:"pn-part-name-t4"},
-  5:{key:"T5",label:"Restrained Gold",className:"pn-part-name-t5"}
+  1:{key:"POOR",label:"Poor",className:"pn-part-name-poor"},
+  2:{key:"COMMON",label:"Common",className:"pn-part-name-common"},
+  3:{key:"UNCOMMON",label:"Uncommon",className:"pn-part-name-uncommon"},
+  4:{key:"RARE",label:"Rare",className:"pn-part-name-rare"},
+  5:{key:"EPIC",label:"Epic",className:"pn-part-name-epic"},
+  6:{key:"LEGENDARY",label:"Legendary",className:"pn-part-name-legendary"},
+  7:{key:"ARTIFACT",label:"Artifact",className:"pn-part-name-artifact"}
 });
+globalThis.PN_PART_NAME_TIERS = PN_PART_NAME_TIERS;
 
 const PN_PART_NAME_RULES = Object.freeze({
-  CPU:{scores:[35,50,65,85]},GPU:{scores:[8,17,24,44]},
-  MOTHERBOARD:{scores:[45,55,72,88]},PSU:{scores:[45,62,78,90]},
-  STORAGE:{scores:[48,62,75,88]}
+  CPU:{scores:[30,45,60,75,88,97]},GPU:{scores:[6,11,25,45,70,95]},
+  MOTHERBOARD:{scores:[30,45,60,75,88,97]},PSU:{scores:[30,45,62,78,90,97]},
+  STORAGE:{scores:[30,45,60,75,88,97]}
 });
 
 function pnPartTierCategory(category){
@@ -84,45 +87,51 @@ function pnCpuNameTier(text,catalog){
 }
 
 function pnGpuNameTier(text,catalog){
-  if(/RTX (?:3080|3080 TI|3090|4080|4090|4070 TI|5070 TI|5080|5090)|RX (?:6800 XT|6900 XT|6950 XT|7900)/.test(text)) return 5;
-  if(/RTX (?:2070 SUPER|3060(?: TI)?|3070(?: TI)?|4070)|RX (?:6600(?: XT)?|6700 XT|6750 XT|7600)/.test(text)) return 4;
-  if(/GTX (?:1070(?: TI)?|1660(?: SUPER| TI)?)|RTX 2060(?: SUPER)?|RX (?:5600 XT|5700(?: XT)?)/.test(text)) return 3;
-  if(/GTX 1060|RX (?:470|480|570|580)|RX 5500 XT/.test(text)) return 2;
-  if(/GTX (?:1050(?: TI)?|1630)|RX (?:460|560|6400)/.test(text)) return 1;
-  return pnPartTierFromScore(catalog&&catalog.overall,PN_PART_NAME_RULES.GPU.scores)||2;
+  if(/RTX (?:3090|4090|4090 D|5090|5090 D)|RX (?:6950 XT|6900 XT|7900 XTX|7900)/.test(text)) return 7;
+  if(/RTX (?:4080|4080 SUPER|4070 TI|5080|5070 TI)|RX (?:6800 XT|6900 XT|6950 XT|7900)/.test(text)) return 6;
+  if(/RTX (?:3080|3080 TI|3070|3070 TI|3070 SUPER|3060 TI|4070)|RX (?:6700 XT|6750 XT|6800 XT|7600)/.test(text)) return 5;
+  if(/RTX (?:2070 SUPER|2080|3060|3060 TI)|RX (?:6600 XT|6600\b|6650 XT|6700|6700 XT|6750 XT)/.test(text)) return 4;
+  if(/GTX (?:1070(?: TI)?|1080|1660(?: SUPER| TI)?)|RTX 2060(?: SUPER)?|RX (?:5600 XT|5700(?: XT)?)\b/.test(text)) return 3;
+  if(/GTX (?:1060|1650(?: SUPER)?|1660)|RX (?:470|480|570|580|5500 XT)\b/.test(text)) return 3;
+  if(/GTX (?:1050(?: TI)?|1630)|RX (?:460|560|6400|6500 XT)\b/.test(text)) return 2;
+  return pnPartTierFromScore(catalog&&catalog.overall,PN_PART_NAME_RULES.GPU.scores)||3;
 }
 
 function pnMotherboardNameTier(text,catalog){
   if(catalog) return pnPartTierFromScore(catalog.overall,PN_PART_NAME_RULES.MOTHERBOARD.scores);
   if(/A320|A520|\bH\d{3}/.test(text)) return 1;
-  if(/CROSSHAIR|MAXIMUS|GODLIKE|AORUS (?:MASTER|XTREME)|TAICHI/.test(text)) return 4;
-  if(/X570|X670|X870/.test(text)) return 3;
-  if(/B450|B550|B650/.test(text)) return /TOMAHAWK|MORTAR|AORUS (?:PRO|ELITE)|ROG STRIX/.test(text)?3:2;
+  if(/CROSSHAIR|MAXIMUS|GODLIKE|AORUS (?:MASTER|XTREME)|TAICHI/.test(text)) return 7;
+  if(/X670|X870/.test(text)) return 6;
+  if(/X570/.test(text)) return 4;
+  if(/B450|B550|B650/.test(text)) return /TOMAHAWK|MORTAR|AORUS (?:PRO|ELITE)|ROG STRIX/.test(text)?5:4;
+  if(/A520|B550/.test(text)) return 3;
   return 2;
 }
 
 function pnRamNameTier(text){
   const capacity=pnPartCapacityGb(text,null),speed=Number((text.match(/(?:DDR[45]\s*)?(\d{4,5})\s*(?:MT S|MHZ)?/)||[])[1])||0;
   const ddr5=/DDR5/.test(text),single=/SINGLE(?: CHANNEL)?|1\s*X\s*\d+\s*GB/.test(text),dual=/DUAL(?: CHANNEL)?|2\s*X\s*\d+\s*GB/.test(text);
-  if(ddr5&&capacity>=32&&speed>=6000) return 5;
-  if(ddr5&&capacity>=32||capacity>=32&&speed>=3200&&!single) return 4;
-  if(capacity>=32||capacity>=16&&(speed>=3000||dual)) return 3;
-  if(capacity>=16) return 2;
-  if(capacity&&capacity<=8||single) return 1;
-  return 2;
+  if(ddr5&&capacity>=32&&speed>=6000) return 7;
+  if(ddr5&&capacity>=32||capacity>=32&&speed>=3200&&!single) return 6;
+  if(ddr5&&capacity>=16||capacity>=32||capacity>=16&&(speed>=3200||dual)) return 5;
+  if(capacity>=16||capacity>=8&&(speed>=3200||dual)) return 4;
+  if(capacity>=8&&dual) return 3;
+  if(capacity>=8&&single) return 1;
+  if(capacity>=4) return 2;
+  return 1;
 }
 
 function pnPsuNameTier(text,catalog){
   if(catalog){
     if(String(catalog.safety_status||"").toUpperCase()==="REJECT") return 1;
     const tier=pnPartTierFromScore(catalog.quality_score,PN_PART_NAME_RULES.PSU.scores);
-    return String(catalog.safety_status||"").toUpperCase()==="CAUTION"?Math.min(tier,2):tier;
+    return String(catalog.safety_status||"").toUpperCase()==="CAUTION"?Math.min(tier,3):tier;
   }
   if(/GENERIC|NO NAME|UNKNOWN|REPLACEMENT REQUIRED/.test(text)) return 1;
-  if(/RMX|SEASONIC (?:PRIME|VERTEX)|DARK POWER|STRAIGHT POWER|SUPER FLOWER (?:LEADEX|TITANIUM)/.test(text)) return 5;
-  if(/80 PLUS GOLD|FULL MODULAR|FULLY MODULAR/.test(text)) return 4;
-  if(/CORSAIR (?:CX|TX)|PURE POWER|MWE GOLD|FOCUS GX/.test(text)) return 3;
-  return 2;
+  if(/RMX|SEASONIC (?:PRIME|VERTEX)|DARK POWER|STRAIGHT POWER|SUPER FLOWER (?:LEADEX|TITANIUM)/.test(text)) return 7;
+  if(/80 PLUS GOLD|FULL MODULAR|FULLY MODULAR/.test(text)) return 6;
+  if(/CORSAIR (?:CX|TX)|PURE POWER|MWE GOLD|FOCUS GX/.test(text)) return 4;
+  return 3;
 }
 
 function pnStorageNameTier(item,text,catalog){
@@ -132,39 +141,44 @@ function pnStorageNameTier(item,text,catalog){
   if(item&&["DEAD","FAULTY"].includes(item.condition)||health!==null&&health<60) return 1;
   const capacity=pnPartCapacityGb(text,catalog),type=pnNorm(catalog&&catalog.drive_type||text);
   let tier;
-  if(/NVME/.test(type)&&capacity>=2000&&(catalog?Number(catalog.quality_score)>=70:/SAMSUNG|WD BLACK|FIRECUDA|CRUCIAL T500/.test(text))) tier=5;
-  else if(/NVME/.test(type)&&capacity>=1000) tier=4;
-  else if(/NVME/.test(type)&&capacity>=256||/SATA SSD/.test(type)&&capacity>=500) tier=3;
-  else if(/SATA SSD/.test(type)&&capacity>=128) tier=2;
-  else if(/HDD/.test(type)||capacity&&capacity<128) tier=1;
-  else tier=pnPartTierFromScore(catalog&&catalog.overall_score,PN_PART_NAME_RULES.STORAGE.scores)||2;
-  if(health!==null&&health<80) tier=Math.min(tier,2);
-  else if(health!==null&&health<90) tier=Math.min(tier,3);
+  if(/NVME/.test(type)&&capacity>=2000&&(catalog?Number(catalog.quality_score)>=70:/SAMSUNG|WD BLACK|FIRECUDA|CRUCIAL T500/.test(text))) tier=7;
+  else if(/NVME/.test(type)&&capacity>=1000) tier=6;
+  else if(/NVME/.test(type)&&capacity>=256||/SATA SSD/.test(type)&&capacity>=500) tier=5;
+  else if(/SATA SSD/.test(type)&&capacity>=128) tier=4;
+  else if(/HDD/.test(type)||capacity&&capacity<128) tier=2;
+  else tier=pnPartTierFromScore(catalog&&catalog.overall_score,PN_PART_NAME_RULES.STORAGE.scores)||3;
+  if(health!==null&&health<60) tier=Math.min(tier,1);
+  else if(health!==null&&health<70) tier=Math.min(tier,2);
+  else if(health!==null&&health<80) tier=Math.min(tier,4);
+  else if(health!==null&&health<90) tier=Math.min(tier,5);
   return tier;
 }
 
 function pnCoolerNameTier(text,catalog){
   const caps=catalog&&catalog.caps||{};
-  if(/NH D15/.test(text)) return 5;
-  if(caps.coolingClass==="EXTREME"||/DUAL TOWER|280\s*MM AIO|360\s*MM AIO|420\s*MM AIO/.test(text)) return 4;
-  if(caps.coolingClass==="STRONG"||/120\s*MM (?:TOWER|AIR)|AK400|HYPER 212|MUGEN/.test(text)) return 3;
-  if(caps.coolingClass==="STANDARD"||/TOWER/.test(text)) return 2;
-  return caps.coolingClass==="LIGHT"||/STOCK|WRAITH|LAMINAR|LOW PROFILE|TINY/.test(text)?1:2;
+  if(/NH D15/.test(text)) return 6;
+  if(caps.coolingClass==="EXTREME"||/DUAL TOWER|280\s*MM AIO|360\s*MM AIO|420\s*MM AIO/.test(text)) return 7;
+  if(caps.coolingClass==="STRONG"||/120\s*MM (?:TOWER|AIR)|AK400|HYPER 212|MUGEN/.test(text)) return 5;
+  if(caps.coolingClass==="STANDARD"||/TOWER/.test(text)) return 4;
+  if(caps.coolingClass==="LIGHT"||/STOCK|WRAITH|LAMINAR|LOW PROFILE|TINY/.test(text)) return 2;
+  return 3;
 }
 
 function pnCaseNameTier(text,catalog){
   const caps=catalog&&catalog.caps||{},quality=String(caps.buildQuality||"").toUpperCase(),airflow=String(caps.airflow||"").toUpperCase();
-  if(/FLAGSHIP|HAF 700|7000D|O11D EVO XL|COSMOS C700/.test(text)&&quality==="PREMIUM") return 5;
-  if(quality==="PREMIUM"||airflow==="EXCELLENT"&&quality!=="BASIC") return 4;
-  if(quality==="GOOD"||quality==="SOLID"&&["GOOD","EXCELLENT"].includes(airflow)) return 3;
-  if(quality==="BASIC"||["FAIR","GOOD"].includes(airflow)) return 2;
-  return /GENERIC|CLOSED|POOR AIRFLOW/.test(text)||airflow==="POOR"?1:2;
+  if(/FLAGSHIP|HAF 700|7000D|O11D EVO XL|COSMOS C700/.test(text)&&quality==="PREMIUM") return 7;
+  if(quality==="PREMIUM"||airflow==="EXCELLENT"&&quality!=="BASIC") return 6;
+  if(quality==="GOOD"||quality==="SOLID"&&["GOOD","EXCELLENT"].includes(airflow)) return 5;
+  if(/LANCOOL/.test(text)) return 4;
+  if(quality==="BASIC"||["FAIR","GOOD"].includes(airflow)) return 3;
+  if(quality==="POOR"||airflow==="POOR") return 2;
+  return 3;
 }
 
 function pnPartNameTier(item){
   const category=pnPartTierCategory(item&&item.category),resolution=pnPartCatalogResolution(item||{}),catalog=resolution.item,text=pnPartText(item,catalog);
-  let tier=category==="CPU"?pnCpuNameTier(text,catalog):category==="GPU"?pnGpuNameTier(text,catalog):category==="MOTHERBOARD"?pnMotherboardNameTier(text,catalog):category==="RAM"?pnRamNameTier(text):category==="PSU"?pnPsuNameTier(text,catalog):category==="STORAGE"?pnStorageNameTier(item,text,catalog):category==="COOLING"?pnCoolerNameTier(text,catalog):category==="CASE"?pnCaseNameTier(text,catalog):3;
-  tier=Math.max(1,Math.min(5,Number(tier)||3));
+  let tier=category==="CPU"?pnCpuNameTier(text,catalog):category==="GPU"?pnGpuNameTier(text,catalog):category==="MOTHERBOARD"?pnMotherboardNameTier(text,catalog):category==="RAM"?pnRamNameTier(text):category==="PSU"?pnPsuNameTier(text,catalog):category==="STORAGE"?pnStorageNameTier(item,text,catalog):category==="COOLING"?pnCoolerNameTier(text,catalog):category==="CASE"?pnCaseNameTier(text,catalog):4;
+  tier=Math.max(1,Math.min(7,Number(tier)||4));
   return Object.assign({tier:tier,source:catalog?"catalog":"heuristic",category:category,matchConfidence:resolution.confidence,reason:catalog?"Canonical "+category.toLowerCase()+" evidence · "+resolution.reason:resolution.reason},PN_PART_NAME_TIERS[tier]);
 }
 
@@ -878,11 +892,13 @@ function pnPartTierExplanationHtml(item){
     text-shadow:0 1px 0 rgba(0,0,0,.42);
   }
 
-  .pn-part-name-t1{color:#9a7459}
-  .pn-part-name-t2{color:#c4aa82}
-  .pn-part-name-t3{color:#c7ccd2}
-  .pn-part-name-t4{color:#e5e9ed}
-  .pn-part-name-t5{color:#d4b866}
+  .pn-part-name-poor{color:#9D9D9D}
+  .pn-part-name-common{color:#FFFFFF}
+  .pn-part-name-uncommon{color:#1EFF00}
+  .pn-part-name-rare{color:#0070DD}
+  .pn-part-name-epic{color:#A335EE}
+  .pn-part-name-legendary{color:#FF8000}
+  .pn-part-name-artifact{color:#E6CC80}
   .pn-part-name-subtle{filter:saturate(.78);opacity:.94}
 
   .pn-part-tier-inspector{
