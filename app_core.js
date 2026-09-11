@@ -10,32 +10,23 @@ chip:"chip-amber"},IN_RIG:{chip:"chip-amber-outline"},LISTED:{chip:"chip-blue"},
 chip:"chip-green-outline"},UNTESTED:{chip:"chip-muted"},FAULTY:{chip:"chip-red-outline"},REPAIRED:{chip:"chip-blue"},DEAD:{chip:"chip-red"}};function dealScoreLabel(e){
 return e<=2?{label:"TERRIBLE",chip:"chip-red"}:e<=4?{label:"BAD",chip:"chip-red-outline"}:5===e?{label:"FAIR",chip:"chip-muted"}:6===e?{label:"SOLID",chip:"chip-amber-outline"
 }:7===e?{label:"GOOD",chip:"chip-amber"}:8===e?{label:"EXCELLENT",chip:"chip-green-outline"}:9===e?{label:"HIGHWAY ROBBERY",chip:"chip-green"}:{label:"DIVINE INTERVENTION",
-  chip:"chip-green"}}const PN_GEAR_TIERS=["SCRAPBLADE","SCRAPWRAITH","REVENANT","GHOUL","ALGHOUL"],PN_RIG_WEIGHTS={gpu:.55,cpu:.30,motherboard:.15},HardwareCatalog={status:"loading",cpus:[],gpus:[],boards:[],ramFamilies:[],ramSupported:null,storage:[],error:null};
+  chip:"chip-green"}}const TIER_NAMES=["HUSK","MERC","VANGUARD","N7","SPECTRE","REAPER","LEVIATHAN"],
+CPU_TIER_THRESHOLDS=[{tier:"HUSK",max:29},{tier:"MERC",max:44},{tier:"VANGUARD",max:59},{tier:"N7",max:74},{tier:"SPECTRE",max:87},{tier:"REAPER",max:96},{tier:"LEVIATHAN",max:100}],
+GPU_TIER_THRESHOLDS=[{tier:"HUSK",max:5},{tier:"MERC",max:10},{tier:"VANGUARD",max:24},{tier:"N7",max:44},{tier:"SPECTRE",max:69},{tier:"REAPER",max:94},{tier:"LEVIATHAN",max:100}],
+MOBO_TIER_THRESHOLDS=[{tier:"HUSK",max:29},{tier:"MERC",max:44},{tier:"VANGUARD",max:59},{tier:"N7",max:74},{tier:"SPECTRE",max:87},{tier:"REAPER",max:96},{tier:"LEVIATHAN",max:100}],
+STORAGE_TIER_THRESHOLDS=[{tier:"HUSK",max:29},{tier:"MERC",max:44},{tier:"VANGUARD",max:59},{tier:"N7",max:74},{tier:"SPECTRE",max:87},{tier:"REAPER",max:96},{tier:"LEVIATHAN",max:100}],
+RAM_TIER_THRESHOLDS=[{tier:"HUSK",max:29},{tier:"MERC",max:44},{tier:"VANGUARD",max:59},{tier:"N7",max:74},{tier:"SPECTRE",max:87},{tier:"REAPER",max:96},{tier:"LEVIATHAN",max:100}],
+PN_GEAR_TIERS=TIER_NAMES,PN_RIG_WEIGHTS={gpu:.55,cpu:.30,motherboard:.15},HardwareCatalog={status:"loading",cpus:[],gpus:[],boards:[],ramFamilies:[],ramSupported:null,storage:[],error:null};globalThis.PN_GEAR_TIERS=PN_GEAR_TIERS;globalThis.HardwareCatalog=HardwareCatalog;
 function pnNorm(e){return String(e||"").toUpperCase().replace(/[^A-Z0-9]+/g," ").trim()}
+function tierFromScore(score,thresholds){for(const t of thresholds){if(score<=t.max)return t.tier}return thresholds[thresholds.length-1].tier}
 function pnTier(e){return null==e?null:PN_GEAR_TIERS[clamp(e,0,PN_GEAR_TIERS.length-1)]}
 function pnTierClass(e){return"pn-tier-"+String(e||"").toLowerCase()}
-function cpuGearTier(e){const t=pnNorm(e.model||e.label||e),a=parseInt((t.match(/RYZEN\s*[3579]?(?:\s+PRO)?\s*(\d{4})/)||[])[1]||0,10)
-;if(/5800X3D|5700X3D|5800XT|\b5800X\b|7800X3D|7600X3D|9800X3D|9900X3D|9950X3D|9600X3D|RYZEN\s*9/.test(t)||/3900|3950|5900|5950|7900|7950|9900|9950/.test(t))return 4
-;if(/3600X|3600XT|5500|5600|5700G|5700X|3700X|3800X/.test(t)||/7700|7700X|9700X|9600X|8700G/.test(t)||/I7 8700K|I7 9700K|I9 9900/.test(t))return 3
-;if(/1600 AF|2600X|3500|3600|4500|4600G/.test(t)||/8500G|8600G|I5 (8400|8500|8600|9400|9500|9600)|I7 8700/.test(t))return 2
-;if(/RYZEN 5 (1400|1500X|1600|2400G|2600)/.test(t)||/I7 (6700|7700)|I3 (8100|9100)/.test(t))return 1
-;if(/RYZEN 3 (1200|1300X|2200G)/.test(t)||/CELERON|PENTIUM|I3 (6100|7100)|I5 (6400|6500|7400)/.test(t))return 0
-;if(a>=7000&&a<9000)return 3;if(a>=5000)return 3;if(a>=3000)return 2;if(a>=2000)return 1;return 0}
-function gpuGearTier(e){const t=pnNorm(e.model||e.label||e)
-;if(/RTX (2080 TI|30(?:70|80|90)|40(?:60 TI|70|80|90)|50(?:70|80|90))|RX (6800|6900|6950|7700 XT|7800 XT|7900|90(?:70|80|90))/.test(t))return 4
-;if(/GTX 1080 TI|RTX (2060 SUPER|2070|2070 SUPER|3060|3060 TI)|RX (5700 XT|6600 XT|6650 XT|6700|6700 XT|6750)/.test(t))return 3
-;if(/GTX (1070|1070 TI|1080|1660 SUPER|1660 TI)|RTX 2060|VEGA (56|64)|RX (5600 XT|5700|6600)/.test(t))return 2
-;if(/GTX (1060|1650|1650 SUPER|1660)|RX (480|580(?! 2048SP)|590)/.test(t))return 1
-;if(/GTX 1050|RX (470|570|580 2048SP)/.test(t))return 0
-;const a=Number(e.overall);return a>=45?4:a>=25?3:a>=14?2:a>=8?1:0}
-function motherboardGearTier(e){const t=pnNorm((e.brand||"")+" "+(e.model||e.label||"")+" "+(e.chipset||"")),a=Number(e.overall)||0,r=Number(e.vrm_power)||0
-;if(/CROSSHAIR|TAICHI|AORUS (MASTER|XTREME)|GODLIKE|MAXIMUS|\bACE\b/.test(t)||(/X570|X470|Z390/.test(t)&&a>=82))return 4
-;if(/X470/.test(t)||(/B550|B450|Z270|Z370|Z390/.test(t)&&a>=68))return 3
-;if(/B550|B450|B350|Z170|Z270|Z370|B360|B365/.test(t)&&r>=48)return 2
-;if(/B350|B450|B150|B250|B360|H170|H270|H370/.test(t)||a>=48)return 1
-;return 0}
+function cpuGearTier(e){if(e.availability_status==="DOCUMENTED_UNRELEASED")return null;const overall=Number(e.overall)||Number(e.pn_score)||0;const t=tierFromScore(overall,CPU_TIER_THRESHOLDS);return PN_GEAR_TIERS.indexOf(t)}
+function gpuGearTier(e){if(e.availability_status==="DOCUMENTED_UNRELEASED")return null;const overall=Number(e.overall)||Number(e.pn_score)||0;const t=tierFromScore(overall,GPU_TIER_THRESHOLDS);return PN_GEAR_TIERS.indexOf(t)}
+function motherboardGearTier(e){if(e.availability_status==="DOCUMENTED_UNRELEASED")return null;const overall=Number(e.overall)||Number(e.pn_score)||0;const t=tierFromScore(overall,MOBO_TIER_THRESHOLDS);return PN_GEAR_TIERS.indexOf(t)}
+function storageGearTier(e){if(e.availability_status==="DOCUMENTED_UNRELEASED")return null;const overall=Number(e.overall_score)||Number(e.overall)||0;const t=tierFromScore(overall,STORAGE_TIER_THRESHOLDS);return PN_GEAR_TIERS.indexOf(t)}
 function ramInterpolatedScore(e,t){const a=Object.keys(t).map(Number).sort((e,t)=>e-t);if(e<=a[0])return t[a[0]];if(e>=a[a.length-1])return t[a[a.length-1]];const r=a.findIndex(t=>t>=e),n=a[r-1],s=a[r];return t[n]+(e-n)/(s-n)*(t[s]-t[n])}
-function ramRating(e){e=e||{};const t=Number(e.totalCapacity)||Number(e.moduleCount||0)*Number(e.perModuleCapacity||0),a=Number(e.speed)||0,r=Number(e.casLatency)||0,n=Number(e.moduleCount)||0,s={4:10,8:35,12:50,16:75,24:85,32:100,48:100},l={2133:20,2400:30,2666:40,2800:45,2933:50,3000:55,3200:65,3333:70,3466:74,3600:80,3733:84,3800:87,4000:90,4133:92,4266:94,4400:96,4600:97,4800:98,5000:100,5200:100,5600:100,6000:100,6400:100,7200:100},o=t?ramInterpolatedScore(t,s):0,i=a?ramInterpolatedScore(a,l):0,c=a&&r?r*2e3/a:null,d=null==c?0:c>15?20:c>13?35:c>11?50:c>10?65:c>9?80:c>=8?90:100,u=1===n?40:2===n?100:4===n?90:0,p=Math.round(.35*o+.25*i+.25*d+.15*u),m=p<45?0:p<60?1:p<75?2:p<85?3:4;return{capacityScore:Math.round(o),speedScore:Math.round(i),latencyScore:Math.round(d),channelScore:u,latencyNs:null==c?null:Number(c.toFixed(2)),overall:p,tierIndex:m,tier:pnTier(m)}}
+function ramRating(e){e=e||{};const t=Number(e.totalCapacity)||Number(e.moduleCount||0)*Number(e.perModuleCapacity||0),a=Number(e.speed)||0,r=Number(e.casLatency)||0,n=Number(e.moduleCount)||0,s={4:10,8:35,12:50,16:75,24:85,32:100,48:100},l={2133:20,2400:30,2666:40,2800:45,2933:50,3000:55,3200:65,3333:70,3466:74,3600:80,3733:84,3800:87,4000:90,4133:92,4266:94,4400:96,4600:97,4800:98,5000:100,5200:100,5600:100,6000:100,6400:100,7200:100},o=t?ramInterpolatedScore(t,s):0,i=a?ramInterpolatedScore(a,l):0,c=a&&r?r*2e3/a:null,d=null==c?0:c>15?20:c>13?35:c>11?50:c>10?65:c>9?80:c>=8?90:100,u=1===n?40:2===n?100:4===n?90:0,p=Math.round(.35*o+.25*i+.25*d+.15*u),m=p<30?0:p<45?1:p<60?2:p<75?3:p<88?4:p<97?5:6;return{capacityScore:Math.round(o),speedScore:Math.round(i),latencyScore:Math.round(d),channelScore:u,latencyNs:null==c?null:Number(c.toFixed(2)),overall:p,tierIndex:m,tier:pnTier(m)}}
 function ramConfigText(e){return e&&e.moduleCount&&e.perModuleCapacity?e.moduleCount+"×"+e.perModuleCapacity+"GB":""}
 function isStorageSlot(e){return STORAGE_SLOT_KEYS.includes(e)}
 function catalogEntriesForSlot(e){return"CPU"===e?HardwareCatalog.cpus:"GPU"===e?HardwareCatalog.gpus:"MOBO"===e?HardwareCatalog.boards:"RAM"===e?HardwareCatalog.ramFamilies:isStorageSlot(e)?HardwareCatalog.storage:[]}
@@ -43,10 +34,10 @@ function pnLabelMatches(label,tokens){return tokens.every(tok=>label.includes(to
 function catalogSearch(e,t,a){const r=pnNorm(t);if(r.length<2)return[];const tokens=r.split(" ").filter(Boolean),n=catalogEntriesForSlot(e),s=null==a?12:a;return n.filter(e=>"DOCUMENTED_UNRELEASED"!==e.availability_status).map(e=>({item:e,label:pnNorm((e.brand||"")+" "+e.model)})).filter(e=>pnLabelMatches(e.label,tokens)).sort((e,t)=>(e.label.startsWith(r)?0:1)-(t.label.startsWith(r)?0:1)||e.label.localeCompare(t.label)).slice(0,s).map(e=>e.item)}
 function catalogSearchAll(t){const r=pnNorm(t);if(r.length<2)return[];const tokens=r.split(" ").filter(Boolean),cats=[["CPU",HardwareCatalog.cpus],["GPU",HardwareCatalog.gpus],["MOTHERBOARD",HardwareCatalog.boards],["RAM",HardwareCatalog.ramFamilies],["STORAGE",HardwareCatalog.storage]];let out=[];cats.forEach(p=>{const cat=p[0],list=p[1];(list||[]).forEach(item=>{if("DOCUMENTED_UNRELEASED"===item.availability_status)return;const label=pnNorm((item.brand||"")+" "+item.model);pnLabelMatches(label,tokens)&&out.push({cat:cat,item:item,label:label})})});return out.sort((e,t)=>(e.label.startsWith(r)?0:1)-(t.label.startsWith(r)?0:1)||e.label.localeCompare(t.label)).slice(0,10)}
 function catalogKey(e,t){return e+":"+pnNorm((t.brand||"")+" "+t.model)}
-function catalogTier(e,t){return"CPU"===e?cpuGearTier(t):"GPU"===e?gpuGearTier(t):"MOBO"===e?motherboardGearTier(t):isStorageSlot(e)?PN_GEAR_TIERS.indexOf(t.gear_tier):null}
+function catalogTier(e,t){return"CPU"===e?cpuGearTier(t):"GPU"===e?gpuGearTier(t):"MOBO"===e?motherboardGearTier(t):isStorageSlot(e)?storageGearTier(t):null}
 function catalogFind(e,t){const a=pnNorm(t);if(!a)return null;const r=catalogEntriesForSlot(e).filter(t=>"DOCUMENTED_UNRELEASED"!==t.availability_status);return r.find(t=>pnNorm((t.brand||"")+" "+t.model)===a)||r.find(t=>{const r=pnNorm(t.model);return a===r||a.endsWith(" "+r)||a.includes(" "+r+" ")})||null}
 function renderCatalogMeta(e,t,a){const r="RAM"===e?ramRating(a&&a.ram):{overall:isStorageSlot(e)?t.overall_score:t.overall,tier:pnTier(catalogTier(e,t))},n='<span class="pn-meta-pill pn-performance-pill"><span>Performance</span><b>'+r.overall+'</b></span>',s='<span class="pn-meta-pill pn-tier-pill '+pnTierClass(r.tier)+'"><span>Tier</span><b>'+r.tier+'</b></span>',l="CPU"===e?'<span class="pn-meta-detail">Gaming '+t.gaming+' · Workstation '+t.workstation+'</span>':"GPU"===e?"":"MOBO"===e?'<span class="pn-meta-detail">'+motherboardCatalogSummary(t)+'</span>':"STORAGE"===e?'<span class="pn-meta-detail">'+t.drive_type+' · Boot '+t.boot_suitability+' · Gaming '+t.gaming_suitability+'</span>':isStorageSlot(e)?'<span class="pn-meta-detail">'+t.drive_type+' · Secondary '+t.secondary_suitability+' · Bulk '+t.bulk_suitability+' · Archive '+t.archive_suitability+'</span>':'<span class="pn-meta-detail">Capacity '+r.capacityScore+' · Speed '+r.speedScore+' · Latency '+r.latencyScore+' · Channel '+r.channelScore+(null!=r.latencyNs?' · '+r.latencyNs+'ns':"")+'</span>';return'<div class="rig-catalog-meta">'+n+s+l+'</div>'}
-async function loadHardwareCatalog(){try{const[e,t,a,r]=await Promise.all([fetch("profitnode_hardware_ratings_v1.json").then(e=>{if(!e.ok)throw Error("CPU/GPU catalog HTTP "+e.status);return e.json()}),fetch("profitnode_motherboard_catalog_v1.json").then(e=>{if(!e.ok)throw Error("motherboard catalog HTTP "+e.status);return e.json()}),fetch("profitnode_ram_catalog_v1.json").then(e=>{if(!e.ok)throw Error("RAM catalog HTTP "+e.status);return e.json()}),fetch("profitnode_storage_catalog_v1.json").then(e=>{if(!e.ok)throw Error("storage catalog HTTP "+e.status);return e.json()})]);HardwareCatalog.cpus=e.cpus||[],HardwareCatalog.gpus=e.gpus||[],HardwareCatalog.boards=t.boards||[],HardwareCatalog.ramFamilies=(a.families||[]).map(e=>Object.assign({model:e.series,technology:"DDR4"},e)),HardwareCatalog.ramSupported=a.supported||null,HardwareCatalog.storage=(r.entries||[]).map(e=>Object.assign({overall:e.overall_score},e)),HardwareCatalog.status="ready",HardwareCatalog.error=null}catch(e){HardwareCatalog.status="error",HardwareCatalog.error=e&&e.message?e.message:String(e)}return HardwareCatalog}
+async function loadHardwareCatalog(){try{const[e,t,a,r]=await Promise.all([fetch("profitnode_hardware_ratings_v1.json").then(e=>{if(!e.ok)throw Error("CPU/GPU catalog HTTP "+e.status);return e.json()}),fetch("profitnode_motherboard_catalog_v1.json").then(e=>{if(!e.ok)throw Error("motherboard catalog HTTP "+e.status);return e.json()}),fetch("profitnode_ram_catalog_v1.json").then(e=>{if(!e.ok)throw Error("RAM catalog HTTP "+e.status);return e.json()}),fetch("profitnode_storage_catalog_v1.json").then(e=>{if(!e.ok)throw Error("storage catalog HTTP "+e.status);return e.json()})]);HardwareCatalog.cpus=(e.cpus||[]).map(c=>Object.assign({},c,{pn_tier:cpuGearTier(c)})),HardwareCatalog.gpus=(e.gpus||[]).map(g=>Object.assign({},g,{pn_tier:gpuGearTier(g)})),HardwareCatalog.boards=(t.boards||[]).map(b=>Object.assign({},b,{pn_tier:motherboardGearTier(b)})),HardwareCatalog.ramFamilies=(a.families||[]).map(e=>Object.assign({model:e.series,technology:"DDR4",pn_tier:ramRating(e).tier},e)),HardwareCatalog.ramSupported=a.supported||null,HardwareCatalog.storage=(r.entries||[]).map(e=>Object.assign({overall:e.overall_score,pn_tier:storageGearTier(e)},e)),HardwareCatalog.status="ready",HardwareCatalog.error=null}catch(e){HardwareCatalog.status="error",HardwareCatalog.error=e&&e.message?e.message:String(e)}return HardwareCatalog}
 const DEAL_SCORE_WEIGHTS={discount:.3,condition:.2,repairRisk:.15,resalePotential:.15,expectedMargin:.2},CONDITION_QUALITY={WORKING:10,REPAIRED:8,UNTESTED:6,
 FAULTY:3,DEAD:1},CONDITION_REPAIR_RISK={WORKING:.05,REPAIRED:.15,UNTESTED:.4,FAULTY:.75,DEAD:.95},CATEGORY_RESALE_POTENTIAL={GPU:9,CPU:8,STORAGE:7,MOTHERBOARD:6,RAM:6,COOLING:5,
 PSU:5,CASE:4,OTHER:4};function clamp(e,t,a){return Math.max(t,Math.min(a,e))}const DealScore={auto(e){
@@ -161,10 +152,59 @@ if(l&&d&&d.pn){const e=parseInt((l.match(/(\d{3,4})\s*W/)||[])[1]||0,10),t=450+7
 function rigHardwareProfile(e){const t=e.currency||"RSD",a=rigSlotResolved(e.slots.CPU,t,"CPU"),r=rigSlotResolved(e.slots.GPU,t,"GPU"),n=rigSlotResolved(e.slots.MOBO,t,"MOBO"),s=a&&a.pn,l=r&&r.pn,o=n&&n.pn,i=rigPenaltyProfile(e,t),c=[]
 ;if(s&&l&&Math.abs(s.tierIndex-l.tierIndex)>=2)c.push("Severe CPU/GPU imbalance: "+s.tier+" CPU with "+l.tier+" GPU — the stronger part's capability is being wasted.")
 ;if(s&&o&&s.tierIndex-o.tierIndex>=2)c.push("Motherboard tier ("+o.tier+") is well below the CPU tier ("+s.tier+") — check VRM strength, BIOS support, and upgrade headroom.")
-;if(!s||!l||!o)return{complete:!1,cpu:s||null,gpu:l||null,motherboard:o||null,performance:null,tierIndex:null,tier:null,penaltyPoints:i.points,warnings:c.concat(i.warnings)}
-;let d=l.performance*PN_RIG_WEIGHTS.gpu+s.performance*PN_RIG_WEIGHTS.cpu+o.performance*PN_RIG_WEIGHTS.motherboard-i.points,u=l.tierIndex*PN_RIG_WEIGHTS.gpu+s.tierIndex*PN_RIG_WEIGHTS.cpu+o.tierIndex*PN_RIG_WEIGHTS.motherboard
-;Math.abs(s.tierIndex-l.tierIndex)>=2&&(u-=.65);const p=clamp(Math.min(Math.round(u),l.tierIndex+1),0,4)
-;return{complete:!0,cpu:s,gpu:l,motherboard:o,performance:clamp(Math.round(d),0,100),tierIndex:p,tier:pnTier(p),penaltyPoints:i.points,warnings:c.concat(i.warnings)}}
+;if(!s||!l||!o)return{complete:!1,cpu:s||null,gpu:l||null,motherboard:o||null,performance:null,tierIndex:null,tier:null,comboScore:null,penaltyPoints:i.points,warnings:c.concat(i.warnings)}
+
+;let gpuTier=l.tierIndex,cpuTier=s.tierIndex,moboTier=o.tierIndex
+;let gpuTierName=PN_GEAR_TIERS[gpuTier],cpuTierName=PN_GEAR_TIERS[cpuTier]
+
+;let cpuDiff=cpuTier-gpuTier
+;let rigTier=gpuTier
+;if(cpuDiff<=-2&&cpuDiff>=-3)rigTier=Math.max(0,gpuTier-1)
+;else if(cpuDiff<=-4)rigTier=Math.max(0,gpuTier-2)
+;rigTier=Math.min(6,Math.max(0,rigTier))
+
+;let perfScore=l.performance*PN_RIG_WEIGHTS.gpu+s.performance*PN_RIG_WEIGHTS.cpu+o.performance*PN_RIG_WEIGHTS.motherboard-i.points
+;perfScore=clamp(Math.round(perfScore),0,100)
+
+;let combo=0
+;let cpuDiffAbs=cpuTier-gpuTier
+;if(cpuDiffAbs===0)combo+=70
+;else if(cpuDiffAbs===1)combo+=66
+;else if(cpuDiffAbs===2)combo+=58
+;else if(cpuDiffAbs===3)combo+=58
+;else if(cpuDiffAbs>=4)combo+=50
+;else if(cpuDiffAbs===-1)combo+=64
+;else if(cpuDiffAbs===-2)combo+=52
+;else if(cpuDiffAbs===-3)combo+=38
+;else if(cpuDiffAbs<=-4)combo+=20
+
+;let moboPenalty=0
+;if(o&&o.tierIndex!=null){
+;  let moboDiff=moboTier-gpuTier
+;  if(moboDiff>=0||moboDiff>=-1)combo+=30
+;  else if(moboDiff===-2)combo+=27
+;  else if(moboDiff===-3)combo+=20
+;  else if(moboDiff===-4)combo+=10
+;  else combo+=0
+;}else combo+=30
+
+;combo=Math.min(100,Math.max(0,combo))
+
+;let rigTierName=PN_GEAR_TIERS[rigTier]
+;let tierDesc=gpuTierName+" GAMING RIG"
+;if(rigTier<gpuTier)tierDesc+=(" (CPU-limited, was "+gpuTierName+")")
+
+;let synergyDesc=""
+;if(combo>=90)synergyDesc="GPU and CPU are well matched. Motherboard is fully suitable."
+;else if(combo>=80)synergyDesc="GPU and CPU are well matched. Minor imbalance."
+;else if(combo>=70)synergyDesc="GPU and CPU have minor imbalance. Motherboard is adequate."
+;else if(combo>=60)synergyDesc="Noticeable CPU/GPU imbalance."
+;else if(combo>=50)synergyDesc="Significant CPU/GPU imbalance."
+;else if(combo>=40)synergyDesc="Heavy CPU bottleneck or motherboard limitation."
+;else if(combo>=30)synergyDesc="Severe CPU bottleneck or motherboard limitation."
+;else synergyDesc="Critical CPU bottleneck or motherboard incompatibility."
+
+;return{complete:!0,cpu:s,gpu:l,motherboard:o,performance:clamp(Math.round(l.performance*PN_RIG_WEIGHTS.gpu+s.performance*PN_RIG_WEIGHTS.cpu+o.performance*PN_RIG_WEIGHTS.motherboard-i.points),0,100),tierIndex:rigTier,tier:rigTierName,comboScore:combo,tierDesc:tierDesc,comboDesc:synergyDesc,penaltyPoints:i.points,warnings:c.concat(i.warnings)}}
 function rigDerived(e){const t=e.currency||"RSD";let a=0,r=0;RIG_SLOTS.forEach(n=>{const s=rigSlotResolved(e.slots[n],t,n);s&&(a+=s.cost||0,r+=s.originalPrice||0)})
 ;const n=(e.expectedSalePrice||0)-a,s=r-a;return{totalCost:a,originalPartsValue:r,partsProfit:s,partsMargin:Calc.profitMargin(s,r),profit:n,roi:Calc.roi(n,a),margin:Calc.profitMargin(n,e.expectedSalePrice||0),hardware:rigHardwareProfile(e)}}
 function detectCpuSocket(e){let t=e.match(/RYZEN\s*[3579]?\s*(\d{3,})/);if(t){const e=parseInt(t[1],10);if(e>=1e3&&e<7e3)return"AM4";if(e>=7e3)return"AM5"}

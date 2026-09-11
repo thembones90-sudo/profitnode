@@ -5,10 +5,10 @@
    Capability/quality only. Price, value and chipset prestige are never used.
    Unknown fields are stored as UNKNOWN and reduce rating_confidence. */
 
-const TIERS = { SCRAPBLADE: [0, 29], SCRAPWRAITH: [30, 44], REVENANT: [45, 59], GHOUL: [60, 79], ALGHOUL: [80, 100] };
+const TIERS = { HUSK: [0, 29], MERC: [30, 44], VANGUARD: [45, 59], N7: [60, 74], SPECTRE: [75, 87], REAPER: [88, 96], LEVIATHAN: [97, 100] };
 function tierOfScore(s){
   for (const k of Object.keys(TIERS)){ const r = TIERS[k]; if (s >= r[0] && s <= r[1]) return k; }
-  return "SCRAPWRAITH";
+  return "MERC";
 }
 const UNK = "UNKNOWN";
 function n(x){ const v = Number(x); return Number.isFinite(v) ? v : null; }
