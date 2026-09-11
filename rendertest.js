@@ -149,7 +149,7 @@ const probe = `
   const myRigHtml = renderMyRig();
   out.push(['MY RIG page leads with the LEVIATHAN identity hero', myRigHtml.includes('pn-myrig-hero') && myRigHtml.includes('LEVIATHAN') && myRigHtml.includes('PERSONAL RIG')]);
   out.push(['MY RIG page renders a full component loadout grid', myRigHtml.includes('COMPONENT LOADOUT') && myRigHtml.includes('data-myrig-slot-edit="CPU"') && myRigHtml.includes('data-myrig-slot-edit="GPU"')]);
-  out.push(['MY RIG value panel is informational and never implies profit', myRigHtml.includes('INFORMATIONAL ONLY') && myRigHtml.includes('TOTAL INVESTED')]);
+  out.push(['MY RIG keeps the personal view completely free of value narration', !myRigHtml.includes('INFORMATIONAL ONLY') && !myRigHtml.includes('TOTAL INVESTED') && !myRigHtml.includes('EST. RESALE VALUE')]);
   out.push(['MY RIG page exposes future-upgrades and health note sections', myRigHtml.includes('FUTURE UPGRADES') && myRigHtml.includes('HEALTH / PERFORMANCE NOTES')]);
   state.route = myRigBefore ? 'myrig' : 'dashboard';
 

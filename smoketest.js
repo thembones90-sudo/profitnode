@@ -924,15 +924,15 @@ const myRigProbe = `
   const myRigValueGap = MyRig.value();
   out.push(['MY RIG value flags parts missing a price without changing the invested total', myRigValueGap.partsTotal === 6 && myRigValueGap.partsPriced === 3 && myRigValueGap.invested === 150000]);
   const pageWithGap = renderMyRig();
-  out.push(['MY RIG page shows a missing-price note sized to the actual gap', pageWithGap.indexOf('3 of 6 parts') > -1 && pageWithGap.indexOf('missing a price') > -1]);
+  out.push(['MY RIG personal view keeps value chatter out of the page entirely', pageWithGap.indexOf('missing a price') === -1 && pageWithGap.indexOf('TOTAL INVESTED') === -1]);
   out.push(['MY RIG vault-sourced part links straight to its Inventory record', pageWithGap.indexOf('data-open-entity="inventory"') > -1 && pageWithGap.indexOf('data-id="' + myRigVaultItem.id + '"') > -1]);
   MyRig.clearSlot('STORAGE');
-  out.push(['MY RIG missing-price note continues to include unpriced detected parts', renderMyRig().indexOf('2 of 5 parts') > -1]);
+  out.push(['MY RIG stays finance-free even with unpriced parts in the loadout', renderMyRig().indexOf('2 of 5 parts') === -1 && renderMyRig().indexOf('missing a price') === -1]);
 
   const page = renderMyRig();
-  out.push(['MY RIG page opens with identity hero + full loadout grid', page.indexOf('pn-myrig-hero') > -1 && page.indexOf('LEVIATHAN') > -1 && page.indexOf('COMPONENT LOADOUT') > -1 && page.indexOf('data-myrig-slot="GPU"') > -1 && page.indexOf('94.000 RSD') > -1]);
+  out.push(['MY RIG page opens with identity hero + equipment screen and no slot price', page.indexOf('pn-myrig-hero') > -1 && page.indexOf('LEVIATHAN') > -1 && page.indexOf('COMPONENT LOADOUT') > -1 && page.indexOf('data-myrig-slot="GPU"') > -1 && page.indexOf('94.000 RSD') === -1]);
   out.push(['MY RIG renders detected/manual markers and CPU-Z coverage', page.indexOf('pn-myrig-src is-detected') > -1 && page.indexOf('pn-myrig-src is-manual') > -1 && page.indexOf('CPU-Z DETECTED: 2 SLOTS') > -1]);
-  out.push(['MY RIG value section is informational with voluntary resale', page.indexOf('INFORMATIONAL ONLY') > -1 && page.indexOf('EST. RESALE VALUE') > -1]);
+  out.push(['MY RIG resale readout stays model-side only, never rendered as finance', page.indexOf('INFORMATIONAL ONLY') === -1 && page.indexOf('EST. RESALE VALUE') === -1]);
   MyRig.setResale(132000);
   const v2 = MyRig.value();
   out.push(['MY RIG optional resale estimate feeds the difference readout', v2.resale === 132000 && v2.diff === -18000]);

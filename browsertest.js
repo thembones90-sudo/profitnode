@@ -196,8 +196,8 @@ async function main() {
     check("MY RIG catalog search keeps focus and accepts uninterrupted typing",oneLetter.value==='b'&&oneLetter.focused&&uninterruptedSearch.value==='b450'&&uninterruptedSearch.focused&&uninterruptedSearch.matches>0,JSON.stringify({oneLetter,uninterruptedSearch}));
     await evaluate(`document.querySelector('[data-myrig-cancel-slot]').click()`);
     await evaluate(`MyRig.setSlot('GPU',{label:'NVIDIA RTX 3080 10GB',specs:'10 GB GDDR6X',purchasePrice:94000,purchaseDate:'2026-01-15',notes:'',vaultId:null});MyRig.setResale(132000);render()`);
-    const rigVal=await evaluate(`(()=>{const v=document.querySelector('[data-myrig-value]');return !!v&&v.textContent.includes('94.000 RSD')&&v.textContent.includes('EST. RESALE')})()`);
-    check("MY RIG slot and value update persist in the live ledger",rigVal);
+    const rigVal=await evaluate(`(()=>{const s=document.querySelector('[data-myrig-slot="GPU"]');return !!s&&s.textContent.includes('NVIDIA RTX 3080 10GB')&&!document.querySelector('[data-myrig-value]')})()`);
+    check("MY RIG slot persists in the live ledger with no value panel",rigVal);
     await delay(300);
     check("browser run has no console errors or warnings",errors.length===0,errors.join(" | "));
   } finally {
