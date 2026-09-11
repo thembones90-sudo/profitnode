@@ -17,6 +17,7 @@ window.__PN_SCRIPTS = [
   "treasury_extension.js?v=treasury-core-sources-v2",
   "road_to_extension.js?v=roadto-myrrig-v1",
   "my_rig_extension.js?v=myrig-leviathan-canonical-v1",
-  "sidebar_cleanup_extension.js?v=product-refinement-v1",
-  "mail_extension.js?v=mail-card-polish-v1"
+"sidebar_cleanup_extension.js?v=product-refinement-v1",
+  "mail_extension.js?v=mail-card-polish-v1",
+  "treasury_flow_extension.js?v=treasury-fund-flow-v1"
 ];

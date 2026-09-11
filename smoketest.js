@@ -17,14 +17,14 @@ const CANONICAL_ORDER = [
   'rig_bench_navigation_extension.js', 'command_financial_model_extension.js',
   'profitnode_intelligence_extension.js', 'command_separator_tune.js',
   'roulette_extension.js', 'roulette_ui_extension.js', 'treasury_extension.js',
-  'road_to_extension.js', 'my_rig_extension.js', 'sidebar_cleanup_extension.js', 'mail_extension.js'
+  'road_to_extension.js', 'my_rig_extension.js', 'sidebar_cleanup_extension.js', 'mail_extension.js', 'treasury_flow_extension.js'
 ];
-checks.push(['manifest has 19 scripts', entries.length === 19]);
-checks.push(['manifest order matches canonical 19-file load order',
+checks.push(['manifest has 20 scripts', entries.length === 20]);
+checks.push(['manifest order matches canonical 20-file load order',
   entries.map(e => e.split('?')[0]).join(',') === CANONICAL_ORDER.join(',')]);
 checks.push(['first script is app_core.js', entries[0].split('?')[0] === 'app_core.js']);
-checks.push(['last script is mail_extension.js',
-  entries[entries.length - 1].split('?')[0] === 'mail_extension.js']);
+checks.push(['last script is treasury_flow_extension.js',
+  entries[entries.length - 1].split('?')[0] === 'treasury_flow_extension.js']);
 checks.push(['every manifest entry has a cache-busting ?v= suffix',
   entries.every(e => /\.js\?v=.+/.test(e))]);
 checks.push(['every manifest entry maps to a real file on disk',
@@ -81,7 +81,7 @@ checks.push(['roulette ledger CSV export registered', meta.csvKeys.includes('rou
 checks.push(['mail CSV export registered', meta.csvKeys.includes('mail')]);
 checks.push(['PN_SALE_TYPES = RIG,COMPONENT,OTHER', meta.saleTypes === 'RIG,COMPONENT,OTHER']);
 checks.push(['currencies remain RSD,EUR', meta.curren === 'RSD,EUR']);
-checks.push(['manifest declares 19 scripts in sandbox', meta.manifestLen === 19]);
+checks.push(['manifest declares 20 scripts in sandbox', meta.manifestLen === 20]);
 const migrationProbe = env.run(sandbox, `(() => {
   const legacy={meta:{seeded:true},inventory:[
     {id:'healthy',category:'STORAGE',driveHealthPercent:120,catalogOverride:'  Samsung 970 EVO Plus 1TB  '},
@@ -1079,7 +1079,74 @@ const mailProbe = `
 `;
 const mailResults = env.run(sandbox, mailProbe);
 
-const all = checks.concat(results).concat(interactionResults).concat(volumeResults).concat(rigResults).concat(doctrineResults).concat(enclosureResults).concat(roadToResults).concat(myRigResults).concat(mailResults);
+const treasuryFlowProbe = `
+(function(){
+  const out = [];
+  function setupPool(amount){
+    const ledger = Store.load();
+    ledger.treasury = normalizeTreasury({balances:[{label:'Cash (RSD)',amount:amount,currency:'RSD',include:true,sourceKey:'CASH_RSD'}],flows:[]});
+    Store.persist();
+  }
+  function getPool(){
+    const b = Store.load().treasury.balances.find(x => x.sourceKey === 'CASH_RSD');
+    return b ? b.amount : null;
+  }
+  function flowCount(){ return Store.load().treasury.flows.length; }
+  function findFlow(refType,refId,kind){ return Store.load().treasury.flows.find(f => f.refType===refType && f.refId===refId && f.kind===kind) || null; }
+
+  setupPool(100000);
+  const a = Actions.addInventory({category:'GPU',manufacturer:'Nvidia',model:'A Card',purchaseDate:'2026-01-01',purchasePrice:5000,currency:'RSD',estimatedMarketValue:7000,source:'OTHER',condition:'WORKING',status:'IN_STORAGE'});
+  out.push(['TREASURY FLOW A: inventory acquisition deducts once from the CASH_RSD pool', getPool() === 95000 && flowCount() === 1]);
+
+  setupPool(100000);
+  const d = Actions.addDeal({item:'Deal B',category:'GPU',date:'2026-01-01',purchasePrice:5000,estimatedMarketValue:8000,currency:'RSD',condition:'WORKING',source:'OTHER'});
+  out.push(['TREASURY FLOW B1: deal acquisition deducts the purchase price', getPool() === 95000 && flowCount() === 1]);
+  const b = Actions.addInventory({category:'GPU',manufacturer:'Nvidia',model:'B Card',purchaseDate:'2026-01-01',purchasePrice:5000,currency:'RSD',estimatedMarketValue:8000,source:'OTHER',condition:'WORKING',status:'IN_STORAGE'});
+  out.push(['TREASURY FLOW B2: deal + separate inventory both deduct before linking', getPool() === 90000 && flowCount() === 2]);
+  Actions.updateDeal(d.id,{inventoryItemId:b.id});
+  out.push(['TREASURY FLOW B3: linking a deal to inventory retires the deal flow, keeping one acquisition', getPool() === 95000 && flowCount() === 1 && !findFlow('deal',d.id,'ACQUISITION') && !!findFlow('inventory',b.id,'ACQUISITION')]);
+
+  setupPool(100000);
+  const c = Actions.addInventory({category:'GPU',manufacturer:'Nvidia',model:'C Card',purchaseDate:'2026-01-01',purchasePrice:5000,currency:'RSD',estimatedMarketValue:7000,source:'OTHER',condition:'WORKING',status:'INCOMING'});
+  const m = Actions.addMail({direction:'incoming',description:'C Card inbound',linkedType:'inventory',linkedId:c.id,shippingCost:500,currency:'RSD',status:'in_transit'});
+  out.push(['TREASURY FLOW C: purchase + incoming shipping deduct once', getPool() === 94500 && flowCount() === 2]);
+  Actions.updateInventory(c.id,{purchasePrice:5500});
+  out.push(['TREASURY FLOW D: raising the purchase price adjusts the pool by the delta', getPool() === 94000 && findFlow('inventory',c.id,'ACQUISITION').amount === 5500]);
+  Actions.updateInventory(c.id,{purchasePrice:5000});
+  out.push(['TREASURY FLOW E: lowering the purchase price back restores the pool exactly', getPool() === 94500 && findFlow('inventory',c.id,'ACQUISITION').amount === 5000]);
+  Actions.updateMail(m.id,{shippingCost:700});
+  out.push(['TREASURY FLOW F: editing shipping cost adjusts the pool by the difference', getPool() === 94300 && findFlow('mail',m.id,'SHIPPING_IN').amount === 700]);
+  Actions.removeMail(m.id);
+  out.push(['TREASURY FLOW G: deleting a shipment reverses its shipping spend', getPool() === 95000 && flowCount() === 1]);
+
+  setupPool(100000);
+  const h = Actions.addInventory({category:'GPU',manufacturer:'Nvidia',model:'H Card',purchaseDate:'2026-01-01',purchasePrice:5500,currency:'RSD',estimatedMarketValue:7000,source:'OTHER',condition:'WORKING',status:'IN_STORAGE'});
+  const sale = Actions.addSale({inventoryItemId:h.id,itemName:'H Card',saleDate:'2026-02-01',buyerPrice:7000,originalInvestment:5500,additionalCosts:0,currency:'RSD',reason:'',notes:'',saleType:'COMPONENT',saleState:'COMPLETED'});
+  out.push(['TREASURY FLOW H: completed sale credits the full buyer price into the pool', getPool() === 101500 && findFlow('sale',sale.id,'SALE').signedDelta === 7000]);
+
+  setupPool(100000);
+  const i = Actions.addInventory({category:'GPU',manufacturer:'Nvidia',model:'I Card',purchaseDate:'2026-01-01',purchasePrice:5500,currency:'RSD',estimatedMarketValue:7000,source:'OTHER',condition:'WORKING',status:'IN_STORAGE'});
+  Actions.updateInventory(i.id,{purchasePrice:null});
+  out.push(['TREASURY FLOW I: clearing purchasePrice returns the pool and leaves a zero flow, no NaN', getPool() === 100000 && findFlow('inventory',i.id,'ACQUISITION').amount === 0 && findFlow('inventory',i.id,'ACQUISITION').signedDelta === 0]);
+
+  setupPool(100000);
+  const j = Actions.addInventory({category:'GPU',manufacturer:'Nvidia',model:'J Card',purchaseDate:'2026-01-01',purchasePrice:5000,currency:'RSD',estimatedMarketValue:7000,source:'OTHER',condition:'WORKING',status:'IN_STORAGE'});
+  const backup = JSON.parse(JSON.stringify(Store._data));
+  Store.replaceAll(backup);
+  out.push(['TREASURY FLOW J: backup restore preserves flows and never re-deducts', getPool() === 95000 && flowCount() === 1 && findFlow('inventory',j.id,'ACQUISITION').signedDelta === -5000]);
+
+  setupPool(100000);
+  Store.insert('inventory',{id:'legacy-flow-item',category:'GPU',manufacturer:'Nvidia',model:'Legacy',purchaseDate:'2026-01-01',purchasePrice:5000,currency:'RSD',estimatedMarketValue:7000,source:'OTHER',condition:'WORKING',status:'IN_STORAGE'});
+  Store._data = null;
+  Store.load();
+  out.push(['TREASURY FLOW K: legacy records without flows load cleanly and never double-spend', getPool() === 100000 && flowCount() === 0]);
+
+  return out;
+})()
+`;
+const treasuryFlowResults = env.run(sandbox, treasuryFlowProbe);
+
+const all = checks.concat(results).concat(interactionResults).concat(volumeResults).concat(rigResults).concat(doctrineResults).concat(enclosureResults).concat(roadToResults).concat(myRigResults).concat(mailResults).concat(treasuryFlowResults);
 let fail = 0;
 for (const [name, ok] of all){
   console.log((ok ? 'PASS' : 'FAIL') + ' - ' + name);
