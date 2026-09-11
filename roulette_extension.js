@@ -577,7 +577,7 @@ function rouletteChamber(){
       .sort((a,b)=>String(b.createdAt||b.date||"").localeCompare(String(a.createdAt||a.date||"")));
 
     if (!rows.length){
-      return '<tr class="empty-row"><td colspan="7">No roulette rounds recorded yet.</td></tr>';
+      return '<tr class="empty-row"><td colspan="8">No roulette rounds recorded yet.</td></tr>';
     }
 
     const chronological = rows.slice().sort((a,b)=>String(a.createdAt||a.date||"").localeCompare(String(b.createdAt||b.date||"")));
@@ -607,6 +607,7 @@ function rouletteChamber(){
         '<td><b>'+escHtml(protocol)+'</b></td>'+
         '<td class="pn-r3-result '+(result==="WIN"?"pos":result==="LOSS"?"neg":"")+'">'+escHtml(result)+'</td>'+
         '<td class="num '+(net==null?"":net>=0?"pos":"neg")+'">'+(net==null?"-":money(net,currency))+'</td>'+
+        '<td class="pn-r3-reason">'+escHtml(row.reason||"\u2013")+'</td>'+
       '</tr>';
     }).join("");
   }
@@ -626,6 +627,7 @@ function rouletteChamber(){
                 '<th>Protocol</th>'+
                 '<th>Result</th>'+
                 '<th class="num">Net</th>'+
+                '<th>Reason</th>'+
               '</tr></thead>'+
               '<tbody>'+rouletteHistoryRows(currency)+'</tbody>'+
             '</table>'+
@@ -771,6 +773,7 @@ function rouletteChamber(){
       wager:null,
       avoidedStake:rouletteStakeValue(),
       currency:rouletteCurrentCurrency(),
+      reason:verdict==="SAVE MONEY"?"Roulette save":"Roulette rejection",
       notes:rouletteVerdictMessage(verdict)
     });
 
@@ -819,7 +822,8 @@ function rouletteChamber(){
       outcome:outcome,
       net:net,
       resultAmount:magnitude,
-      resolvedAt:nowISO()
+      resolvedAt:nowISO(),
+      reason:outcome==="WIN"?"Roulette win":"Roulette loss"
     });
 
     Timeline.log(
@@ -971,6 +975,7 @@ function rouletteChamber(){
         {label:"Money Invested",get:row=>row.type==="BET"?(row.stake||0):0},
         {label:"Money Gained Lost",get:row=>row.type==="BET"?(row.net||0):0},
         {label:"Currency",get:row=>row.currency||""},
+        {label:"Reason",get:row=>row.reason||""},
         {label:"Notes",get:row=>row.notes||""}
       ]
     };

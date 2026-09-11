@@ -528,6 +528,9 @@ const doctrineProbe = `
 (function(){
   const out = [];
   const D = window.__pnRouletteDoctrine;
+  function fireClick(node){
+    (window.__pnDocListeners.click||[]).slice().forEach(fn=>fn({type:'click',target:node,prevented:false,preventDefault(){},stopPropagation(){}}));
+  }
 
   out.push(['doctrine hooks exposed', typeof D === 'object' && typeof D.evaluate === 'function']);
 
@@ -636,6 +639,55 @@ const doctrineProbe = `
       state.rouletteVerdict = null;
       const gate = D.gate();
       return gate.locked === true && gate.verdict === 'FUCK OFF';
+    })()]);
+
+  out.push(['resolving a LOSS round writes Roulette loss onto the round record',
+    (function(){
+      const id = Store.insert('rouletteLedger',{type:'BET',status:'PENDING',date:'2026-09-11',verdict:'BET',wager:'ODD RED',stake:1000,split:[],currency:'RSD',outcome:null,net:null,notes:''}).id;
+      const sel = __pnEl({tag:'select',attrs:{'data-r3-result-outcome':id}}); sel.value='LOSS';
+      const inp = __pnEl({tag:'input',attrs:{'data-r3-result-amount':id}}); inp.value='400';
+      const btn = __pnEl({tag:'button',attrs:{'data-r3-record-result':id}});
+      window.__pnTree.push(sel, inp, btn);
+      fireClick(btn);
+      const row = Store.all('rouletteLedger').find(x=>x.id===id);
+      return !!(row && row.status==='RESOLVED' && row.outcome==='LOSS' && row.reason==='Roulette loss');
+    })()]);
+
+  out.push(['resolving a WIN round writes Roulette win onto the round record',
+    (function(){
+      const id = Store.insert('rouletteLedger',{type:'BET',status:'PENDING',date:'2026-09-11',verdict:'BET',wager:'1ST + 2ND',stake:1000,split:[],currency:'RSD',outcome:null,net:null,notes:''}).id;
+      const sel = __pnEl({tag:'select',attrs:{'data-r3-result-outcome':id}}); sel.value='WIN';
+      const inp = __pnEl({tag:'input',attrs:{'data-r3-result-amount':id}}); inp.value='900';
+      const btn = __pnEl({tag:'button',attrs:{'data-r3-record-result':id}});
+      window.__pnTree.push(sel, inp, btn);
+      fireClick(btn);
+      const row = Store.all('rouletteLedger').find(x=>x.id===id);
+      return !!(row && row.reason==='Roulette win');
+    })()]);
+
+  out.push(['SAVE MONEY verdict closes with Roulette save on its round record',
+    (function(){
+      state.rouletteVerdict='SAVE MONEY'; state.rouletteStake='2000';
+      const btn = __pnEl({tag:'button',attrs:{'data-r3-close-round':''}});
+      window.__pnTree.push(btn);
+      fireClick(btn);
+      return !!Store.all('rouletteLedger').find(x=>x.type==='VERDICT' && x.verdict==='SAVE MONEY' && x.reason==='Roulette save');
+    })()]);
+
+  out.push(['FUCK OFF verdict closes with the rejection reason on its round record',
+    (function(){
+      state.rouletteVerdict='FUCK OFF';
+      const btn = __pnEl({tag:'button',attrs:{'data-r3-close-round':''}});
+      window.__pnTree.push(btn);
+      fireClick(btn);
+      return !!Store.all('rouletteLedger').find(x=>x.type==='VERDICT' && x.verdict==='FUCK OFF' && x.reason==='Roulette rejection');
+    })()]);
+
+  out.push(['ROUND HISTORY renders the reason column and a dash for legacy rounds',
+    (function(){
+      state.route='roulette'; state.rouletteTab='RESULTS';
+      const html=renderShell();
+      return html.includes('<th>Reason</th>') && html.indexOf('pn-r3-reason') > -1 && html.includes('\u2013');
     })()]);
 
   return out;
