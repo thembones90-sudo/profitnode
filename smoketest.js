@@ -103,7 +103,7 @@ const migrationProbe = env.run(sandbox, `(() => {
     blankVersion:emptyLedger().meta.schemaVersion
   };
 })()`);
-checks.push(['ledger migrations upgrade legacy data to schema v3', migrationProbe.version===3&&migrationProbe.from===0&&migrationProbe.to===3&&migrationProbe.changed&&migrationProbe.meta===3&&migrationProbe.blankVersion===3]);
+checks.push(['ledger migrations upgrade legacy data to schema v4', migrationProbe.version===4&&migrationProbe.from===0&&migrationProbe.to===4&&migrationProbe.changed&&migrationProbe.meta===4&&migrationProbe.blankVersion===4]);
 checks.push(['storage health migration clamps values and trims catalog overrides', migrationProbe.high===100&&migrationProbe.low===0&&migrationProbe.override==='Samsung 970 EVO Plus 1TB']);
 checks.push(['ledger migration restores canonical collection arrays', migrationProbe.collections]);
 const futureMigration = env.run(sandbox, `migrateLedger({meta:{schemaVersion:9},inventory:[]})`);
