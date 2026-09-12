@@ -6,9 +6,9 @@
   - Direct status="SOLD" via Actions.updateInventory is rejected.
   - Status dropdown in the inventory edit form no longer contains SOLD.
   - MARK AS SOLD opens a modal requiring final sale price, currency, date, channel, etc.
-  - Confirming credits Treasury the FULL sale price once (idempotent via saleTransactionId).
-  - Legacy items with status=SOLD but no saleTransactionId show "SALE DATA INCOMPLETE"
-    and can be completed once.
+  - Confirming creates one completed Sales Ledger row and credits Treasury once.
+  - Legacy SOLD items without a completed Sales Ledger row show "SALE DATA INCOMPLETE"
+    and can be completed or migrated once.
 */
 
 (function(){
@@ -23,7 +23,7 @@
   }
 
   function inventorySaleIncomplete(item){
-    return inventoryIsSold(item) && !inventorySaleTransactionId(item);
+    return inventoryIsSold(item) && !inventorySaleRecord(item);
   }
 
   function ensureTreasury(){
@@ -50,39 +50,18 @@
     return (treasury.flows || []).find(f => f && f.refType === "inventory" && f.refId === itemId && f.kind === "SALE") || null;
   }
 
-  function applyInventorySaleFlow(treasury, itemId, amount, currency, note){
-    const amt = Number(amount);
-    if (!Number.isFinite(amt) || amt <= 0) return 0;
-    const cur = String(currency || "RSD").toUpperCase();
-    const existing = findInventorySaleFlow(treasury, itemId);
-    const signed = amt;
-    if (existing){
-      const poolOld = ensureCashPool(existing.currency);
-      poolOld.amount = (Number(poolOld.amount) || 0) - (existing.signedDelta || 0);
-      existing.amount = amt;
-      existing.signedDelta = signed;
-      existing.currency = cur;
-      existing.note = note || existing.note || "";
-      existing.updatedAt = nowISO();
-      const poolNew = ensureCashPool(cur);
-      poolNew.amount = (Number(poolNew.amount) || 0) + signed;
-    } else {
-      treasury.flows.push({
-        id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()),
-        refType: "inventory",
-        refId: itemId,
-        kind: "SALE",
-        amount: amt,
-        currency: cur,
-        signedDelta: signed,
-        note: note || "",
-        createdAt: nowISO(),
-        updatedAt: nowISO()
-      });
-      const pool = ensureCashPool(cur);
-      pool.amount = (Number(pool.amount) || 0) + signed;
-    }
-    return signed;
+  function removeInventorySaleFlow(treasury, itemId){
+    const flow = findInventorySaleFlow(treasury, itemId);
+    if (!flow) return;
+    const pool = ensureCashPool(flow.currency);
+    pool.amount = (Number(pool.amount) || 0) - (Number(flow.signedDelta) || Number(flow.amount) || 0);
+    treasury.flows = treasury.flows.filter(f => f !== flow);
+  }
+
+  function inventorySaleRecord(item){
+    const transactionId = inventorySaleTransactionId(item);
+    return (transactionId && Store.get("sales", transactionId)) ||
+      Store.all("sales").find(sale => sale.inventoryItemId === item.id) || null;
   }
 
   // ---- public action: mark inventory item as sold ----
@@ -97,25 +76,31 @@
     const detail = (saleData.saleDetail || "").toString().trim();
     const notes = (saleData.saleNotes || "").toString().trim();
 
-    const existingTxId = inventorySaleTransactionId(item);
-    if (existingTxId){
-      // idempotent metadata update only
-      Store.update("inventory", id, {
-        salePrice: price,
-        saleCurrency: currency,
-        saleDate: date,
-        saleChannel: channel,
-        saleDetail: detail,
-        saleNotes: notes
-      });
-      applyInventorySaleFlow(ensureTreasury(), id, price, currency, "Sold " + item.manufacturer + " " + item.model);
-      Store.persist();
-      Timeline.log("SOLD", item.manufacturer + " " + item.model + " SOLD", "Updated sale: " + money(price, currency), date, "sale", id);
-      return {ok:!0, id, transactionId: existingTxId, message:"Sale updated."};
-    }
+    const existingSale = inventorySaleRecord(item);
+    const payload = {
+      projectId: null,
+      inventoryItemId: id,
+      itemName: ((item.manufacturer || "") + " " + (item.model || "")).trim(),
+      saleDate: date,
+      buyerPrice: price,
+      originalInvestment: inventoryAcquisitionCost(item, currency),
+      additionalCosts: existingSale ? Number(existingSale.additionalCosts) || 0 : 0,
+      currency: currency,
+      referenceStartDate: item.purchaseDate || date,
+      buyerName: detail,
+      saleChannel: channel,
+      saleDetail: detail,
+      notes: notes,
+      saleType: "COMPONENT",
+      category: item.category || "OTHER",
+      saleSource: "INVENTORY",
+      saleState: "COMPLETED"
+    };
 
-    const txId = crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random());
-    applyInventorySaleFlow(ensureTreasury(), id, price, currency, "Sold " + item.manufacturer + " " + item.model);
+    ensureCashPool(currency);
+    const sale = existingSale ? Actions.updateSale(existingSale.id, payload) : Actions.addSale(payload);
+    if (!sale) return {ok:!1, error:"Sale could not be recorded."};
+    removeInventorySaleFlow(ensureTreasury(), id);
     Store.update("inventory", id, {
       status: "SOLD",
       salePrice: price,
@@ -124,12 +109,23 @@
       saleChannel: channel,
       saleDetail: detail,
       saleNotes: notes,
-      saleTransactionId: txId
+      saleTransactionId: sale.id
     });
     Store.persist();
-    Timeline.log("SOLD", item.manufacturer + " " + item.model + " SOLD", "Sale: " + money(price, currency), date, "sale", id);
-    return {ok:!0, id, transactionId: txId};
+    return {ok:!0, id, transactionId: sale.id, saleId: sale.id, message:existingSale?"Sale updated.":"Sale completed."};
   };
+
+  Store.all("inventory").filter(item =>
+    inventoryIsSold(item) && inventorySaleTransactionId(item) &&
+    !inventorySaleRecord(item) && Number(item.salePrice) > 0
+  ).forEach(item => Actions.markInventorySold(item.id, {
+    salePrice: item.salePrice,
+    saleCurrency: item.saleCurrency || item.currency,
+    saleDate: item.saleDate || todayISO(),
+    saleChannel: item.saleChannel || "",
+    saleDetail: item.saleDetail || "",
+    saleNotes: item.saleNotes || ""
+  }));
 
   // ---- block direct status=SOLD through generic update ----
   const origUpdateInventory = Actions.updateInventory;

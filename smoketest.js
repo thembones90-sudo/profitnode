@@ -51,6 +51,18 @@ checks.push(['motherboard form factor has no model-name guessing path', !/functi
 checks.push(['mobile media query detaches content from the fixed-height shell',
   /@media \(max-width:760px\)\{[\s\S]*?\.main\{height:auto;min-height:100vh\}/.test(indexCss) && /\.content\{overflow-y:visible;flex:none\}/.test(indexCss)]);
 
+const v1SaleSandbox = env.createSandbox();
+v1SaleSandbox.localStorage.setItem('profitnode_ledger_v1', JSON.stringify({
+  meta:{seeded:true,displayCurrency:'RSD',schemaVersion:4},
+  projects:[],deals:[],sales:[],timeline:[],plans:[],repairs:[],rigs:[],roadTo:[],mail:[],myRig:null,
+  inventory:[{id:'legacy-direct-sale',category:'GPU',manufacturer:'Legacy',model:'Confirmed Sale',purchaseDate:'2026-01-01',purchasePrice:12000,currency:'RSD',estimatedMarketValue:18000,source:'OTHER',condition:'WORKING',status:'SOLD',salePrice:18000,saleCurrency:'RSD',saleDate:'2026-02-01',saleChannel:'KP',saleDetail:'',saleNotes:'',saleTransactionId:'old-v1-transaction'}],
+  treasury:{settings:{baseCurrency:'EUR',usdToEur:.92,rsdToEur:.00851,fortressFloor:500},balances:[{sourceKey:'CASH_RSD',label:'CASH (RSD)',amount:18000,currency:'RSD'}],obligations:[],pendingAssets:[],incomes:[],snapshots:[],flows:[{id:'old-v1-flow',refType:'inventory',refId:'legacy-direct-sale',kind:'SALE',amount:18000,currency:'RSD',signedDelta:18000,createdAt:'2026-02-01T00:00:00.000Z'}]}
+}));
+env.loadAll(v1SaleSandbox, DIR);
+const v1SaleMigration = env.run(v1SaleSandbox, `(()=>{const item=Store.get('inventory','legacy-direct-sale'),sales=Store.all('sales').filter(s=>s.inventoryItemId===item.id),flows=Store.load().treasury.flows,cash=Store.load().treasury.balances.find(b=>b.sourceKey==='CASH_RSD');return {saleCount:sales.length,completed:sales.length===1&&saleIsCompleted(sales[0]),transactionLinked:sales.length===1&&item.saleTransactionId===sales[0].id,inventoryFlowCount:flows.filter(f=>f.refType==='inventory'&&f.refId===item.id&&f.kind==='SALE').length,saleFlowCount:sales.length&&flows.filter(f=>f.refType==='sale'&&f.refId===sales[0].id&&f.kind==='SALE').length,cash:cash&&cash.amount,profit:dashboardStats('RSD').realizedProfit};})()`);
+checks.push(['legacy confirmed inventory sale migrates into one canonical completed sale', v1SaleMigration.saleCount===1 && v1SaleMigration.completed && v1SaleMigration.transactionLinked]);
+checks.push(['legacy inventory sale migration replaces the flow without double-crediting cash', v1SaleMigration.inventoryFlowCount===0 && v1SaleMigration.saleFlowCount===1 && v1SaleMigration.cash===18000 && v1SaleMigration.profit===6000]);
+
 // --- Sandbox probe: post-load global state ---
 const meta = env.run(sandbox, `(() => ({
   routes: ROUTES.map(r => r.key + '|' + r.label),
@@ -191,22 +203,39 @@ const probe = `
 
   // --- SOLD transaction acceptance (sold_transaction_extension.js) ---
   const soldItem = Actions.addInventory({category:'CPU',manufacturer:'AMD',model:'Ryzen 5 3600',purchaseDate:'2026-01-01',purchasePrice:12000,currency:'RSD',estimatedMarketValue:18000,source:'OTHER',condition:'WORKING',status:'IN_STORAGE',notes:''});
+  const soldStatsBefore = dashboardStats('RSD');
+  const soldCashBefore = ((Store.load().treasury.balances.find(b=>b.sourceKey==='CASH_RSD')||{}).amount)||0;
   const soldResult = Actions.markInventorySold(soldItem.id, {salePrice:18000,saleCurrency:'RSD',saleDate:'2026-02-01',saleChannel:'KP',saleDetail:'',saleNotes:''});
   log('A. markInventorySold returns ok and a transaction id', soldResult && soldResult.ok && !!soldResult.transactionId);
   const soldRow = Store.get('inventory', soldItem.id);
   log('A. markInventorySold sets status SOLD', soldRow.status === 'SOLD');
+  log('A. markInventorySold creates one completed linked Sales Ledger row', (function(){
+    const rows = Store.all('sales').filter(s=>s.inventoryItemId===soldItem.id);
+    return rows.length === 1 && rows[0].id === soldResult.transactionId && saleIsCompleted(rows[0]) && saleTypeResolved(rows[0]) === 'COMPONENT';
+  })());
+  log('A. markInventorySold adds realized profit from sale minus acquisition cost', dashboardStats('RSD').realizedProfit === soldStatsBefore.realizedProfit + 6000);
   log('A. markInventorySold credits Treasury the full sale price once', (function(){
     const ledger = JSON.parse(localStorage.getItem('profitnode_ledger_v1'));
-    const flow = ledger.treasury.flows.find(f => f.refType === 'inventory' && f.refId === soldItem.id && f.kind === 'SALE');
+    const flow = ledger.treasury.flows.find(f => f.refType === 'sale' && f.refId === soldResult.transactionId && f.kind === 'SALE');
     const cash = ledger.treasury.balances.find(b => b.sourceKey === 'CASH_RSD');
-    return !!flow && flow.amount === 18000 && !!cash && cash.amount === 18000;
+    return !!flow && flow.amount === 18000 && !!cash && cash.amount === soldCashBefore + 18000;
   })());
   const updateResult = Actions.markInventorySold(soldItem.id, {salePrice:19000,saleCurrency:'RSD',saleDate:'2026-02-02',saleChannel:'Direct',saleDetail:'',saleNotes:'revised'});
   log('B. updating sale metadata does not duplicate treasury credit', (function(){
     const ledger = JSON.parse(localStorage.getItem('profitnode_ledger_v1'));
-    const flows = ledger.treasury.flows.filter(f => f.refType === 'inventory' && f.refId === soldItem.id && f.kind === 'SALE');
+    const flows = ledger.treasury.flows.filter(f => f.refType === 'sale' && f.refId === soldResult.transactionId && f.kind === 'SALE');
     const cash = ledger.treasury.balances.find(b => b.sourceKey === 'CASH_RSD');
-    return updateResult.ok && flows.length === 1 && cash && cash.amount === 19000;
+    const sales = Store.all('sales').filter(s=>s.inventoryItemId===soldItem.id);
+    return updateResult.ok && updateResult.transactionId === soldResult.transactionId && sales.length === 1 && flows.length === 1 && flows[0].amount === 19000 && cash && cash.amount === soldCashBefore + 19000;
+  })());
+  log('B. updating sale metadata adjusts realized profit in place', dashboardStats('RSD').realizedProfit === soldStatsBefore.realizedProfit + 7000);
+  log('B. SOLD item leaves ACTIVE INVENTORY but remains under SOLD history', (function(){
+    state.filters.inventory.status = 'ACTIVE';
+    const active = renderInventory();
+    state.filters.inventory.status = 'SOLD';
+    const sold = renderInventory();
+    state.filters.inventory.status = 'ACTIVE';
+    return !active.includes('Ryzen 5 3600') && sold.includes('Ryzen 5 3600');
   })());
   const blockItem = Actions.addInventory({category:'CPU',manufacturer:'Intel',model:'BlockTest',purchaseDate:'2026-01-01',purchasePrice:1000,currency:'RSD',estimatedMarketValue:1500,source:'OTHER',condition:'WORKING',status:'IN_STORAGE',notes:''});
   Actions.updateInventory(blockItem.id, {status:'SOLD'});
@@ -221,8 +250,9 @@ const probe = `
   const legacyResult = Actions.markInventorySold(legacyItem.id, {salePrice:25000,saleCurrency:'RSD',saleDate:'2026-03-01',saleChannel:'Other',saleDetail:'legacy',saleNotes:'filled'});
   log('D. completing legacy sale credits Treasury once', (function(){
     const ledger = JSON.parse(localStorage.getItem('profitnode_ledger_v1'));
-    const flows = ledger.treasury.flows.filter(f => f.refType === 'inventory' && f.refId === legacyItem.id && f.kind === 'SALE');
-    return legacyResult.ok && flows.length === 1 && flows[0].amount === 25000;
+    const flows = ledger.treasury.flows.filter(f => f.refType === 'sale' && f.refId === legacyResult.transactionId && f.kind === 'SALE');
+    const sales = Store.all('sales').filter(s=>s.inventoryItemId===legacyItem.id);
+    return legacyResult.ok && sales.length === 1 && flows.length === 1 && flows[0].amount === 25000;
   })());
   log('D. legacy completion stamps saleTransactionId', !!Store.get('inventory', legacyItem.id).saleTransactionId);
 

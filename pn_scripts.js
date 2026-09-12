@@ -1,6 +1,6 @@
 "use strict";
 window.__PN_SCRIPTS = [
-  "app_core.js?v=merge-for-sale-project-build-v1",
+  "app_core.js?v=inventory-active-view-v1",
   "planner_retirement_extension.js?v=planner-retired-v1",
   "terminal_naming_extension.js?v=pending-sales-v1",
   "psu_extension.js?v=mobo-pcie-perboard-v1",
@@ -20,6 +20,6 @@ window.__PN_SCRIPTS = [
 "sidebar_cleanup_extension.js?v=product-refinement-v3",
   "mail_extension.js?v=mail-card-polish-v1",
   "treasury_flow_extension.js?v=treasury-fund-flow-v1",
-  "sold_transaction_extension.js?v=sold-transaction-v1",
+  "sold_transaction_extension.js?v=sold-transaction-v2",
   "project_build_extension.js?v=project-build-v1"
 ];
