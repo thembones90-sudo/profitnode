@@ -24,7 +24,7 @@ window.__PN_SCRIPTS = [
   "mail_extension.js?v=mail-card-polish-v1",
   "treasury_flow_extension.js?v=treasury-fund-flow-v1",
   "sold_transaction_extension.js?v=sold-transaction-v3",
-  "project_build_extension.js?v=case-flex-v2",
+  "project_build_extension.js?v=assembly-rework-v1",
   "ram_revaluation_extension.js?v=ram-v3-20260912-live1",
   "ram_v31_extension.js?v=ram-v31-20260912-live1"
 ];

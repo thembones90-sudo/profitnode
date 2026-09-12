@@ -11,20 +11,22 @@ const checks = [];
 
 // --- Manifest / architecture checks (Node side) ---
 const CANONICAL_ORDER = [
-  'app_core.js', 'planner_retirement_extension.js', 'terminal_naming_extension.js',
+  'app_core.js', 'cpu_revaluation_extension.js', 'gpu_revaluation_extension.js', 'motherboard_revaluation_extension.js',
+  'planner_retirement_extension.js', 'terminal_naming_extension.js',
   'psu_extension.js', 'rig_enclosure_extension.js', 'sale_type_extension.js',
   'command_center_extension.js', 'command_header_glitch_extension.js',
   'rig_bench_navigation_extension.js', 'command_financial_model_extension.js',
   'profitnode_intelligence_extension.js', 'command_separator_tune.js',
   'roulette_extension.js', 'roulette_ui_extension.js', 'treasury_extension.js',
-  'road_to_extension.js', 'my_rig_extension.js', 'sidebar_cleanup_extension.js', 'mail_extension.js', 'treasury_flow_extension.js', 'sold_transaction_extension.js', 'project_build_extension.js'
+  'road_to_extension.js', 'my_rig_extension.js', 'sidebar_cleanup_extension.js', 'mail_extension.js', 'treasury_flow_extension.js', 'sold_transaction_extension.js', 'project_build_extension.js',
+  'ram_revaluation_extension.js', 'ram_v31_extension.js'
 ];
-checks.push(['manifest has 22 scripts', entries.length === 22]);
-checks.push(['manifest order matches canonical 21-file load order',
+checks.push(['manifest has 27 scripts', entries.length === 27]);
+checks.push(['manifest order matches canonical load order',
   entries.map(e => e.split('?')[0]).join(',') === CANONICAL_ORDER.join(',')]);
 checks.push(['first script is app_core.js', entries[0].split('?')[0] === 'app_core.js']);
-checks.push(['last script is project_build_extension.js',
-  entries[entries.length - 1].split('?')[0] === 'project_build_extension.js']);
+checks.push(['last script is ram_v31_extension.js',
+  entries[entries.length - 1].split('?')[0] === 'ram_v31_extension.js']);
 checks.push(['every manifest entry has a cache-busting ?v= suffix',
   entries.every(e => /\.js\?v=.+/.test(e))]);
 checks.push(['every manifest entry maps to a real file on disk',
@@ -114,7 +116,7 @@ checks.push(['roulette ledger CSV export registered', meta.csvKeys.includes('rou
 checks.push(['mail CSV export registered', meta.csvKeys.includes('mail')]);
 checks.push(['PN_SALE_TYPES = RIG,COMPONENT,OTHER', meta.saleTypes === 'RIG,COMPONENT,OTHER']);
 checks.push(['currencies remain RSD,EUR', meta.curren === 'RSD,EUR']);
-checks.push(['manifest declares 22 scripts in sandbox', meta.manifestLen === 22]);
+checks.push(['manifest declares 27 scripts in sandbox', meta.manifestLen === 27]);
 const migrationProbe = env.run(sandbox, `(() => {
   const legacy={meta:{seeded:true},inventory:[
     {id:'healthy',category:'STORAGE',driveHealthPercent:120,catalogOverride:'  Samsung 970 EVO Plus 1TB  '},
@@ -1421,7 +1423,7 @@ const projectBuildProbe = `
   HardwareCatalog.gpus = [{ brand:'AMD', model:'RX 560 4GB', overall:10 }];
   const catalogSlot = Actions.setProjectSlot(p2.id, 'GPU', 'PLANNED', {label:'AMD RX 560 4GB', cost:30000, currency:'RSD', catalogType:'GPU'});
   out.push(['a planned slot saved with catalogType resolves PN tier data from the hardware catalog', catalogSlot.ok && !!rigSlotResolved(catalogSlot.project.slots.GPU, 'RSD', 'GPU').pn]);
-  out.push(['PB_CATALOG_SLOTS (which slots get catalogType auto-tagged when saved) matches the catalog-searchable slot set', PB_CATALOG_SLOTS.slice().sort().join(',') === ['CPU','GPU','MOBO','RAM','STORAGE'].sort().join(',')]);
+  out.push(['PB_CATALOG_SLOTS (which slots get catalogType auto-tagged when saved) matches the catalog-searchable slot set', PB_CATALOG_SLOTS.slice().sort().join(',') === ['CPU','GPU','MOBO','RAM','STORAGE','PSU','COOLER'].sort().join(',')]);
 
   const compat = buildCheckModel({id:p.id, currency:'RSD', slots: Store.get('projects', p.id).slots});
   out.push(['a project\\'s slots plug directly into the shared Build Check engine', !!compat && ['PASS','WARNING','FAIL','UNVERIFIED'].indexOf(compat.verdict) > -1]);
@@ -1461,9 +1463,16 @@ const projectBuildProbe = `
 
   const addPsuBtn = __pnEl({ tag:'button', attrs:{'data-pb-edit-slot':'PSU'} });
   pbClick({ target: addPsuBtn, preventDefault(){}, stopPropagation(){} });
-  out.push(['clicking + ADD on an empty non-catalog slot (PSU) also defaults straight to the name-entry form', PBUI.slotKey === 'PSU' && PBUI.slot && PBUI.slot.mode === 'PLANNED']);
+  out.push(['clicking + ADD on PSU (now catalog-searchable) also jumps straight into type-to-search mode', PBUI.slotKey === 'PSU' && PBUI.slot && PBUI.slot.mode === 'PLANNED']);
   const psuEditorHtml = renderProjectBuild();
-  out.push(['the PSU editor (no catalog search available for this slot) still renders a single part-name field', psuEditorHtml.indexOf('data-pb-field="label"') > -1 && psuEditorHtml.indexOf('data-pb-catalog-search') === -1]);
+  out.push(['the PSU editor now renders the merged catalog-search field, not a plain name field', psuEditorHtml.indexOf('data-pb-catalog-search="PSU"') > -1 && psuEditorHtml.indexOf('data-pb-field="label"') === -1]);
+
+  const addCaseBtn = __pnEl({ tag:'button', attrs:{'data-pb-edit-slot':'CASE'} });
+  pbClick({ target: addCaseBtn, preventDefault(){}, stopPropagation(){} });
+  PBUI.slot.mode = 'EXACT';
+  const caseExactHtml = renderProjectBuild();
+  out.push(['CASE exact-model entry now searches the case catalog live instead of a plain text field', caseExactHtml.indexOf('data-pb-catalog-search="CASE"') > -1]);
+  pbClick({ target: __pnEl({ tag:'button', attrs:{'data-pb-cancel-slot':''} }), preventDefault(){}, stopPropagation(){} });
 
   const cpuSearchInput = __pnEl({ tag:'input', attrs:{'data-pb-catalog-search':'CPU'}, value:'' });
   PBUI.slotKey = 'CPU'; PBUI.slot = {mode:'PLANNED', label:'', cost:0, notes:''};
