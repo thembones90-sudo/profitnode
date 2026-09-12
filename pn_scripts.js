@@ -20,5 +20,6 @@ window.__PN_SCRIPTS = [
 "sidebar_cleanup_extension.js?v=product-refinement-v3",
   "mail_extension.js?v=mail-card-polish-v1",
   "treasury_flow_extension.js?v=treasury-fund-flow-v1",
+  "sold_transaction_extension.js?v=sold-transaction-v1",
   "project_build_extension.js?v=project-build-v1"
 ];

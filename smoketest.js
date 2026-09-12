@@ -17,9 +17,9 @@ const CANONICAL_ORDER = [
   'rig_bench_navigation_extension.js', 'command_financial_model_extension.js',
   'profitnode_intelligence_extension.js', 'command_separator_tune.js',
   'roulette_extension.js', 'roulette_ui_extension.js', 'treasury_extension.js',
-  'road_to_extension.js', 'my_rig_extension.js', 'sidebar_cleanup_extension.js', 'mail_extension.js', 'treasury_flow_extension.js', 'project_build_extension.js'
+  'road_to_extension.js', 'my_rig_extension.js', 'sidebar_cleanup_extension.js', 'mail_extension.js', 'treasury_flow_extension.js', 'sold_transaction_extension.js', 'project_build_extension.js'
 ];
-checks.push(['manifest has 21 scripts', entries.length === 21]);
+checks.push(['manifest has 22 scripts', entries.length === 22]);
 checks.push(['manifest order matches canonical 21-file load order',
   entries.map(e => e.split('?')[0]).join(',') === CANONICAL_ORDER.join(',')]);
 checks.push(['first script is app_core.js', entries[0].split('?')[0] === 'app_core.js']);
@@ -85,7 +85,7 @@ checks.push(['roulette ledger CSV export registered', meta.csvKeys.includes('rou
 checks.push(['mail CSV export registered', meta.csvKeys.includes('mail')]);
 checks.push(['PN_SALE_TYPES = RIG,COMPONENT,OTHER', meta.saleTypes === 'RIG,COMPONENT,OTHER']);
 checks.push(['currencies remain RSD,EUR', meta.curren === 'RSD,EUR']);
-checks.push(['manifest declares 21 scripts in sandbox', meta.manifestLen === 21]);
+checks.push(['manifest declares 22 scripts in sandbox', meta.manifestLen === 22]);
 const migrationProbe = env.run(sandbox, `(() => {
   const legacy={meta:{seeded:true},inventory:[
     {id:'healthy',category:'STORAGE',driveHealthPercent:120,catalogOverride:'  Samsung 970 EVO Plus 1TB  '},
@@ -188,6 +188,43 @@ const probe = `
   log('saleTypeResolved buckets a COMPONENT sale', typeof saleTypeResolved === 'function' && saleTypeResolved(sale) === 'COMPONENT');
   Store.remove('sales', sale.id);
   log('Store.remove deletes the row', !Store.get('sales', sale.id));
+
+  // --- SOLD transaction acceptance (sold_transaction_extension.js) ---
+  const soldItem = Actions.addInventory({category:'CPU',manufacturer:'AMD',model:'Ryzen 5 3600',purchaseDate:'2026-01-01',purchasePrice:12000,currency:'RSD',estimatedMarketValue:18000,source:'OTHER',condition:'WORKING',status:'IN_STORAGE',notes:''});
+  const soldResult = Actions.markInventorySold(soldItem.id, {salePrice:18000,saleCurrency:'RSD',saleDate:'2026-02-01',saleChannel:'KP',saleDetail:'',saleNotes:''});
+  log('A. markInventorySold returns ok and a transaction id', soldResult && soldResult.ok && !!soldResult.transactionId);
+  const soldRow = Store.get('inventory', soldItem.id);
+  log('A. markInventorySold sets status SOLD', soldRow.status === 'SOLD');
+  log('A. markInventorySold credits Treasury the full sale price once', (function(){
+    const ledger = JSON.parse(localStorage.getItem('profitnode_ledger_v1'));
+    const flow = ledger.treasury.flows.find(f => f.refType === 'inventory' && f.refId === soldItem.id && f.kind === 'SALE');
+    const cash = ledger.treasury.balances.find(b => b.sourceKey === 'CASH_RSD');
+    return !!flow && flow.amount === 18000 && !!cash && cash.amount === 18000;
+  })());
+  const updateResult = Actions.markInventorySold(soldItem.id, {salePrice:19000,saleCurrency:'RSD',saleDate:'2026-02-02',saleChannel:'Direct',saleDetail:'',saleNotes:'revised'});
+  log('B. updating sale metadata does not duplicate treasury credit', (function(){
+    const ledger = JSON.parse(localStorage.getItem('profitnode_ledger_v1'));
+    const flows = ledger.treasury.flows.filter(f => f.refType === 'inventory' && f.refId === soldItem.id && f.kind === 'SALE');
+    const cash = ledger.treasury.balances.find(b => b.sourceKey === 'CASH_RSD');
+    return updateResult.ok && flows.length === 1 && cash && cash.amount === 19000;
+  })());
+  const blockItem = Actions.addInventory({category:'CPU',manufacturer:'Intel',model:'BlockTest',purchaseDate:'2026-01-01',purchasePrice:1000,currency:'RSD',estimatedMarketValue:1500,source:'OTHER',condition:'WORKING',status:'IN_STORAGE',notes:''});
+  Actions.updateInventory(blockItem.id, {status:'SOLD'});
+  const blockRow = Store.get('inventory', blockItem.id);
+  log('C. direct updateInventory status=SOLD is blocked when not already sold', blockRow.status === 'IN_STORAGE');
+  const legacyItem = Actions.addInventory({category:'GPU',manufacturer:'NVIDIA',model:'Legacy GTX',purchaseDate:'2026-01-01',purchasePrice:20000,currency:'RSD',estimatedMarketValue:25000,source:'OTHER',condition:'WORKING',status:'SOLD',notes:''});
+  log('D. legacy SOLD item without saleTransactionId has no auto-created treasury flow', (function(){
+    const ledger = JSON.parse(localStorage.getItem('profitnode_ledger_v1'));
+    const flows = ledger.treasury.flows.filter(f => f.refType === 'inventory' && f.refId === legacyItem.id && f.kind === 'SALE');
+    return flows.length === 0;
+  })());
+  const legacyResult = Actions.markInventorySold(legacyItem.id, {salePrice:25000,saleCurrency:'RSD',saleDate:'2026-03-01',saleChannel:'Other',saleDetail:'legacy',saleNotes:'filled'});
+  log('D. completing legacy sale credits Treasury once', (function(){
+    const ledger = JSON.parse(localStorage.getItem('profitnode_ledger_v1'));
+    const flows = ledger.treasury.flows.filter(f => f.refType === 'inventory' && f.refId === legacyItem.id && f.kind === 'SALE');
+    return legacyResult.ok && flows.length === 1 && flows[0].amount === 25000;
+  })());
+  log('D. legacy completion stamps saleTransactionId', !!Store.get('inventory', legacyItem.id).saleTransactionId);
 
   const saleSchema = FORM_SCHEMAS.sale(null);
   log('NEW SALE item field uses the component search type', saleSchema.fields[0].type === 'componentSearch');
