@@ -237,12 +237,26 @@
         extra = '<button type="button" class="btn btn-primary" data-mark-inventory-sold="' + escAttr(id) + '">MARK AS SOLD</button>';
       }
 
-      // insert extra buttons before the closing </span> that holds CANCEL/SAVE
-      const insertMarker = '<span style="display:flex;gap:8px"><button type="button" class="btn" data-close-modal>CANCEL</button>';
-      if (html.indexOf(insertMarker) !== -1){
-        return html.replace(insertMarker, extra + insertMarker);
-      }
-      return html;
+      // ---- grouped 3-cluster footer: LEFT=DELETE / CENTER=sale status+action / RIGHT=CANCEL+SAVE ----
+      const footOpen = '<div class="modal-foot">';
+      const footIdx = html.indexOf(footOpen);
+      if (footIdx === -1) return html;
+      const flexOpen = '<span style="display:flex;gap:8px">';
+      const flexIdx = html.indexOf(flexOpen, footIdx);
+      if (flexIdx === -1) return html;
+      const leftCluster = html.slice(footIdx + footOpen.length, flexIdx).trim();
+      const flexCloseIdx = html.indexOf('</span>', flexIdx + flexOpen.length);
+      if (flexCloseIdx === -1) return html;
+      const rightCluster = html.slice(flexIdx, flexCloseIdx + '</span>'.length);
+      const restIdx = flexCloseIdx + '</span>'.length + '</div>'.length;
+
+      const grouped = '<div class="modal-foot" style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px">' +
+        '<span class="pn-foot-cluster pn-foot-left" style="display:inline-flex;gap:8px;align-items:center">' + leftCluster + '</span>' +
+        (extra ? '<span class="pn-foot-cluster pn-foot-sale" style="display:inline-flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:center">' + extra + '</span>' : "") +
+        '<span class="pn-foot-cluster pn-foot-right" style="display:inline-flex;gap:8px;align-items:center">' + rightCluster + '</span>' +
+        '</div>';
+
+      return html.slice(0, footIdx) + grouped + html.slice(restIdx);
     };
   }
 
