@@ -85,8 +85,8 @@ const probe = `
   // --- TREASURY (isolated personal position) ---
   state.route = 'treasury';
   const treasuryHtml = renderShell();
-  out.push(['treasury route renders seven strategic cards', (treasuryHtml.match(/pn-treasury-card/g)||[]).length >= 7 && treasuryHtml.includes('Post-Obligation Fortress')]);
-  out.push(['treasury exposes one compact rebalance entry point', treasuryHtml.includes('data-treasury-new') && treasuryHtml.includes('NEW REBALANCE')]);
+  out.push(['treasury route renders seven strategic cards', (treasuryHtml.match(/pn-treasury-card/g)||[]).length >= 7 && treasuryHtml.includes('FORTRESS RESERVE')]);
+  out.push(['treasury exposes one compact rebalance entry point', treasuryHtml.includes('data-treasury-new') && treasuryHtml.includes('RECOUNT THE HOARD')]);
   state.treasuryDraft = pnTreasuryClone();
   const treasuryEditHtml = renderTreasury();
   out.push(['rebalance editor keeps four data groups and manual FX', treasuryEditHtml.includes('Core balances') && treasuryEditHtml.includes('Obligations') && treasuryEditHtml.includes('Pending / saleable assets') && treasuryEditHtml.includes('Salary / income projection') && treasuryEditHtml.includes('USD → EUR')]);

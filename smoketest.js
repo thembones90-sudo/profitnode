@@ -148,7 +148,7 @@ const treasuryProbe = env.run(sandbox, `(() => {
     pending:calc.pending, afterPending:calc.afterPending, afterSalary:calc.afterSalary,
     persisted:!!persisted&&persisted.settings.baseCurrency==='EUR',
     backup:inspectBackupFile({treasury:sample}).treasury===0,
-    routeHtml:/PERSONAL TREASURY|Personal Treasury/.test(renderTreasury()) && /NEW REBALANCE/.test(renderTreasury()),
+    routeHtml:/WAR CHEST|War Chest/.test(renderTreasury()) && /RECOUNT THE HOARD/.test(renderTreasury()),
     coreLabels:core.balances.slice(0,5).map(b=>b.label).join('|'),
     coreCount:core.balances.filter(b=>b.sourceKey).length,
     payoneerCarry:core.balances[0].amount===123 && core.balances[0].currency==='EUR',
