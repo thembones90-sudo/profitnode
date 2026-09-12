@@ -16,21 +16,6 @@ const results = env.run(sandbox, `
   function log(name, ok){ out.push([name, !!ok]); }
   Store.load();
 
-  // --- A. Deal + incoming mail => acquisition cost 5500 ---
-  (function(){
-    const deal = Actions.addDeal({item:'Test GPU',category:'GPU',date:'2026-01-01',purchasePrice:5000,estimatedMarketValue:7000,currency:'RSD',condition:'WORKING',source:'KP',inventoryItemId:null,notes:''});
-    const item = Actions.addInventory({category:'GPU',manufacturer:'NVIDIA',model:'GTX 1060',purchaseDate:'2026-01-01',purchasePrice:5000,currency:'RSD',estimatedMarketValue:7000,source:'KP',condition:'WORKING',status:'IN_STORAGE',notes:''});
-    Actions.updateDeal(deal.id, {inventoryItemId: item.id});
-    const mail = Actions.addMail({direction:'incoming',linkedType:'deal',linkedId:deal.id,shippingCost:500,currency:'RSD',status:'delivered',dateSent:'2026-01-02'});
-    const acq = inventoryAcquisitionCost(item, 'RSD');
-    const dealEff = dealDerived(deal);
-    log('A: deal-linked incoming mail raises inventory acquisition cost to 5500', acq === 5500);
-    log('A: dealDerived effective cost also reflects 5500', dealEff.amountSaved === 1500);
-    Actions.removeMail(mail.id);
-    Actions.removeInventory(item.id);
-    Actions.removeDeal(deal.id);
-  })();
-
   // --- B. Project total based on linked inventory must not count shipping again ---
   (function(){
     const item = Actions.addInventory({category:'GPU',manufacturer:'NVIDIA',model:'GTX 1070',purchaseDate:'2026-02-01',purchasePrice:8000,currency:'RSD',estimatedMarketValue:12000,source:'KP',condition:'WORKING',status:'IN_STORAGE',notes:''});

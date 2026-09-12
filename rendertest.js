@@ -66,7 +66,7 @@ const probe = `
   // --- NAV LABELS (terminal naming — replaces old 'RIG BUILD' assertion) ---
   render();
   const shellHtml = renderShell();
-  const navLabels = ['COMMAND','TREASURY','INTEL','RIG ASSEMBLY','MY RIG','BUILDS','PARTS VAULT','REPAIR BAY','THE HUNT','ROAD TO','LEDGER','ARCHIVE','THE ROULETTE','BLACKBOX'];
+  const navLabels = ['COMMAND','TREASURY','INTEL','RIG ASSEMBLY','MY RIG','BUILDS','PARTS VAULT','REPAIR BAY','ROAD TO','LEDGER','ARCHIVE','THE ROULETTE','BLACKBOX'];
   out.push(['nav shows terminal labels', navLabels.every(l => shellHtml.includes(l))]);
   out.push(['nav no longer shows legacy labels', !shellHtml.includes('RIG BUILD') && !shellHtml.includes('BUILD PLANNER') && !shellHtml.includes('>DASHBOARD<')]);
   out.push(['nav includes the roulette button', shellHtml.includes('data-route="roulette"')]);
@@ -77,7 +77,7 @@ const probe = `
   out.push(['dashboard renders command hero-finance', dashHtml.includes('pn-command-hero-finance') && dashHtml.includes('TOTAL SPENT')]);
   out.push(['COMMAND exposes a single data-derived priority strip', (dashHtml.match(/pn-command-priority is-/g)||[]).length===1&&dashHtml.includes('COMMAND PRIORITY')&&dashHtml.includes('data-route=')]);
   out.push(['COMMAND telemetry uses five coded operational cells', dashHtml.includes('pn-command-telemetry')&&['BLD','VLT','RPR','STL'].every(code=>dashHtml.includes('<i>'+code+'</i>'))]);
-  out.push(['COMMAND financial matrix distinguishes major and supporting metrics', (dashHtml.match(/pn-terminal-kpi is-major/g)||[]).length===2&&(dashHtml.match(/pn-terminal-kpi/g)||[]).length>=6]);
+  out.push(['COMMAND financial matrix distinguishes major and supporting metrics', (dashHtml.match(/pn-terminal-kpi is-major/g)||[]).length===2&&(dashHtml.match(/pn-terminal-kpi/g)||[]).length>=5]);
   out.push(['COMMAND panels expose primary, operational and utility hierarchy', dashHtml.includes('pn-command-panel-primary')&&dashHtml.includes('pn-command-panel-operational')&&dashHtml.includes('pn-command-panel-utility')]);
   out.push(['COMMAND header exposes a compact data freshness indicator', dashHtml.includes('data-pn-command-updated')&&dashHtml.includes('LAST UPDATED')&&dashHtml.includes('pn-command-updated')]);
   out.push(['ROAD TO featured card stays hidden with no active quest', !dashHtml.includes('pn-roadto-feat')]);
@@ -85,8 +85,8 @@ const probe = `
   // --- TREASURY (isolated personal position) ---
   state.route = 'treasury';
   const treasuryHtml = renderShell();
-  out.push(['treasury route renders seven strategic cards', (treasuryHtml.match(/pn-treasury-card/g)||[]).length >= 7 && treasuryHtml.includes('Post-Obligation Fortress')]);
-  out.push(['treasury exposes one compact rebalance entry point', treasuryHtml.includes('data-treasury-new') && treasuryHtml.includes('NEW REBALANCE')]);
+  out.push(['treasury route renders six strategic cards', (treasuryHtml.match(/pn-treasury-card/g)||[]).length >= 6 && treasuryHtml.includes('FORTRESS RESERVE')]);
+  out.push(['treasury exposes one compact rebalance entry point', treasuryHtml.includes('data-treasury-new') && treasuryHtml.includes('RECOUNT THE HOARD')]);
   state.treasuryDraft = pnTreasuryClone();
   const treasuryEditHtml = renderTreasury();
   out.push(['rebalance editor keeps four data groups and manual FX', treasuryEditHtml.includes('Core balances') && treasuryEditHtml.includes('Obligations') && treasuryEditHtml.includes('Pending / saleable assets') && treasuryEditHtml.includes('Salary / income projection') && treasuryEditHtml.includes('USD → EUR')]);

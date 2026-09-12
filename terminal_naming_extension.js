@@ -13,7 +13,6 @@
     projects: "BUILDS",
     inventory: "PARTS VAULT",
     repairs: "REPAIR BAY",
-    deals: "THE HUNT",
     sales: "LEDGER",
     history: "ARCHIVE",
     backup: "BLACKBOX"
@@ -49,10 +48,6 @@
     "REPAIRS": {
       title: "REPAIR BAY",
       subtitle: "Diagnostics \u00B7 repair costs \u00B7 outcomes"
-    },
-    "DEALS": {
-      title: "THE HUNT",
-      subtitle: "Acquisitions \u00B7 offers \u00B7 Deal Score"
     },
     "SALES": {
       title: "LEDGER",

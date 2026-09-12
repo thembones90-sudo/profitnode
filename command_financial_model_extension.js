@@ -291,31 +291,6 @@
     }).join("");
   }
 
-  function pnCmdHuntSnapshot(){
-    const deals = Store.all("deals");
-
-    if (!deals.length){
-      return '<div class="pn-command-empty">NO ACQUISITION SIGNALS LOGGED</div>';
-    }
-
-    const ranked = deals
-      .map(deal=>({deal:deal,score:dealScoreResolved(deal)}))
-      .sort((a,b)=>b.score.score-a.score.score);
-
-    const best = ranked[0];
-    const label = dealScoreLabel(best.score.score);
-    const d = dealDerived(best.deal);
-
-    return '<div class="pn-hunt-card clickable" data-open-entity="deal" data-id="'+best.deal.id+'">'+
-      '<div class="pn-hunt-kicker">TOP ACQUISITION SIGNAL</div>'+
-      '<div class="pn-hunt-name">'+escHtml(best.deal.item)+'</div>'+
-      '<div class="pn-hunt-meta">'+
-        '<span class="chip '+label.chip+'">'+best.score.score+' \u00B7 '+label.label+'</span>'+
-        '<span>Saved '+money(d.amountSaved,best.deal.currency)+'</span>'+
-      '</div>'+
-    '</div>';
-  }
-
   function pnCmdCondition(currency,activeCapital,marketValue,activeBuilds,repairCount){
     const vault = Store.all("inventory").filter(item=>item.status==="IN_STORAGE");
     const stale = staleInventoryItems();
@@ -427,7 +402,6 @@
           '<div class="pn-terminal-kpi"><i>STK</i><span>CAPITAL IN STOCK</span><b>'+money(activeCapital,currency)+'</b></div>'+
           '<div class="pn-terminal-kpi"><i>MKT</i><span>MARKET VALUE</span><b>'+money(marketValue,currency)+'</b></div>'+
           '<div class="pn-terminal-kpi"><i>UPL</i><span>UNREALIZED PROFIT</span><b class="'+(unrealizedProfit>=0?"pn-money-pos":"pn-money-neg")+'">'+money(unrealizedProfit,currency)+'</b></div>'+
-          '<div class="pn-terminal-kpi"><i>SAV</i><span>MONEY SAVED</span><b>'+money(stats.totalMoneySaved,currency)+'</b></div>'+
         '</div>'+
       '</div>';
 
@@ -455,15 +429,11 @@
         '</section>'+
       '</div>';
 
-    const signalsAndHunt =
-      '<div class="pn-command-grid">'+
+    const signalsPanel =
+      '<div class="pn-command-grid pn-command-grid-single">'+
         '<section class="panel pn-command-panel pn-command-panel-utility">'+
           '<div class="panel-head"><h2>LATEST SIGNALS</h2><button class="pn-command-link" data-route="history">OPEN ARCHIVE</button></div>'+
           '<div class="panel-body pn-no-pad">'+pnCmdLatestSignals()+'</div>'+
-        '</section>'+
-        '<section class="panel pn-command-panel pn-command-panel-utility">'+
-          '<div class="panel-head"><h2>THE HUNT</h2><button class="pn-command-link" data-route="deals">OPEN HUNT</button></div>'+
-          '<div class="panel-body">'+pnCmdHuntSnapshot()+'</div>'+
         '</section>'+
       '</div>';
 
@@ -474,7 +444,7 @@
         hero+
         pulseAndCondition+
         operations+
-        signalsAndHunt+
+        signalsPanel+
       '</div>';
   }
 
@@ -660,6 +630,7 @@
       align-items:start;
     }
     .pn-command-grid-main{grid-template-columns:minmax(0,1.9fr) minmax(300px,.72fr)}
+    .pn-command-grid-single{grid-template-columns:1fr}
     .pn-command-panel{
       position:relative;
       overflow:hidden;
