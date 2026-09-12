@@ -1,7 +1,10 @@
 ﻿"use strict";
 window.__PN_SCRIPTS = [
-  "app_core.js?v=parent-nav-state-v1",
-  "planner_retirement_extension.js?v=planner-retired-v1",
+  "app_core.js?v=parent-nav-state-v1",
+  "cpu_revaluation_extension.js?v=v3-stack-20260912b",
+  "gpu_revaluation_extension.js?v=v3-stack-20260912b",
+  "motherboard_revaluation_extension.js?v=v3-stack-20260912b",
+"planner_retirement_extension.js?v=planner-retired-v1",
   "terminal_naming_extension.js?v=pending-sales-v1",
   "psu_extension.js?v=mobo-pcie-perboard-v1",
   "rig_enclosure_extension.js?v=case-generic-v2",
@@ -23,3 +26,4 @@ window.__PN_SCRIPTS = [
   "sold_transaction_extension.js?v=sold-transaction-v3",
   "project_build_extension.js?v=case-flex-v2"
 ];
+
