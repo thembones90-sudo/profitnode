@@ -1,0 +1,525 @@
+{
+  "version": "PN_RAM_V3_2026",
+  "auditDate": "2026-09-12",
+  "catalogName": "PROFITNODE RAM V3",
+  "scope": "Desktop consumer DDR4/DDR5 UDIMM plus modern DDR5 CUDIMM-aware configuration scoring.",
+  "method": {
+    "formula": "35% capacity + 30% bandwidth + 20% true CAS latency + 15% DIMM topology",
+    "capacityWeight": 0.35,
+    "bandwidthWeight": 0.3,
+    "latencyWeight": 0.2,
+    "topologyWeight": 0.15,
+    "notes": [
+      "Brand, RGB, heatspreader design and price do not affect performance score.",
+      "Configured MT/s is treated as achieved memory data rate.",
+      "CAS latency is converted to true latency using CL*2000/MT_s.",
+      "Four-DIMM DDR5 configurations receive a larger topology penalty than four-DIMM DDR4.",
+      "XMP/EXPO availability is metadata and does not directly add performance points."
+    ]
+  },
+  "tierThresholds": [
+    {
+      "tier": "POOR",
+      "max": 29
+    },
+    {
+      "tier": "COMMON",
+      "max": 44
+    },
+    {
+      "tier": "UNCOMMON",
+      "max": 59
+    },
+    {
+      "tier": "RARE",
+      "max": 74
+    },
+    {
+      "tier": "EPIC",
+      "max": 87
+    },
+    {
+      "tier": "LEGENDARY",
+      "max": 96
+    },
+    {
+      "tier": "ARTIFACT",
+      "max": 100
+    }
+  ],
+  "capacityCurve": {
+    "4": 5,
+    "8": 15,
+    "12": 25,
+    "16": 45,
+    "24": 60,
+    "32": 75,
+    "48": 85,
+    "64": 92,
+    "96": 97,
+    "128": 99,
+    "192": 100,
+    "256": 100
+  },
+  "bandwidthCurve": {
+    "2133": 15,
+    "2400": 20,
+    "2666": 26,
+    "2800": 30,
+    "2933": 33,
+    "3000": 35,
+    "3200": 38,
+    "3333": 41,
+    "3466": 43,
+    "3600": 45,
+    "3733": 48,
+    "3800": 49,
+    "3866": 50,
+    "4000": 52,
+    "4133": 54,
+    "4266": 56,
+    "4400": 58,
+    "4600": 60,
+    "4800": 62,
+    "5000": 64,
+    "5066": 65,
+    "5200": 67,
+    "5333": 69,
+    "5600": 72,
+    "6000": 78,
+    "6200": 79.5,
+    "6400": 81,
+    "6600": 83,
+    "6800": 85,
+    "7000": 87,
+    "7200": 89,
+    "7400": 90.5,
+    "7600": 92,
+    "7800": 93,
+    "8000": 94,
+    "8200": 95,
+    "8400": 96,
+    "8600": 97,
+    "8800": 98,
+    "9000": 99,
+    "9600": 100
+  },
+  "latencyCurveNs": {
+    "7": 100,
+    "8": 96,
+    "9": 90,
+    "10": 84,
+    "11": 76,
+    "12": 68,
+    "13": 60,
+    "14": 52,
+    "15": 44,
+    "16": 36,
+    "18": 25,
+    "20": 15,
+    "24": 5
+  },
+  "topologyScores": {
+    "DDR4": {
+      "1": 45,
+      "2": 100,
+      "4": 90
+    },
+    "DDR5": {
+      "1": 45,
+      "2": 100,
+      "4": 80
+    }
+  },
+  "supported": {
+    "technologies": [
+      "DDR4",
+      "DDR5"
+    ],
+    "dimm_types": [
+      "UDIMM",
+      "CUDIMM"
+    ],
+    "per_module_gb": [
+      4,
+      8,
+      16,
+      24,
+      32,
+      48,
+      64
+    ],
+    "module_counts": [
+      1,
+      2,
+      4
+    ],
+    "speeds_mt_s": [
+      2133,
+      2400,
+      2666,
+      2800,
+      2933,
+      3000,
+      3200,
+      3333,
+      3466,
+      3600,
+      3733,
+      3800,
+      3866,
+      4000,
+      4133,
+      4266,
+      4400,
+      4600,
+      4800,
+      5000,
+      5066,
+      5200,
+      5333,
+      5600,
+      6000,
+      6200,
+      6400,
+      6600,
+      6800,
+      7000,
+      7200,
+      7400,
+      7600,
+      7800,
+      8000,
+      8200,
+      8400,
+      8600,
+      8800,
+      9000,
+      9600
+    ],
+    "ddr4_speeds_mt_s": [
+      2133,
+      2400,
+      2666,
+      2800,
+      2933,
+      3000,
+      3200,
+      3333,
+      3466,
+      3600,
+      3733,
+      3800,
+      3866,
+      4000,
+      4133,
+      4266,
+      4400,
+      4600,
+      4800,
+      5000,
+      5066,
+      5333
+    ],
+    "ddr5_speeds_mt_s": [
+      4800,
+      5000,
+      5066,
+      5200,
+      5333,
+      5600,
+      6000,
+      6200,
+      6400,
+      6600,
+      6800,
+      7000,
+      7200,
+      7400,
+      7600,
+      7800,
+      8000,
+      8200,
+      8400,
+      8600,
+      8800,
+      9000,
+      9600
+    ]
+  },
+  "defaults": {
+    "DDR4": {
+      "technology": "DDR4",
+      "dimmType": "UDIMM",
+      "moduleCount": 2,
+      "perModuleCapacity": 8,
+      "totalCapacity": 16,
+      "speed": 3200,
+      "casLatency": 16,
+      "rgb": false,
+      "xmp": null,
+      "expo": null,
+      "notes": ""
+    },
+    "DDR5": {
+      "technology": "DDR5",
+      "dimmType": "UDIMM",
+      "moduleCount": 2,
+      "perModuleCapacity": 16,
+      "totalCapacity": 32,
+      "speed": 6000,
+      "casLatency": 30,
+      "rgb": false,
+      "xmp": null,
+      "expo": null,
+      "notes": ""
+    }
+  },
+  "familyAdditions": [
+    {
+      "brand": "Kingston",
+      "series": "Fury Renegade DDR5 RGB",
+      "technology": "DDR5",
+      "rgb": true
+    },
+    {
+      "brand": "G.Skill",
+      "series": "Ripjaws S5",
+      "technology": "DDR5",
+      "rgb": false
+    },
+    {
+      "brand": "G.Skill",
+      "series": "Trident Z5 RGB",
+      "technology": "DDR5",
+      "rgb": true
+    },
+    {
+      "brand": "G.Skill",
+      "series": "Trident Z5 Royal",
+      "technology": "DDR5",
+      "rgb": true
+    },
+    {
+      "brand": "G.Skill",
+      "series": "Trident Z5 CK",
+      "technology": "DDR5",
+      "dimm_type": "CUDIMM",
+      "rgb": false
+    },
+    {
+      "brand": "G.Skill",
+      "series": "Trident Z5 CK RGB",
+      "technology": "DDR5",
+      "dimm_type": "CUDIMM",
+      "rgb": true
+    },
+    {
+      "brand": "Corsair",
+      "series": "Dominator Platinum RGB DDR5",
+      "technology": "DDR5",
+      "rgb": true
+    },
+    {
+      "brand": "TeamGroup",
+      "series": "T-Force Vulcan DDR5",
+      "technology": "DDR5",
+      "rgb": false
+    },
+    {
+      "brand": "TeamGroup",
+      "series": "T-Force Delta RGB DDR5",
+      "technology": "DDR5",
+      "rgb": true
+    },
+    {
+      "brand": "TeamGroup",
+      "series": "T-Force Xtreem DDR5",
+      "technology": "DDR5",
+      "rgb": false
+    },
+    {
+      "brand": "Patriot",
+      "series": "Viper Venom DDR5",
+      "technology": "DDR5",
+      "rgb": false
+    },
+    {
+      "brand": "Patriot",
+      "series": "Viper Venom RGB DDR5",
+      "technology": "DDR5",
+      "rgb": true
+    },
+    {
+      "brand": "Patriot",
+      "series": "Viper Elite 5 DDR5",
+      "technology": "DDR5",
+      "rgb": false
+    },
+    {
+      "brand": "XPG",
+      "series": "Lancer DDR5",
+      "technology": "DDR5",
+      "rgb": false
+    },
+    {
+      "brand": "XPG",
+      "series": "Lancer RGB DDR5",
+      "technology": "DDR5",
+      "rgb": true
+    },
+    {
+      "brand": "XPG",
+      "series": "Lancer Blade DDR5",
+      "technology": "DDR5",
+      "rgb": false
+    },
+    {
+      "brand": "XPG",
+      "series": "Lancer Blade RGB DDR5",
+      "technology": "DDR5",
+      "rgb": true
+    },
+    {
+      "brand": "Lexar",
+      "series": "ARES DDR5",
+      "technology": "DDR5",
+      "rgb": false
+    },
+    {
+      "brand": "Lexar",
+      "series": "ARES RGB DDR5",
+      "technology": "DDR5",
+      "rgb": true
+    },
+    {
+      "brand": "PNY",
+      "series": "XLR8 Gaming MAKO DDR5",
+      "technology": "DDR5",
+      "rgb": false
+    },
+    {
+      "brand": "PNY",
+      "series": "XLR8 Gaming MAKO RGB DDR5",
+      "technology": "DDR5",
+      "rgb": true
+    },
+    {
+      "brand": "KLEVV",
+      "series": "CRAS V RGB DDR5",
+      "technology": "DDR5",
+      "rgb": true
+    },
+    {
+      "brand": "Silicon Power",
+      "series": "XPOWER Zenith DDR5",
+      "technology": "DDR5",
+      "rgb": false
+    },
+    {
+      "brand": "GeIL",
+      "series": "Polaris RGB DDR5",
+      "technology": "DDR5",
+      "rgb": true
+    },
+    {
+      "brand": "Goodram",
+      "series": "IRDM DDR5",
+      "technology": "DDR5",
+      "rgb": false
+    },
+    {
+      "brand": "Mushkin",
+      "series": "Redline DDR5",
+      "technology": "DDR5",
+      "rgb": false
+    },
+    {
+      "brand": "Crucial",
+      "series": "Pro Overclocking DDR5",
+      "technology": "DDR5",
+      "rgb": false
+    },
+    {
+      "brand": "Crucial",
+      "series": "Classic DDR5",
+      "technology": "DDR5",
+      "rgb": false
+    },
+    {
+      "brand": "Generic",
+      "series": "DDR4 UDIMM",
+      "technology": "DDR4",
+      "rgb": false
+    },
+    {
+      "brand": "Generic",
+      "series": "DDR5 UDIMM",
+      "technology": "DDR5",
+      "rgb": false
+    }
+  ],
+  "familyEnrichments": [
+    {
+      "brand": "Kingston",
+      "series": "Fury Renegade DDR5",
+      "technology": "DDR5",
+      "dimm_types": [
+        "UDIMM",
+        "CUDIMM"
+      ],
+      "known_speed_ceiling_mt_s": 8800
+    },
+    {
+      "brand": "G.Skill",
+      "series": "Trident Z5",
+      "technology": "DDR5",
+      "dimm_types": [
+        "UDIMM"
+      ],
+      "known_speed_ceiling_mt_s": 8400
+    }
+  ],
+  "references": [
+    {
+      "label": "G.SKILL desktop U-DIMM/CU-DIMM product range",
+      "url": "https://www.gskill.com/products/25/165/Desktop-Memory-U-DIMM-CU-DIMM",
+      "note": "Lists desktop DDR5 up to 9600 MT/s and modern non-binary capacities."
+    },
+    {
+      "label": "G.SKILL Trident Z5 CK RGB",
+      "url": "https://www.gskill.com/products/1/165/437/Trident-Z5-CK-RGB-DDR5-Intel-XMP",
+      "note": "CUDIMM family includes 8200-9600 MT/s configurations."
+    },
+    {
+      "label": "Kingston FURY Renegade DDR5",
+      "url": "https://www.kingston.com/en/memory/gaming/fury-renegade-ddr5",
+      "note": "UDIMM up to 8000 MT/s and CUDIMM up to 8800 MT/s; kits up to 96GB."
+    },
+    {
+      "label": "Corsair Vengeance 96GB DDR5-6000 CL30",
+      "url": "https://www.corsair.com/us/en/p/ddr5-ram/cmk96gx5m2b6000c30/vengeance-96gb-2x48gb-ddr5-dram-6000mt-s-cl30-memory-kit-black-cmk96gx5m2b6000c30",
+      "note": "Confirms mainstream 2x48GB / 96GB DDR5 configuration."
+    },
+    {
+      "label": "XPG Lancer Blade DDR5",
+      "url": "https://www.xpg.com/rs/xpg/dram-modules-lancer-blade-ddr5",
+      "note": "DDR5 desktop family with XMP/EXPO support."
+    },
+    {
+      "label": "TeamGroup T-FORCE Vulcan DDR5",
+      "url": "https://www.teamgroupinc.com/en/product-detail/memory/T-FORCE/vulcan-ddr5-black/vulcan-ddr5-black-FLBD516G6400HC32A01/",
+      "note": "Desktop DDR5 family."
+    },
+    {
+      "label": "Lexar ARES RGB DDR5",
+      "url": "https://resources.lexar.com/download/1085/documents/14442/setupsheet-ares-rgb-ddr5-6400-6800-7200-desktop-memory.pdf",
+      "note": "Desktop DDR5 UDIMM family with XMP/EXPO."
+    },
+    {
+      "label": "Patriot Viper Venom DDR5",
+      "url": "https://viper.patriotmemory.com/ru/products/viper-venom-ddr5",
+      "note": "Desktop DDR5 family with 6000 CL30 configurations."
+    }
+  ]
+}
