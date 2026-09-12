@@ -167,35 +167,35 @@ function pbSlotEditorHtml(project){
     let body=""
     if(genMode){
       const sizeId=d.caseSizeId||""
-      body='<label class="field" style="flex:1 1 100%"><span>CASE SIZE</span><select data-pb-field="caseSizeId">'+PB_CASE_SIZES.map(c=>'<option value="'+c.id+'"'+(sizeId===c.id?" selected":"")+">"+escHtml(c.label)+"</option>").join("")+"</select></label>"
+      body='<label class="field" style="grid-column:1/-1"><span>CASE SIZE</span><select data-pb-field="caseSizeId">'+PB_CASE_SIZES.map(c=>'<option value="'+c.id+'"'+(sizeId===c.id?" selected":"")+">"+escHtml(c.label)+"</option>").join("")+"</select></label>"
         +'<label class="field"><span>ESTIMATED COST ('+project.currency+')</span><input type="number" min="0" step="1" data-pb-field="cost" value="'+escAttr(d.cost||"")+'"></label>'
-        +'<label class="field" style="flex:1 1 100%"><span>NOTES</span><input type="text" data-pb-field="notes" value="'+escAttr(d.notes||"")+'"></label>'
+        +'<label class="field" style="grid-column:1/-1"><span>NOTES</span><input type="text" data-pb-field="notes" value="'+escAttr(d.notes||"")+'"></label>'
     }else if("VAULT"===d.mode){
-      body=vault.length?'<label class="field" style="flex:1 1 100%"><span>SELECT COMPATIBLE OWNED PART</span><select data-pb-vault-item><option value="">— select '+cat.toLowerCase()+' —</option>'+vault.map(v=>{
+      body=vault.length?'<label class="field" style="grid-column:1/-1"><span>SELECT COMPATIBLE OWNED PART</span><select data-pb-vault-item><option value="">— select '+cat.toLowerCase()+' —</option>'+vault.map(v=>{
         const already=v.assignedProjectId&&v.assignedProjectId!==project.id
         return'<option value="'+v.id+'"'+(d.inventoryItemId===v.id?" selected":"")+(already?" disabled":"")+">"+escHtml(v.manufacturer+" "+v.model)+" — "+STATUS_LABEL(v.condition)+" · "+money(v.purchasePrice,v.currency)+" · "+STATUS_LABEL(v.status)+"</option>"
-      }).join("")+"</select></label>":'<p class="hint" style="flex:1 1 100%">No compatible unreserved '+cat.toLowerCase()+' in the Parts Vault — add one to Inventory first, or add a planned part below.</p>'
+      }).join("")+"</select></label>":'<p class="hint" style="grid-column:1/-1">No compatible unreserved '+cat.toLowerCase()+' in the Parts Vault — add one to Inventory first, or add a planned part below.</p>'
     }else{
       // ENTER EXACT MODEL now searches the case catalog live, same as every
       // other component — CASE stays out of PB_CATALOG_SLOTS only because
       // its GENERIC/VAULT modes are special, not because exact-model search
       // shouldn't apply here too (spec section 9/20).
       const hits=PBUI.catalogHits||[]
-      body='<label class="field" style="flex:1 1 100%"><span>PART NAME</span><input type="text" data-pb-catalog-search="CASE" value="'+escAttr(d.label||"")+'" placeholder="Start typing to search the case catalog…" autocomplete="off"></label>'
-        +(hits.length?'<div class="myrig-catalog-results" style="flex:1 1 100%;max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);padding:4px">'+hits.map((h,i)=>'<button type="button" class="btn btn-sm btn-ghost" data-pb-catalog-pick="'+i+'" style="display:flex;justify-content:space-between;width:100%;text-align:left;padding:5px 8px">'+escHtml(h.brand+" "+h.model)+"</button>").join("")+"</div>":"")
+      body='<label class="field" style="grid-column:1/-1"><span>PART NAME</span><input type="text" data-pb-catalog-search="CASE" value="'+escAttr(d.label||"")+'" placeholder="Start typing to search the case catalog…" autocomplete="off"></label>'
+        +(hits.length?'<div class="myrig-catalog-results" style="grid-column:1/-1;max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);padding:4px">'+hits.map((h,i)=>'<button type="button" class="btn btn-sm btn-ghost" data-pb-catalog-pick="'+i+'" style="display:flex;justify-content:space-between;width:100%;text-align:left;padding:5px 8px">'+escHtml(h.brand+" "+h.model)+"</button>").join("")+"</div>":"")
         +'<label class="field"><span>ESTIMATED COST ('+project.currency+')</span><input type="number" min="0" step="1" data-pb-field="cost" value="'+escAttr(d.cost||"")+'"></label>'
-        +'<label class="field" style="flex:1 1 100%"><span>NOTES</span><input type="text" data-pb-field="notes" value="'+escAttr(d.notes||"")+'"></label>'
+        +'<label class="field" style="grid-column:1/-1"><span>NOTES</span><input type="text" data-pb-field="notes" value="'+escAttr(d.notes||"")+'"></label>'
     }
-    return'<div class="panel pn-myrig-edit" style="margin-top:12px"><div class="panel-head"><h2>'+RIG_SLOT_LABELS[k].toUpperCase()+"</h2></div><div class=\"panel-body\"><div class=\"pn-myrig-fgrid\"><label class=\"field\" style=\"flex:1 1 100%\"><span>SOURCE</span><select data-pb-slot-mode>"+modeOpts+"</select></label>"+body+'</div><div class="pn-myrig-form-actions"><button type="button" class="btn btn-primary" data-pb-save-slot="'+k+'">SAVE COMPONENT</button><button type="button" class="btn btn-sm" data-pb-cancel-slot>CANCEL</button></div></div></div>'
+    return'<div class="panel pn-myrig-edit" style="margin-top:12px"><div class="panel-head"><h2>'+RIG_SLOT_LABELS[k].toUpperCase()+"</h2></div><div class=\"panel-body\"><div class=\"pn-myrig-fgrid\"><label class=\"field\" style=\"grid-column:1/-1\"><span>SOURCE</span><select data-pb-slot-mode>"+modeOpts+"</select></label>"+body+'</div><div class="pn-myrig-form-actions"><button type="button" class="btn btn-primary" data-pb-save-slot="'+k+'">SAVE COMPONENT</button><button type="button" class="btn btn-sm" data-pb-cancel-slot>CANCEL</button></div></div></div>'
   }
   const modeOpts='<option value="VAULT"'+("VAULT"===d.mode?" selected":"")+">FROM PARTS VAULT</option><option value=\"PLANNED\""+("PLANNED"===d.mode?" selected":"")+">ADD NEW (NOT YET OWNED)</option>"
   let body=""
   if("VAULT"===d.mode){
-    body=vault.length?'<label class="field" style="flex:1 1 100%"><span>SELECT COMPATIBLE OWNED PART</span><select data-pb-vault-item><option value="">— select '+cat.toLowerCase()+' —</option>'+vault.map(v=>{
+    body=vault.length?'<label class="field" style="grid-column:1/-1"><span>SELECT COMPATIBLE OWNED PART</span><select data-pb-vault-item><option value="">— select '+cat.toLowerCase()+' —</option>'+vault.map(v=>{
       const already=v.assignedProjectId&&v.assignedProjectId!==project.id
       const ramHint=k==="RAM"?pbVaultRamHint(v):""
       return'<option value="'+v.id+'"'+(d.inventoryItemId===v.id?" selected":"")+(already?" disabled":"")+">"+escHtml(v.manufacturer+" "+v.model)+(ramHint?" — "+escHtml(ramHint):"")+" — "+STATUS_LABEL(v.condition)+" · "+money(v.purchasePrice,v.currency)+" · "+STATUS_LABEL(v.status)+"</option>"
-    }).join("")+"</select></label>":'<p class="hint" style="flex:1 1 100%">No compatible unreserved '+cat.toLowerCase()+' in the Parts Vault — add one to Inventory first, or add a planned part below.</p>'
+    }).join("")+"</select></label>":'<p class="hint" style="grid-column:1/-1">No compatible unreserved '+cat.toLowerCase()+' in the Parts Vault — add one to Inventory first, or add a planned part below.</p>'
   }else if(k==="RAM"){
     // ---- RAM: module capacity is the primary search axis (spec section
     // 10-14), quantity is a separate explicit step (section 13), and the
@@ -203,26 +203,26 @@ function pbSlotEditorHtml(project){
     // generic family autocomplete. ----
     if(!d.ramPicked){
       const hits=PBUI.ramHits||[]
-      body='<label class="field" style="flex:1 1 100%"><span>RAM MODULE SIZE / SEARCH</span><input type="text" data-pb-ram-search value="'+escAttr(d.ramQuery||"")+'" placeholder="e.g. 8GB, Corsair 8GB, 16GB DDR5 6000" autocomplete="off"></label>'
-        +(hits.length?'<div class="myrig-catalog-results" style="flex:1 1 100%;max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);padding:4px">'+hits.map((h,i)=>'<button type="button" class="btn btn-sm btn-ghost" data-pb-ram-pick="'+i+'" style="display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;padding:6px 8px;gap:8px"><span>'+escHtml(pbRamRowLabel(h))+'</span>'+(h.isKit?'<span class="chip chip-blue-outline">KNOWN KIT</span>':"")+"</button>").join("")+"</div>"
-          :(d.ramQuery?'<p class="hint" style="flex:1 1 100%">No matching RAM modules — try a different capacity (e.g. 8GB, 16GB) or brand.</p>':'<p class="hint" style="flex:1 1 100%">Start with the module size — e.g. "8GB" — then narrow by brand, DDR generation or speed.</p>'))
+      body='<label class="field" style="grid-column:1/-1"><span>RAM MODULE SIZE / SEARCH</span><input type="text" data-pb-ram-search value="'+escAttr(d.ramQuery||"")+'" placeholder="e.g. 8GB, Corsair 8GB, 16GB DDR5 6000" autocomplete="off"></label>'
+        +(hits.length?'<div class="myrig-catalog-results" style="grid-column:1/-1;max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);padding:4px">'+hits.map((h,i)=>'<button type="button" class="btn btn-sm btn-ghost" data-pb-ram-pick="'+i+'" style="display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;padding:6px 8px;gap:8px"><span>'+escHtml(pbRamRowLabel(h))+'</span>'+(h.isKit?'<span class="chip chip-blue-outline">KNOWN KIT</span>':"")+"</button>").join("")+"</div>"
+          :(d.ramQuery?'<p class="hint" style="grid-column:1/-1">No matching RAM modules — try a different capacity (e.g. 8GB, 16GB) or brand.</p>':'<p class="hint" style="grid-column:1/-1">Start with the module size — e.g. "8GB" — then narrow by brand, DDR generation or speed.</p>'))
     }else{
       const ram=d.ram||{moduleCount:d.ramPicked.suggestedCount||2,perModuleCapacity:d.ramPicked.perModuleCapacity}
-      body='<div class="field" style="flex:1 1 100%"><span style="display:block;margin-bottom:4px">SELECTED MODULE</span><div style="font-weight:800;font-size:13px">'+escHtml(pbRamRowLabel(d.ramPicked))+'</div><button type="button" class="btn btn-sm" style="margin-top:6px" data-pb-ram-change>CHANGE MODULE</button></div>'
-        +'<div class="field" style="flex:1 1 100%"><span style="display:block;margin-bottom:4px">QUANTITY (STICKS INSTALLED)</span><div style="display:flex;gap:6px">'+[1,2,3,4].map(n=>'<button type="button" class="btn btn-sm'+(ram.moduleCount===n?" btn-primary":"")+'" data-pb-ram-qty="'+n+'">'+n+"</button>").join("")+"</div></div>"
-        +'<div class="field" style="flex:1 1 100%"><span>TOTAL CAPACITY</span><div style="font-weight:800">'+(ram.moduleCount*ram.perModuleCapacity)+"GB TOTAL</div></div>"
+      body='<div class="field" style="grid-column:1/-1"><span style="display:block;margin-bottom:4px">SELECTED MODULE</span><div style="font-weight:800;font-size:13px">'+escHtml(pbRamRowLabel(d.ramPicked))+'</div><button type="button" class="btn btn-sm" style="margin-top:6px" data-pb-ram-change>CHANGE MODULE</button></div>'
+        +'<div class="field" style="grid-column:1/-1"><span style="display:block;margin-bottom:4px">QUANTITY (STICKS INSTALLED)</span><div style="display:flex;gap:6px">'+[1,2,3,4].map(n=>'<button type="button" class="btn btn-sm'+(ram.moduleCount===n?" btn-primary":"")+'" data-pb-ram-qty="'+n+'">'+n+"</button>").join("")+"</div></div>"
+        +'<div class="field" style="grid-column:1/-1"><span>TOTAL CAPACITY</span><div style="font-weight:800">'+(ram.moduleCount*ram.perModuleCapacity)+"GB TOTAL</div></div>"
         +'<label class="field"><span>PLANNED COST ('+project.currency+')</span><input type="number" min="0" step="1" data-pb-field="cost" value="'+escAttr(d.cost||"")+'"></label>'
-        +'<label class="field" style="flex:1 1 100%"><span>NOTES</span><input type="text" data-pb-field="notes" value="'+escAttr(d.notes||"")+'"></label>'
+        +'<label class="field" style="grid-column:1/-1"><span>NOTES</span><input type="text" data-pb-field="notes" value="'+escAttr(d.notes||"")+'"></label>'
     }
   }else{
     const hits=PBUI.catalogHits||[]
-    body=(isCat?'<label class="field" style="flex:1 1 100%"><span>PART NAME</span><input type="text" data-pb-catalog-search="'+k+'" value="'+escAttr(d.label||"")+'" placeholder="Start typing to search the catalog…" autocomplete="off"></label>'
-        +(hits.length?'<div class="myrig-catalog-results" style="flex:1 1 100%;max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);padding:4px">'+hits.map((h,i)=>'<button type="button" class="btn btn-sm btn-ghost" data-pb-catalog-pick="'+i+'" style="display:flex;justify-content:space-between;width:100%;text-align:left;padding:5px 8px">'+escHtml(h.brand+" "+h.model)+"</button>").join("")+"</div>":"")
-      :'<label class="field" style="flex:1 1 100%"><span>PART NAME</span><input type="text" data-pb-field="label" value="'+escAttr(d.label||"")+'" placeholder="e.g. BeQuiet Pure Power 750W" autocomplete="off"></label>')
+    body=(isCat?'<label class="field" style="grid-column:1/-1"><span>PART NAME</span><input type="text" data-pb-catalog-search="'+k+'" value="'+escAttr(d.label||"")+'" placeholder="Start typing to search the catalog…" autocomplete="off"></label>'
+        +(hits.length?'<div class="myrig-catalog-results" style="grid-column:1/-1;max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);padding:4px">'+hits.map((h,i)=>'<button type="button" class="btn btn-sm btn-ghost" data-pb-catalog-pick="'+i+'" style="display:flex;justify-content:space-between;width:100%;text-align:left;padding:5px 8px">'+escHtml(h.brand+" "+h.model)+"</button>").join("")+"</div>":"")
+      :'<label class="field" style="grid-column:1/-1"><span>PART NAME</span><input type="text" data-pb-field="label" value="'+escAttr(d.label||"")+'" placeholder="e.g. BeQuiet Pure Power 750W" autocomplete="off"></label>')
       +'<label class="field"><span>ESTIMATED COST ('+project.currency+')</span><input type="number" min="0" step="1" data-pb-field="cost" value="'+escAttr(d.cost||"")+'"></label>'
-      +'<label class="field" style="flex:1 1 100%"><span>NOTES</span><input type="text" data-pb-field="notes" value="'+escAttr(d.notes||"")+'"></label>'
+      +'<label class="field" style="grid-column:1/-1"><span>NOTES</span><input type="text" data-pb-field="notes" value="'+escAttr(d.notes||"")+'"></label>'
   }
-  return'<div class="panel pn-myrig-edit" style="margin-top:12px"><div class="panel-head"><h2>'+RIG_SLOT_LABELS[k].toUpperCase()+"</h2></div><div class=\"panel-body\"><div class=\"pn-myrig-fgrid\"><label class=\"field\" style=\"flex:1 1 100%\"><span>SOURCE</span><select data-pb-slot-mode>"+modeOpts+"</select></label>"+body+'</div><div class="pn-myrig-form-actions"><button type="button" class="btn btn-primary" data-pb-save-slot="'+k+'">SAVE COMPONENT</button><button type="button" class="btn btn-sm" data-pb-cancel-slot>CANCEL</button></div></div></div>'
+  return'<div class="panel pn-myrig-edit" style="margin-top:12px"><div class="panel-head"><h2>'+RIG_SLOT_LABELS[k].toUpperCase()+"</h2></div><div class=\"panel-body\"><div class=\"pn-myrig-fgrid\"><label class=\"field\" style=\"grid-column:1/-1\"><span>SOURCE</span><select data-pb-slot-mode>"+modeOpts+"</select></label>"+body+'</div><div class="pn-myrig-form-actions"><button type="button" class="btn btn-primary" data-pb-save-slot="'+k+'">SAVE COMPONENT</button><button type="button" class="btn btn-sm" data-pb-cancel-slot>CANCEL</button></div></div></div>'
 }
 // Best-effort only: existing Parts Vault inventory rows carry no structured
 // RAM capacity/kit fields (out of scope to add — that's the Inventory
@@ -240,10 +240,10 @@ function pbVaultRamHint(item){
 function pbExtraFormHtml(project){
   const d=PBUI.extraDraft||{},vault=Store.all("inventory").filter(i=>(!i.assignedProjectId||i.assignedProjectId===project.id)&&"SOLD"!==i.status).slice().sort((a,b)=>(a.manufacturer+a.model).localeCompare(b.manufacturer+b.model))
   return'<div class="panel pn-myrig-edit" style="margin-top:12px"><div class="panel-head"><h2>ADD EXTRA / OPTIONAL PART</h2></div><div class="panel-body"><div class="pn-myrig-fgrid">'
-    +'<label class="field" style="flex:1 1 100%"><span>FROM PARTS VAULT (OPTIONAL)</span><select data-pb-extra-field="inventoryItemId"><option value="">— manual entry —</option>'+vault.map(v=>'<option value="'+v.id+'"'+(d.inventoryItemId===v.id?" selected":"")+">"+escHtml(v.category+" — "+v.manufacturer+" "+v.model)+"</option>").join("")+"</select></label>"
-    +'<label class="field" style="flex:1 1 100%"><span>NAME</span><input type="text" data-pb-extra-field="label" value="'+escAttr(d.label||"")+'" placeholder="e.g. RGB fan pack"></label>'
+    +'<label class="field" style="grid-column:1/-1"><span>FROM PARTS VAULT (OPTIONAL)</span><select data-pb-extra-field="inventoryItemId"><option value="">— manual entry —</option>'+vault.map(v=>'<option value="'+v.id+'"'+(d.inventoryItemId===v.id?" selected":"")+">"+escHtml(v.category+" — "+v.manufacturer+" "+v.model)+"</option>").join("")+"</select></label>"
+    +'<label class="field" style="grid-column:1/-1"><span>NAME</span><input type="text" data-pb-extra-field="label" value="'+escAttr(d.label||"")+'" placeholder="e.g. RGB fan pack"></label>'
     +'<label class="field"><span>COST ('+project.currency+')</span><input type="number" min="0" step="1" data-pb-extra-field="cost" value="'+escAttr(d.cost||"")+'" '+(d.inventoryItemId?"readonly":"")+'></label>'
-    +'<label class="field" style="flex:1 1 100%"><span>NOTES</span><input type="text" data-pb-extra-field="notes" value="'+escAttr(d.notes||"")+'"></label>'
+    +'<label class="field" style="grid-column:1/-1"><span>NOTES</span><input type="text" data-pb-extra-field="notes" value="'+escAttr(d.notes||"")+'"></label>'
     +'</div><div class="pn-myrig-form-actions"><button type="button" class="btn btn-primary" data-pb-extra-save>ADD PART</button><button type="button" class="btn btn-sm" data-pb-extra-cancel>CANCEL</button></div></div></div>'
 }
 function pbExtrasHtml(project,locked){
@@ -411,9 +411,26 @@ function pbChange(e){
   const vi=e.target.closest("select[data-pb-vault-item]");if(vi&&PBUI.slot){PBUI.slot.inventoryItemId=vi.value;return void render()}
   const ef=e.target.closest("select[data-pb-extra-field]");if(ef)return void pbInput(e)
 }
+// Escape backs out of the search-results dropdown first (so a stray
+// keypress while scanning results doesn't lose the whole in-progress
+// slot edit), then a second Escape (or an Escape pressed with no
+// results open) cancels the slot editor entirely — same effect as
+// clicking CANCEL.
+function pbKeydown(e){
+  if(e.key!=="Escape"||!PBUI.slotKey)return
+  if((PBUI.ramHits&&PBUI.ramHits.length)||(PBUI.catalogHits&&PBUI.catalogHits.length)){
+    PBUI.ramHits=[];PBUI.catalogHits=[]
+    e.preventDefault()
+    return void render()
+  }
+  PBUI.slotKey=null;PBUI.slot=null;PBUI.quickPrice=null
+  e.preventDefault()
+  render()
+}
 document.addEventListener("click",pbClick)
 document.addEventListener("input",pbInput)
 document.addEventListener("change",pbChange)
+document.addEventListener("keydown",pbKeydown)
 if(typeof document!=="undefined"&&document.addEventListener){
   const s=document.createElement("style")
   s.textContent=".pn-pb-hero{border:1px solid var(--border-strong);border-radius:var(--radius);padding:18px;background:linear-gradient(135deg,rgba(160,180,200,.06),rgba(160,180,200,.02) 60%)}.pn-pb-eyebrow{font:9px var(--mono);letter-spacing:.24em;color:#9fb4c8;margin-bottom:6px}.pn-pb-name{font-size:32px;line-height:1.1;font-weight:900;margin:0 0 10px}.pn-pb-hero-actions{margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}.pn-pb-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.pn-pb-slot{border:1px solid var(--border);border-left:3px solid var(--pb-acc,#8b8495);background:var(--surface-2);border-radius:var(--radius);padding:10px 12px;display:flex;flex-direction:column;gap:5px}.pn-pb-slot.is-empty{background:transparent;border-left-color:var(--border-strong);opacity:.75}.pn-pb-slot-head,.pn-pb-slot-model-line{display:flex;align-items:center;gap:8px}.pn-pb-slot-model-line{flex-wrap:wrap}.pn-pb-slot-model{font-weight:800;font-size:13px;line-height:1.25}.pn-pb-quality-name{color:var(--tier-color,#a39cac)}.pn-pb-slot[data-pb-quality=\"LEGENDARY\"] .pn-pb-slot-model{text-shadow:0 0 9px rgba(255,128,0,.3)}.pn-pb-quality{display:inline-flex;align-items:center;padding:2px 6px;border:1px solid var(--tier-border);border-radius:3px;background:var(--tier-wash);color:var(--tier-color);font:800 8px var(--mono);letter-spacing:.08em;line-height:1.2;white-space:nowrap}.pn-tier-unrated{--tier-color:#77717f;--tier-border:rgba(119,113,127,.42);--tier-wash:rgba(119,113,127,.09)}.pn-pb-ram-config{font:800 10px var(--mono);letter-spacing:.04em;color:#32c6a6}.pn-pb-slot-foot{display:flex;align-items:center;gap:8px;font:9px var(--mono);color:var(--text-muted);margin-top:auto;flex-wrap:wrap}.pn-pb-price{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--text)}.pn-pb-price-edit{display:inline-flex;align-items:center;gap:6px}.pn-pb-price-edit-btn{font:8px var(--mono);letter-spacing:.1em;color:#9fb4c8;border:1px solid var(--border-strong);padding:1px 6px;border-radius:6px;background:transparent;cursor:pointer}.pn-pb-price-edit-btn:hover{color:var(--text);border-color:#9fb4c8}.pn-pb-vault-link{font:8px var(--mono);letter-spacing:.12em;color:#9fb4c8;border:1px solid var(--border-strong);padding:1px 5px;border-radius:6px;background:transparent;cursor:pointer}.pn-pb-vault-link:hover{color:var(--text);border-color:#9fb4c8}.pn-pb-extra-list{display:flex;flex-direction:column;gap:6px}.pn-pb-extra-row{display:flex;align-items:center;gap:10px;border:1px solid var(--border);background:var(--surface-2);border-radius:var(--radius);padding:8px 10px;flex-wrap:wrap}.pn-pb-extra-name{flex:1;font-weight:700;font-size:12px}.pn-pb-cost-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}.pn-pb-cost-group h3{font:800 10px var(--mono);letter-spacing:.1em;color:var(--text-muted);margin:0 0 6px}.pn-pb-cost-row{display:flex;justify-content:space-between;gap:10px;font-size:12px;padding:3px 0;border-bottom:1px dashed var(--border)}.pn-pb-cost-total{display:flex;justify-content:space-between;font:800 11px var(--mono);letter-spacing:.06em;margin-top:8px;padding-top:6px;border-top:1px solid var(--border-strong)}.pn-pb-cost-final{display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:10px;border-top:1px solid var(--border-strong);font:800 13px var(--mono);letter-spacing:.06em}@media(max-width:760px){.pn-pb-grid{grid-template-columns:1fr}.pn-pb-cost-cols{grid-template-columns:1fr}}"
