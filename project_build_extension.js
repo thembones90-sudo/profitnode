@@ -52,17 +52,18 @@ function pbSlotCardHtml(project,slotKey,locked){
   const quality=isGenericCase?{key:"UNRATED",sourceTier:"UNRATED",source:"GENERIC CASE SIZE",className:pnTierClass("UNRATED")}:pbComponentQuality(slot,slotKey,r)
   const tierChip=pbQualityChipHtml(quality)
   const ownTag=isGenericCase?'<span class="chip chip-blue-outline">PLANNED — MODEL NOT SELECTED</span>':("INVENTORY"===slot.kind?(r&&r.status?'<span class="chip '+(INVENTORY_STATUS_META[r.status]||{chip:"chip-muted"}).chip+'">'+STATUS_LABEL(r.status)+"</span>":""):'<span class="chip chip-blue-outline">PLANNED — NOT YET OWNED</span>')
+  const genericNote=isGenericCase&&slot.genericCaseSizeId?PB_CASE_SIZES.find(c=>c.id===slot.genericCaseSizeId)?.unverifiedPhysical?'<span class="chip chip-amber-outline" title="No GPU/cooler/PSU/radiator clearance data for open bench">⚠ PHYSICAL CONSTRAINTS UNVERIFIED</span>':"":""
   const vaultLink="INVENTORY"===slot.kind&&slot.inventoryItemId?'<button type="button" class="pn-pb-vault-link" data-open-entity="inventory" data-id="'+escAttr(slot.inventoryItemId)+'" title="Open in Parts Vault">VAULT ↗</button>':""
   const cost=r?money(r.cost,project.currency):""
   const modelLabel=isGenericCase?slot.label:(r?r.label:"(unnamed part)")
-  return'<div class="pn-pb-slot"'+acc+' data-pb-slot="'+slotKey+'" data-pb-quality="'+quality.key+'"><div class="pn-pb-slot-head"><span class="pn-cat-label '+categoryColorClass(cat)+'">'+label+"</span>"+vaultLink+(locked?"":'<button type="button" class="btn btn-sm" style="margin-left:auto" data-pb-edit-slot="'+slotKey+'">'+("PLANNED"===slot.kind?"EDIT":"SWAP")+"</button>")+'</div><div class="pn-pb-slot-model-line"><div class="pn-pb-slot-model pn-pb-quality-name '+quality.className+'">'+escHtml(modelLabel)+"</div>"+tierChip+'</div><div class="pn-pb-slot-foot">'+(cost?"<span>"+cost+"</span>":"")+ownTag+"</div>"+(locked?"":'<button type="button" class="btn btn-sm btn-ghost" style="margin-top:6px" data-pb-remove-slot="'+slotKey+'">REMOVE</button>')+"</div>"
+  return'<div class="pn-pb-slot"'+acc+' data-pb-slot="'+slotKey+'" data-pb-quality="'+quality.key+'"><div class="pn-pb-slot-head"><span class="pn-cat-label '+categoryColorClass(cat)+'">'+label+"</span>"+vaultLink+(locked?"":'<button type="button" class="btn btn-sm" style="margin-left:auto" data-pb-edit-slot="'+slotKey+'">'+("PLANNED"===slot.kind?"EDIT":"SWAP")+"</button>")+'</div><div class="pn-pb-slot-model-line"><div class="pn-pb-slot-model pn-pb-quality-name '+quality.className+'">'+escHtml(modelLabel)+"</div>"+tierChip+'</div><div class="pn-pb-slot-foot">'+(cost?"<span>"+cost+"</span>":"")+ownTag+genericNote+"</div>"+(locked?"":'<button type="button" class="btn btn-sm btn-ghost" style="margin-top:6px" data-pb-remove-slot="'+slotKey+'">REMOVE</button>')+"</div>"
 }
 function pbSlotEditorHtml(project){
   const k=PBUI.slotKey,d=PBUI.slot||{},cat=RIG_SLOT_CATEGORY[k],isCat=PB_CATALOG_SLOTS.includes(k)
   const vault=pbAvailableVaultItems(project,cat)
   if(k==="CASE"){
     const genMode="GENERIC"===d.mode
-    const modeOpts='<option value="GENERIC"'+(genMode?" selected":"")+">CHOOSE CASE SIZE</option><option value=\"VAULT\""+("VAULT"===d.mode?" selected":"")+">SELECT EXACT MODEL FROM VAULT</option><option value=\"EXACT\""+("EXACT"===d.mode?" selected":"")+">ENTER EXACT MODEL</option>"
+    const modeOpts='<option value="GENERIC"'+(genMode?" selected":"")+">CHOOSE CASE SIZE</option><option value=\"VAULT\""+("VAULT"===d.mode?" selected":"")+">SELECT FROM PARTS VAULT</option><option value=\"EXACT\""+("EXACT"===d.mode?" selected":"")+">ENTER EXACT MODEL</option>"
     let body=""
     if(genMode){
       const sizeId=d.caseSizeId||""

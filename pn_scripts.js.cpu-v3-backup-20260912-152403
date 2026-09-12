@@ -1,10 +1,10 @@
-﻿"use strict";
+"use strict";
 window.__PN_SCRIPTS = [
   "app_core.js?v=parent-nav-state-v1",
   "planner_retirement_extension.js?v=planner-retired-v1",
   "terminal_naming_extension.js?v=pending-sales-v1",
   "psu_extension.js?v=mobo-pcie-perboard-v1",
-  "rig_enclosure_extension.js?v=case-generic-v2",
+  "rig_enclosure_extension.js?v=case-generic-v1",
   "sale_type_extension.js?v=pending-sales-v1",
   "command_center_extension.js?v=rig-assembly-nav-v1",
   "command_header_glitch_extension.js?v=command-freshness-v1",
@@ -17,9 +17,9 @@ window.__PN_SCRIPTS = [
   "treasury_extension.js?v=treasury-core-sources-v2",
   "road_to_extension.js?v=roadto-reason-v1",
   "my_rig_extension.js?v=myrig-leviathan-canonical-v1",
-  "sidebar_cleanup_extension.js?v=product-refinement-v3",
+"sidebar_cleanup_extension.js?v=product-refinement-v3",
   "mail_extension.js?v=mail-card-polish-v1",
   "treasury_flow_extension.js?v=treasury-fund-flow-v1",
   "sold_transaction_extension.js?v=sold-transaction-v3",
-  "project_build_extension.js?v=case-flex-v2"
+  "project_build_extension.js?v=case-flex-v1"
 ];

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <style>
 /* ============================================================
-   PROFITNODE â€” workshop ledger / trading terminal for SHADEZY REPAIR SHOP
+   PROFITNODE — workshop ledger / trading terminal for SHADEZY REPAIR SHOP
    Hardware workshop ledger / trading terminal aesthetic.
    Deliberately single-theme (dark graphite + amber): the terminal
    look is the point, so tokens are fixed rather than swapped
@@ -218,7 +218,7 @@ tbody tr:not(.pn-inv-group-head):hover td:first-child{border-left-color:var(--re
 td.num,th.num{font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums}
 td.mono{font-family:var(--mono)}
 tbody tr.clickable{cursor:pointer}
-/* RIG BENCH family row â€” target-lock hover */
+/* RIG BENCH family row — target-lock hover */
 tbody tr.clickable[data-open-rig-family]{transition:transform .18s ease}
 tbody tr.clickable[data-open-rig-family]:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,.22)}
 tbody tr.clickable[data-open-rig-family]:hover td{background:linear-gradient(90deg,rgba(210,216,225,.05),rgba(235,239,244,.10) 45%,rgba(190,198,208,.04)),var(--panel-2);border-left-color:rgba(210,216,225,.10);border-bottom-color:rgba(210,216,225,.10)}
@@ -555,9 +555,7 @@ body{background-image:url(data:image/webp;base64,UklGRkJKAABXRUJQVlA4IDZKAADwMQO
 </head>
 <body>
 <div id="root"></div>
-<script src="pn_scripts.js?v=gpu-v3-20260912"></script>
+<script src="pn_scripts.js?v=component-quality-v2"></script>
 <script src="app.js?v=product-refinement-v1"></script>
 </body>
 </html>
-
-

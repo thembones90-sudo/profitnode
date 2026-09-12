@@ -36,10 +36,10 @@ const PB_CASE_SIZES=[
 {id:"sff-mini-itx",label:"SFF / MINI-ITX",formFactors:["ITX"]},
 {id:"matx-mini-tower",label:"MICRO-ATX MINI TOWER",formFactors:["ITX","MATX"]},
 {id:"atx-mid-tower",label:"ATX MID TOWER",formFactors:["ITX","MATX","ATX"]},
-{id:"atx-full-tower",label:"ATX FULL TOWER",formFactors:["ITX","MATX","ATX"]},
+{id:"atx-full-tower",label:"ATX FULL TOWER",formFactors:["ITX","MATX","ATX","EATX"]},
 {id:"eatx-super-tower",label:"E-ATX / SUPER TOWER",formFactors:["ITX","MATX","ATX","EATX"]},
 {id:"htpc-desktop",label:"HTPC / DESKTOP",formFactors:["ITX"]},
-{id:"open-bench",label:"OPEN BENCH / TEST FRAME",formFactors:["ITX","MATX","ATX","EATX"]}
+{id:"open-bench",label:"OPEN BENCH / TEST FRAME",formFactors:["ITX","MATX","ATX","EATX"],unverifiedPhysical:true}
 ];
 
 const PN_GENERIC_COOLERS = [

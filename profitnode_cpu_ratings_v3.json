@@ -1,0 +1,2169 @@
+{
+  "version": "PN_CPU_V3_2026",
+  "auditDate": "2026-09-12",
+  "formula": {
+    "gaming": "100*(ThreadMark/5086)^0.90; X3D=max(base,100*(GamingScore/15385)^0.18)",
+    "productivity": "100*(CPUMark/71987)^0.45",
+    "overall": "round(0.65*gaming+0.35*productivity)",
+    "caps": [
+      "CPU Mark < 2500 => max 29",
+      "CPU Mark < 4000 and Thread Mark < 1500 => max 29"
+    ]
+  },
+  "ratings": {
+    "Ryzen 3 1200": [
+      39,
+      42,
+      33,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 3 PRO 1200": [
+      39,
+      42,
+      33,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 3 1300X": [
+      42,
+      46,
+      35,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 3 PRO 1300": [
+      43,
+      47,
+      36,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 1400": [
+      40,
+      41,
+      37,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 1500X": [
+      43,
+      45,
+      39,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 PRO 1500": [
+      43,
+      46,
+      39,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 1600": [
+      45,
+      44,
+      45,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 PRO 1600": [
+      42,
+      41,
+      43,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 1600X": [
+      47,
+      47,
+      46,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 1700": [
+      45,
+      43,
+      49,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 PRO 1700": [
+      46,
+      44,
+      49,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 1700X": [
+      47,
+      45,
+      50,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 PRO 1700X": [
+      47,
+      46,
+      50,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 1800X": [
+      49,
+      47,
+      51,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 3 1200 AF": [
+      39,
+      42,
+      33,
+      "MEDIUM"
+    ],
+    "Ryzen 5 1600 AF": [
+      45,
+      45,
+      45,
+      "MEDIUM"
+    ],
+    "Ryzen 3 2200G": [
+      41,
+      44,
+      34,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 3 2200GE": [
+      39,
+      42,
+      33,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 3 PRO 2200G": [
+      41,
+      44,
+      34,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 3 PRO 2200GE": [
+      41,
+      44,
+      34,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 3 2300X": [
+      45,
+      50,
+      36,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 2400G": [
+      43,
+      46,
+      39,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 2400GE": [
+      42,
+      45,
+      36,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 PRO 2400G": [
+      43,
+      46,
+      38,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 PRO 2400GE": [
+      42,
+      45,
+      36,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 2500X": [
+      46,
+      49,
+      40,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 2600": [
+      47,
+      48,
+      47,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 2600E": [
+      48,
+      49,
+      45,
+      "HIGH"
+    ],
+    "Ryzen 5 2600X": [
+      50,
+      50,
+      48,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 PRO 2600": [
+      48,
+      48,
+      47,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 2700": [
+      48,
+      47,
+      50,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 2700E": [
+      50,
+      51,
+      49,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 2700X": [
+      52,
+      51,
+      53,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 PRO 2700": [
+      48,
+      47,
+      50,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 PRO 2700X": [
+      50,
+      48,
+      52,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 3 3100": [
+      49,
+      51,
+      44,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 3 3200G": [
+      43,
+      47,
+      35,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 3 3200GE": [
+      43,
+      47,
+      36,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 3 PRO 3200G": [
+      43,
+      47,
+      35,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 3 PRO 3200GE": [
+      42,
+      46,
+      34,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 3 3300X": [
+      52,
+      56,
+      46,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 PRO 3350G": [
+      46,
+      49,
+      40,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 PRO 3350GE": [
+      46,
+      50,
+      40,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 3400G": [
+      46,
+      50,
+      40,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 3400GE": [
+      45,
+      49,
+      39,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 PRO 3400G": [
+      46,
+      49,
+      39,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 PRO 3400GE": [
+      44,
+      48,
+      38,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 3500": [
+      50,
+      53,
+      46,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 3500X": [
+      51,
+      53,
+      47,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 3600": [
+      54,
+      54,
+      53,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 PRO 3600": [
+      53,
+      53,
+      53,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 3600X": [
+      55,
+      56,
+      54,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 3600XT": [
+      57,
+      58,
+      54,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 3700X": [
+      57,
+      56,
+      59,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 PRO 3700": [
+      57,
+      56,
+      60,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 3800X": [
+      58,
+      57,
+      60,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 3800XT": [
+      59,
+      58,
+      61,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 9 3900": [
+      60,
+      55,
+      68,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 9 PRO 3900": [
+      61,
+      56,
+      69,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 9 3900X": [
+      61,
+      57,
+      70,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 9 3900XT": [
+      62,
+      57,
+      70,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 9 3950X": [
+      63,
+      57,
+      76,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 3 4100": [
+      50,
+      53,
+      43,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 3 4300G": [
+      50,
+      53,
+      43,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 3 4300GE": [
+      50,
+      54,
+      43,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 3 PRO 4350G": [
+      50,
+      54,
+      43,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 3 PRO 4350GE": [
+      50,
+      53,
+      43,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 4500": [
+      53,
+      55,
+      51,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 4600G": [
+      54,
+      56,
+      51,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 4600GE": [
+      54,
+      55,
+      51,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 PRO 4650G": [
+      54,
+      56,
+      51,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 PRO 4650GE": [
+      53,
+      55,
+      50,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 4700G": [
+      57,
+      57,
+      56,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 4700GE": [
+      56,
+      56,
+      56,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 PRO 4750G": [
+      57,
+      57,
+      57,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 PRO 4750GE": [
+      56,
+      56,
+      54,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 3 5100": [
+      57,
+      63,
+      46,
+      "LOW"
+    ],
+    "Ryzen 3 5300G": [
+      57,
+      63,
+      46,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 3 5300GE": [
+      58,
+      64,
+      46,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 3 PRO 5350G": [
+      58,
+      64,
+      48,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 3 PRO 5350GE": [
+      57,
+      64,
+      46,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 5500": [
+      61,
+      63,
+      55,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 5500GT": [
+      63,
+      66,
+      56,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 5500X3D": [
+      78,
+      89,
+      57,
+      "HIGH"
+    ],
+    "Ryzen 5 5600": [
+      64,
+      67,
+      58,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 5600F": [
+      58,
+      60,
+      55,
+      "HIGH"
+    ],
+    "Ryzen 5 5600G": [
+      62,
+      66,
+      56,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 5600GE": [
+      62,
+      66,
+      54,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 5600GT": [
+      64,
+      69,
+      57,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 5600T": [
+      65,
+      69,
+      58,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 5600X": [
+      65,
+      69,
+      58,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 5600X3D": [
+      79,
+      90,
+      59,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 5600XT": [
+      68,
+      72,
+      60,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 PRO 5650G": [
+      63,
+      67,
+      57,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 PRO 5650GE": [
+      62,
+      66,
+      54,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 5700": [
+      65,
+      67,
+      61,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 5700G": [
+      65,
+      68,
+      62,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 5700GE": [
+      65,
+      69,
+      59,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 5700X": [
+      67,
+      69,
+      64,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 5700X3D": [
+      80,
+      88,
+      64,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 5800": [
+      67,
+      69,
+      63,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 5800X": [
+      69,
+      70,
+      65,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 5800X3D": [
+      81,
+      89,
+      66,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 5800XT": [
+      71,
+      73,
+      66,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 PRO 5750G": [
+      66,
+      68,
+      62,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 PRO 5750GE": [
+      65,
+      68,
+      58,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 9 5900": [
+      71,
+      70,
+      72,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 9 5900X": [
+      73,
+      71,
+      76,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 9 5900XT": [
+      73,
+      69,
+      80,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 9 5950X": [
+      75,
+      71,
+      81,
+      "HIGH (legacy stable)"
+    ],
+    "Celeron G3900": [
+      29,
+      37,
+      21,
+      "HIGH (legacy stable)"
+    ],
+    "Celeron G3900T": [
+      29,
+      34,
+      20,
+      "HIGH (legacy stable)"
+    ],
+    "Celeron G3920": [
+      29,
+      39,
+      22,
+      "HIGH (legacy stable)"
+    ],
+    "Pentium G4400": [
+      36,
+      43,
+      22,
+      "HIGH (legacy stable)"
+    ],
+    "Pentium G4400T": [
+      29,
+      38,
+      21,
+      "HIGH (legacy stable)"
+    ],
+    "Pentium G4500": [
+      38,
+      46,
+      23,
+      "HIGH (legacy stable)"
+    ],
+    "Pentium G4500T": [
+      29,
+      40,
+      22,
+      "HIGH (legacy stable)"
+    ],
+    "Pentium G4520": [
+      36,
+      43,
+      23,
+      "HIGH (legacy stable)"
+    ],
+    "Core i3-6098P": [
+      39,
+      45,
+      27,
+      "HIGH (legacy stable)"
+    ],
+    "Core i3-6100": [
+      40,
+      47,
+      28,
+      "HIGH (legacy stable)"
+    ],
+    "Core i3-6100T": [
+      36,
+      41,
+      26,
+      "HIGH (legacy stable)"
+    ],
+    "Core i3-6300": [
+      41,
+      48,
+      28,
+      "HIGH (legacy stable)"
+    ],
+    "Core i3-6300T": [
+      38,
+      44,
+      27,
+      "HIGH (legacy stable)"
+    ],
+    "Core i3-6320": [
+      42,
+      49,
+      29,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-6400": [
+      38,
+      42,
+      31,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-6400T": [
+      33,
+      36,
+      28,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-6402P": [
+      39,
+      43,
+      31,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-6500": [
+      41,
+      45,
+      32,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-6500T": [
+      36,
+      39,
+      30,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-6600": [
+      43,
+      48,
+      33,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-6600T": [
+      40,
+      44,
+      32,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-6600K": [
+      44,
+      49,
+      34,
+      "HIGH (legacy stable)"
+    ],
+    "Core i7-6700": [
+      45,
+      49,
+      37,
+      "HIGH (legacy stable)"
+    ],
+    "Core i7-6700T": [
+      41,
+      44,
+      36,
+      "HIGH (legacy stable)"
+    ],
+    "Core i7-6700K": [
+      48,
+      53,
+      39,
+      "HIGH (legacy stable)"
+    ],
+    "Celeron G3930": [
+      29,
+      39,
+      21,
+      "HIGH (legacy stable)"
+    ],
+    "Celeron G3930T": [
+      29,
+      36,
+      20,
+      "HIGH (legacy stable)"
+    ],
+    "Celeron G3950": [
+      29,
+      40,
+      21,
+      "HIGH (legacy stable)"
+    ],
+    "Pentium G4560": [
+      38,
+      45,
+      26,
+      "HIGH (legacy stable)"
+    ],
+    "Pentium G4560T": [
+      33,
+      38,
+      24,
+      "HIGH (legacy stable)"
+    ],
+    "Pentium G4600": [
+      39,
+      46,
+      26,
+      "HIGH (legacy stable)"
+    ],
+    "Pentium G4600T": [
+      34,
+      39,
+      24,
+      "HIGH (legacy stable)"
+    ],
+    "Pentium G4620": [
+      40,
+      48,
+      26,
+      "HIGH (legacy stable)"
+    ],
+    "Core i3-7100": [
+      42,
+      49,
+      28,
+      "HIGH (legacy stable)"
+    ],
+    "Core i3-7100T": [
+      37,
+      42,
+      26,
+      "HIGH (legacy stable)"
+    ],
+    "Core i3-7300": [
+      43,
+      51,
+      29,
+      "HIGH (legacy stable)"
+    ],
+    "Core i3-7300T": [
+      40,
+      46,
+      28,
+      "HIGH (legacy stable)"
+    ],
+    "Core i3-7320": [
+      45,
+      53,
+      30,
+      "HIGH (legacy stable)"
+    ],
+    "Core i3-7350K": [
+      46,
+      54,
+      30,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-7400": [
+      40,
+      45,
+      31,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-7400T": [
+      35,
+      38,
+      29,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-7500": [
+      43,
+      48,
+      33,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-7500T": [
+      38,
+      42,
+      31,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-7600": [
+      46,
+      52,
+      34,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-7600T": [
+      41,
+      46,
+      32,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-7600K": [
+      47,
+      54,
+      35,
+      "HIGH (legacy stable)"
+    ],
+    "Core i7-7700": [
+      47,
+      52,
+      38,
+      "HIGH (legacy stable)"
+    ],
+    "Core i7-7700T": [
+      43,
+      46,
+      36,
+      "HIGH (legacy stable)"
+    ],
+    "Core i7-7700K": [
+      51,
+      57,
+      40,
+      "HIGH (legacy stable)"
+    ],
+    "Celeron G4900": [
+      29,
+      40,
+      22,
+      "HIGH (legacy stable)"
+    ],
+    "Celeron G4900T": [
+      29,
+      38,
+      21,
+      "HIGH (legacy stable)"
+    ],
+    "Celeron G4920": [
+      35,
+      42,
+      22,
+      "HIGH (legacy stable)"
+    ],
+    "Pentium Gold G5400": [
+      40,
+      47,
+      26,
+      "HIGH (legacy stable)"
+    ],
+    "Pentium Gold G5400T": [
+      34,
+      40,
+      24,
+      "HIGH (legacy stable)"
+    ],
+    "Pentium Gold G5500": [
+      41,
+      48,
+      27,
+      "HIGH (legacy stable)"
+    ],
+    "Pentium Gold G5500T": [
+      36,
+      42,
+      25,
+      "HIGH (legacy stable)"
+    ],
+    "Pentium Gold G5600": [
+      41,
+      49,
+      27,
+      "HIGH (legacy stable)"
+    ],
+    "Core i3-8100": [
+      42,
+      47,
+      33,
+      "HIGH (legacy stable)"
+    ],
+    "Core i3-8100F": [
+      42,
+      47,
+      33,
+      "LOW"
+    ],
+    "Core i3-8100T": [
+      37,
+      41,
+      31,
+      "HIGH (legacy stable)"
+    ],
+    "Core i3-8300": [
+      43,
+      48,
+      34,
+      "HIGH (legacy stable)"
+    ],
+    "Core i3-8300T": [
+      39,
+      43,
+      32,
+      "HIGH (legacy stable)"
+    ],
+    "Core i3-8350K": [
+      46,
+      52,
+      35,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-8400": [
+      47,
+      50,
+      40,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-8400T": [
+      40,
+      42,
+      36,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-8500": [
+      48,
+      52,
+      40,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-8500T": [
+      41,
+      44,
+      37,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-8600": [
+      50,
+      54,
+      41,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-8600T": [
+      46,
+      49,
+      40,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-8600K": [
+      50,
+      54,
+      42,
+      "HIGH (legacy stable)"
+    ],
+    "Core i7-8086K": [
+      55,
+      59,
+      48,
+      "HIGH (legacy stable)"
+    ],
+    "Core i7-8700": [
+      52,
+      55,
+      46,
+      "HIGH (legacy stable)"
+    ],
+    "Core i7-8700T": [
+      46,
+      49,
+      42,
+      "HIGH (legacy stable)"
+    ],
+    "Core i7-8700K": [
+      54,
+      57,
+      47,
+      "HIGH (legacy stable)"
+    ],
+    "Celeron G4930": [
+      36,
+      43,
+      22,
+      "HIGH (legacy stable)"
+    ],
+    "Celeron G4930T": [
+      29,
+      39,
+      21,
+      "HIGH (legacy stable)"
+    ],
+    "Celeron G4950": [
+      37,
+      44,
+      23,
+      "HIGH (legacy stable)"
+    ],
+    "Pentium Gold G5420": [
+      41,
+      48,
+      26,
+      "HIGH (legacy stable)"
+    ],
+    "Pentium Gold G5420T": [
+      36,
+      42,
+      25,
+      "HIGH (legacy stable)"
+    ],
+    "Pentium Gold G5600F": [
+      41,
+      48,
+      28,
+      "HIGH (legacy stable)"
+    ],
+    "Pentium Gold G5600T": [
+      37,
+      44,
+      26,
+      "HIGH (legacy stable)"
+    ],
+    "Pentium Gold G5620": [
+      44,
+      52,
+      28,
+      "HIGH (legacy stable)"
+    ],
+    "Core i3-9100": [
+      46,
+      52,
+      34,
+      "HIGH (legacy stable)"
+    ],
+    "Core i3-9100F": [
+      46,
+      53,
+      34,
+      "HIGH (legacy stable)"
+    ],
+    "Core i3-9100T": [
+      40,
+      45,
+      31,
+      "HIGH (legacy stable)"
+    ],
+    "Core i3-9300": [
+      47,
+      53,
+      35,
+      "HIGH (legacy stable)"
+    ],
+    "Core i3-9300T": [
+      44,
+      49,
+      34,
+      "HIGH (legacy stable)"
+    ],
+    "Core i3-9320": [
+      49,
+      57,
+      36,
+      "HIGH (legacy stable)"
+    ],
+    "Core i3-9350K": [
+      50,
+      57,
+      36,
+      "HIGH (legacy stable)"
+    ],
+    "Core i3-9350KF": [
+      49,
+      56,
+      36,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-9400": [
+      47,
+      52,
+      40,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-9400F": [
+      48,
+      52,
+      40,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-9400T": [
+      43,
+      45,
+      38,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-9500": [
+      50,
+      54,
+      41,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-9500F": [
+      50,
+      54,
+      41,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-9500T": [
+      43,
+      46,
+      38,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-9600": [
+      52,
+      57,
+      42,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-9600T": [
+      48,
+      51,
+      40,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-9600K": [
+      52,
+      57,
+      42,
+      "HIGH (legacy stable)"
+    ],
+    "Core i5-9600KF": [
+      52,
+      57,
+      42,
+      "HIGH (legacy stable)"
+    ],
+    "Core i7-9700": [
+      54,
+      58,
+      47,
+      "HIGH (legacy stable)"
+    ],
+    "Core i7-9700F": [
+      54,
+      58,
+      47,
+      "HIGH (legacy stable)"
+    ],
+    "Core i7-9700T": [
+      48,
+      52,
+      42,
+      "HIGH (legacy stable)"
+    ],
+    "Core i7-9700K": [
+      56,
+      60,
+      49,
+      "HIGH (legacy stable)"
+    ],
+    "Core i7-9700KF": [
+      56,
+      60,
+      48,
+      "HIGH (legacy stable)"
+    ],
+    "Core i9-9900": [
+      56,
+      59,
+      52,
+      "HIGH (legacy stable)"
+    ],
+    "Core i9-9900T": [
+      50,
+      52,
+      46,
+      "HIGH (legacy stable)"
+    ],
+    "Core i9-9900K": [
+      58,
+      60,
+      54,
+      "HIGH (legacy stable)"
+    ],
+    "Core i9-9900KF": [
+      58,
+      61,
+      54,
+      "HIGH (legacy stable)"
+    ],
+    "Core i9-9900KS": [
+      60,
+      63,
+      56,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 7400": [
+      64,
+      67,
+      58,
+      "HIGH"
+    ],
+    "Ryzen 5 7400F": [
+      71,
+      75,
+      63,
+      "HIGH"
+    ],
+    "Ryzen 5 7500F": [
+      73,
+      78,
+      64,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 7500X3D": [
+      82,
+      93,
+      62,
+      "HIGH"
+    ],
+    "Ryzen 5 7600": [
+      74,
+      79,
+      64,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 7600X": [
+      77,
+      83,
+      66,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 7600X3D": [
+      83,
+      93,
+      63,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 7700": [
+      78,
+      82,
+      72,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 7700X": [
+      80,
+      84,
+      73,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 7700X3D": [
+      82,
+      89,
+      70,
+      "MEDIUM"
+    ],
+    "Ryzen 7 7800X3D": [
+      85,
+      92,
+      72,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 9 7900": [
+      83,
+      83,
+      84,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 9 7900X": [
+      85,
+      85,
+      86,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 9 7900X3D": [
+      90,
+      93,
+      85,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 9 7950X": [
+      88,
+      86,
+      94,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 9 7950X3D": [
+      92,
+      92,
+      94,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 3 8300G": [
+      68,
+      78,
+      48,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 8400F": [
+      70,
+      74,
+      61,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 8500G": [
+      72,
+      79,
+      58,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 8600G": [
+      73,
+      79,
+      62,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 8700F": [
+      75,
+      78,
+      68,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 8700G": [
+      76,
+      80,
+      69,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 9500F": [
+      78,
+      85,
+      66,
+      "HIGH"
+    ],
+    "Ryzen 5 9600": [
+      80,
+      87,
+      67,
+      "HIGH"
+    ],
+    "Ryzen 5 9600X": [
+      83,
+      91,
+      68,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 9700F": [
+      86,
+      93,
+      74,
+      "HIGH"
+    ],
+    "Ryzen 7 9700X": [
+      86,
+      92,
+      74,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 9800X3D": [
+      89,
+      96,
+      77,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 9850X3D": [
+      90,
+      96,
+      78,
+      "HIGH"
+    ],
+    "Ryzen 9 9900X": [
+      91,
+      93,
+      88,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 9 9900X3D": [
+      94,
+      96,
+      89,
+      "HIGH"
+    ],
+    "Ryzen 9 9950X": [
+      95,
+      94,
+      96,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 9 9950X3D": [
+      96,
+      94,
+      99,
+      "HIGH"
+    ],
+    "Ryzen 9 9950X3D2 Dual Edition": [
+      100,
+      100,
+      100,
+      "HIGH"
+    ],
+    "Ryzen 5 PRO 7645": [
+      74,
+      79,
+      64,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 PRO 7745": [
+      79,
+      82,
+      72,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 9 PRO 7945": [
+      84,
+      84,
+      83,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 3 PRO 8300G": [
+      68,
+      78,
+      49,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 3 PRO 8300GE": [
+      68,
+      79,
+      49,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 PRO 8500G": [
+      73,
+      80,
+      59,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 PRO 8500GE": [
+      73,
+      80,
+      59,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 PRO 8600G": [
+      73,
+      78,
+      62,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 5 PRO 8600GE": [
+      72,
+      78,
+      61,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 PRO 8700G": [
+      76,
+      80,
+      69,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 7 PRO 8700GE": [
+      72,
+      75,
+      65,
+      "HIGH (legacy stable)"
+    ],
+    "Ryzen 3 PRO 8305G": [
+      68,
+      78,
+      49,
+      "LOW"
+    ],
+    "Ryzen 3 PRO 8305GE": [
+      68,
+      79,
+      49,
+      "LOW"
+    ],
+    "Ryzen 5 PRO 8505G": [
+      73,
+      80,
+      59,
+      "LOW"
+    ],
+    "Ryzen 5 PRO 8505GE": [
+      73,
+      80,
+      59,
+      "LOW"
+    ],
+    "Ryzen 5 PRO 8605G": [
+      73,
+      78,
+      62,
+      "LOW"
+    ],
+    "Ryzen 5 PRO 8605GE": [
+      72,
+      78,
+      61,
+      "LOW"
+    ],
+    "Ryzen 7 PRO 8705G": [
+      76,
+      80,
+      69,
+      "LOW"
+    ],
+    "Ryzen 7 PRO 8705GE": [
+      72,
+      75,
+      65,
+      "LOW"
+    ],
+    "Ryzen 5 PRO 9645": [
+      84,
+      92,
+      69,
+      "HIGH"
+    ],
+    "Ryzen 7 PRO 9745": [
+      86,
+      92,
+      75,
+      "HIGH"
+    ],
+    "Ryzen 9 PRO 9945": [
+      89,
+      92,
+      84,
+      "HIGH"
+    ],
+    "Phenom II X2 545": [
+      23,
+      27,
+      16,
+      "HIGH"
+    ],
+    "Phenom II X2 550": [
+      24,
+      28,
+      16,
+      "HIGH"
+    ],
+    "Phenom II X2 555": [
+      25,
+      29,
+      16,
+      "HIGH"
+    ],
+    "Phenom II X2 560": [
+      26,
+      31,
+      17,
+      "HIGH"
+    ],
+    "Phenom II X2 565": [
+      26,
+      31,
+      17,
+      "HIGH"
+    ],
+    "Phenom II X3 705e": [
+      20,
+      22,
+      16,
+      "HIGH"
+    ],
+    "Phenom II X3 710": [
+      22,
+      25,
+      18,
+      "HIGH"
+    ],
+    "Phenom II X3 720": [
+      23,
+      25,
+      18,
+      "HIGH"
+    ],
+    "Phenom II X4 805": [
+      22,
+      24,
+      20,
+      "HIGH"
+    ],
+    "Phenom II X4 810": [
+      23,
+      24,
+      20,
+      "HIGH"
+    ],
+    "Phenom II X4 820": [
+      24,
+      26,
+      20,
+      "HIGH"
+    ],
+    "Phenom II X4 830": [
+      23,
+      25,
+      20,
+      "HIGH"
+    ],
+    "Phenom II X4 840": [
+      27,
+      29,
+      22,
+      "HIGH"
+    ],
+    "Phenom II X4 910": [
+      21,
+      23,
+      19,
+      "HIGH"
+    ],
+    "Phenom II X4 920": [
+      24,
+      26,
+      21,
+      "HIGH"
+    ],
+    "Phenom II X4 925": [
+      24,
+      26,
+      21,
+      "HIGH"
+    ],
+    "Phenom II X4 940": [
+      25,
+      28,
+      22,
+      "HIGH"
+    ],
+    "Phenom II X4 945": [
+      26,
+      28,
+      22,
+      "HIGH"
+    ],
+    "Phenom II X4 955": [
+      27,
+      29,
+      22,
+      "HIGH"
+    ],
+    "Phenom II X4 960T": [
+      27,
+      29,
+      22,
+      "HIGH"
+    ],
+    "Phenom II X4 965": [
+      28,
+      31,
+      23,
+      "HIGH"
+    ],
+    "Phenom II X4 970": [
+      29,
+      32,
+      23,
+      "HIGH"
+    ],
+    "Phenom II X4 975": [
+      27,
+      30,
+      22,
+      "HIGH"
+    ],
+    "Phenom II X4 980": [
+      30,
+      34,
+      23,
+      "HIGH"
+    ],
+    "Phenom II X6 1035T": [
+      26,
+      28,
+      24,
+      "HIGH"
+    ],
+    "Phenom II X6 1045T": [
+      27,
+      29,
+      25,
+      "HIGH"
+    ],
+    "Phenom II X6 1055T": [
+      28,
+      30,
+      25,
+      "HIGH"
+    ],
+    "Phenom II X6 1065T": [
+      29,
+      31,
+      25,
+      "HIGH"
+    ],
+    "Phenom II X6 1075T": [
+      29,
+      31,
+      25,
+      "HIGH"
+    ],
+    "Phenom II X6 1090T": [
+      29,
+      32,
+      26,
+      "HIGH"
+    ],
+    "Phenom II X6 1100T": [
+      29,
+      33,
+      27,
+      "HIGH"
+    ],
+    "Athlon II X2 215": [
+      20,
+      24,
+      14,
+      "HIGH"
+    ],
+    "Athlon II X2 220": [
+      21,
+      25,
+      15,
+      "HIGH"
+    ],
+    "Athlon II X2 240": [
+      21,
+      25,
+      15,
+      "HIGH"
+    ],
+    "Athlon II X2 245": [
+      22,
+      26,
+      15,
+      "HIGH"
+    ],
+    "Athlon II X2 250": [
+      23,
+      27,
+      16,
+      "HIGH"
+    ],
+    "Athlon II X2 255": [
+      24,
+      28,
+      16,
+      "HIGH"
+    ],
+    "Athlon II X2 260": [
+      24,
+      28,
+      16,
+      "HIGH"
+    ],
+    "Athlon II X2 265": [
+      25,
+      30,
+      16,
+      "HIGH"
+    ],
+    "Athlon II X2 270": [
+      26,
+      30,
+      16,
+      "HIGH"
+    ],
+    "Athlon II X3 425": [
+      22,
+      25,
+      18,
+      "HIGH"
+    ],
+    "Athlon II X3 435": [
+      24,
+      26,
+      18,
+      "HIGH"
+    ],
+    "Athlon II X3 440": [
+      24,
+      27,
+      19,
+      "HIGH"
+    ],
+    "Athlon II X3 445": [
+      25,
+      29,
+      19,
+      "HIGH"
+    ],
+    "Athlon II X3 450": [
+      26,
+      29,
+      19,
+      "HIGH"
+    ],
+    "Athlon II X3 455": [
+      26,
+      30,
+      19,
+      "HIGH"
+    ],
+    "Athlon II X3 460": [
+      27,
+      31,
+      20,
+      "HIGH"
+    ],
+    "Athlon II X4 620": [
+      23,
+      24,
+      20,
+      "HIGH"
+    ],
+    "Athlon II X4 630": [
+      24,
+      26,
+      21,
+      "HIGH"
+    ],
+    "Athlon II X4 635": [
+      25,
+      27,
+      21,
+      "HIGH"
+    ],
+    "Athlon II X4 640": [
+      25,
+      28,
+      21,
+      "HIGH"
+    ],
+    "Athlon II X4 645": [
+      26,
+      28,
+      21,
+      "HIGH"
+    ],
+    "Athlon II X4 650": [
+      27,
+      30,
+      22,
+      "HIGH"
+    ],
+    "Athlon II X4 651": [
+      27,
+      29,
+      22,
+      "HIGH"
+    ],
+    "FX-4100": [
+      27,
+      29,
+      22,
+      "HIGH"
+    ],
+    "FX-4130": [
+      28,
+      30,
+      23,
+      "HIGH"
+    ],
+    "FX-4170": [
+      29,
+      33,
+      24,
+      "HIGH"
+    ],
+    "FX-4300": [
+      29,
+      33,
+      24,
+      "HIGH"
+    ],
+    "FX-4320": [
+      31,
+      35,
+      24,
+      "HIGH"
+    ],
+    "FX-4350": [
+      32,
+      36,
+      25,
+      "HIGH"
+    ],
+    "FX-6100": [
+      28,
+      30,
+      26,
+      "HIGH"
+    ],
+    "FX-6120": [
+      29,
+      32,
+      27,
+      "HIGH"
+    ],
+    "FX-6130": [
+      30,
+      31,
+      28,
+      "HIGH"
+    ],
+    "FX-6200": [
+      30,
+      31,
+      28,
+      "HIGH"
+    ],
+    "FX-6300": [
+      31,
+      33,
+      28,
+      "HIGH"
+    ],
+    "FX-6350": [
+      33,
+      35,
+      29,
+      "HIGH"
+    ],
+    "FX-8100": [
+      27,
+      26,
+      27,
+      "HIGH"
+    ],
+    "FX-8120": [
+      30,
+      30,
+      29,
+      "HIGH"
+    ],
+    "FX-8150": [
+      32,
+      32,
+      31,
+      "HIGH"
+    ],
+    "FX-8300": [
+      32,
+      33,
+      31,
+      "HIGH"
+    ],
+    "FX-8310": [
+      31,
+      31,
+      30,
+      "HIGH"
+    ],
+    "FX-8320": [
+      32,
+      33,
+      31,
+      "HIGH"
+    ],
+    "FX-8320E": [
+      31,
+      32,
+      30,
+      "HIGH"
+    ],
+    "FX-8350": [
+      34,
+      35,
+      33,
+      "HIGH"
+    ],
+    "FX-8370": [
+      35,
+      36,
+      33,
+      "HIGH"
+    ],
+    "FX-8370E": [
+      32,
+      33,
+      31,
+      "HIGH"
+    ],
+    "FX-9370": [
+      36,
+      37,
+      33,
+      "HIGH"
+    ],
+    "FX-9590": [
+      38,
+      40,
+      35,
+      "HIGH"
+    ]
+  },
+  "unrated": {
+    "Ryzen 5 9600X3D": [
+      "HOLD / UNRATED",
+      "KEEP HOLD",
+      "Do not score until commercially released and benchmarked."
+    ],
+    "Ryzen 5 PRO 9400": [
+      "HOLD / UNRATED",
+      "KEEP HOLD",
+      "Do not score until commercially released and benchmarked."
+    ],
+    "Phenom II X4 900": [
+      "VERIFY",
+      "VERIFY / RENAME OR REMOVE",
+      "Likely confusion with Phenom II X4 900e; do not assign score until SKU is verified."
+    ]
+  },
+  "aliases": {
+    "FX-4000 FX-4100": "FX-4100"
+  },
+  "moveFromGpu": [
+    "AM3",
+    "AM3+"
+  ]
+}
