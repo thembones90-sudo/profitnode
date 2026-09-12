@@ -1,5 +1,7 @@
 "use strict";
 const PB_CATALOG_SLOTS=["CPU","GPU","MOBO","RAM","STORAGE"];
+const PB_QUALITY_TIERS=["POOR","COMMON","UNCOMMON","RARE","EPIC","LEGENDARY"];
+function pbCaseSizeById(id){return PB_CASE_SIZES.find(c=>c.id===id)||null}
 const PBUI={slotKey:null,slot:null,catalogHits:[],extraDraft:null,notice:null};
 function pbProject(){return state.pbId?Store.get("projects",state.pbId):null}
 function pbSetNotice(tone,text){PBUI.notice={tone:tone,text:text}}
@@ -20,20 +22,68 @@ function pbAvailableVaultItems(project,category){
   return Store.all("inventory").filter(i=>i.category===category&&(!i.assignedProjectId||i.assignedProjectId===project.id)&&"SOLD"!==i.status)
     .slice().sort((a,b)=>(a.manufacturer+a.model).localeCompare(b.manufacturer+b.model))
 }
+function pbComponentQuality(slot,slotKey,resolved){
+  const r=resolved||null,label=String(r&&r.label||slot&&slot.label||"").trim();
+  let sourceTier=r&&r.pn&&r.pn.tier?String(r.pn.tier).toUpperCase():"",source=sourceTier?"HARDWARE CATALOG":"";
+  if(!sourceTier&&label&&!(r&&r.missing)&&typeof pnPartNameTier==="function"){
+    const item=r&&r.item?r.item:{category:RIG_SLOT_CATEGORY[slotKey]||"OTHER",manufacturer:"",model:label};
+    const visual=pnPartNameTier(item);
+    sourceTier=visual&&visual.key?String(visual.key).toUpperCase():"";
+    source=visual&&visual.source==="catalog"?"PARTS VAULT CATALOG":"PARTS VAULT QUALITY";
+  }
+  const key="ARTIFACT"===sourceTier?"LEGENDARY":PB_QUALITY_TIERS.includes(sourceTier)?sourceTier:"UNRATED";
+  return{key:key,sourceTier:sourceTier||"UNRATED",source:source||"NO CANONICAL RATING",className:pnTierClass(key)};
+}
+function pbQualityChipHtml(quality){
+  return'<span class="pn-pb-quality '+quality.className+'" data-pb-quality-badge="'+quality.key+'" data-pb-quality-source-tier="'+quality.sourceTier+'" title="PROFITNODE quality: '+quality.key+' · '+escAttr(quality.source)+'">'+quality.key+"</span>";
+}
+function pbExtraQuality(extra){
+  const item=extra&&extra.inventoryItemId?Store.get("inventory",extra.inventoryItemId):null;
+  if(!item)return pbComponentQuality(null,null,null);
+  const slotKey="MOTHERBOARD"===item.category?"MOBO":"COOLING"===item.category?"COOLER":item.category;
+  return pbComponentQuality({kind:"INVENTORY",inventoryItemId:item.id},slotKey,rigSlotResolved({kind:"INVENTORY",inventoryItemId:item.id},extra.currency||item.currency,slotKey));
+}
 function pbSlotCardHtml(project,slotKey,locked){
   const slot=project.slots&&project.slots[slotKey]||null,cat=RIG_SLOT_CATEGORY[slotKey],label=RIG_SLOT_LABELS[slotKey]
   const acc=CATEGORY_META[cat]?' style="--pb-acc:'+CATEGORY_META[cat][0]+'"':""
   if(!slot)return'<div class="pn-pb-slot is-empty"'+acc+'><div class="pn-pb-slot-head"><span class="pn-cat-label '+categoryColorClass(cat)+'">'+label+'</span></div><div class="pn-pb-slot-model">EMPTY SLOT</div>'+(locked?"":'<button type="button" class="btn btn-sm" style="margin-top:auto" data-pb-edit-slot="'+slotKey+'">+ ADD '+label.toUpperCase()+'</button>')+"</div>"
+  const isGenericCase=slotKey==="CASE"&&slot.genericCaseSizeId
   const r=rigSlotResolved(slot,project.currency,slotKey)
-  const tierChip=r&&r.pn&&r.pn.tier?'<span class="chip pn-tier-chip '+pnTierClass(r.pn.tierIndex)+'">'+r.pn.tier+"</span>":""
-  const ownTag="INVENTORY"===slot.kind?(r&&r.status?'<span class="chip '+(INVENTORY_STATUS_META[r.status]||{chip:"chip-muted"}).chip+'">'+STATUS_LABEL(r.status)+"</span>":""):'<span class="chip chip-blue-outline">PLANNED — NOT YET OWNED</span>'
+  const quality=isGenericCase?{key:"UNRATED",sourceTier:"UNRATED",source:"GENERIC CASE SIZE",className:pnTierClass("UNRATED")}:pbComponentQuality(slot,slotKey,r)
+  const tierChip=pbQualityChipHtml(quality)
+  const ownTag=isGenericCase?'<span class="chip chip-blue-outline">PLANNED — MODEL NOT SELECTED</span>':("INVENTORY"===slot.kind?(r&&r.status?'<span class="chip '+(INVENTORY_STATUS_META[r.status]||{chip:"chip-muted"}).chip+'">'+STATUS_LABEL(r.status)+"</span>":""):'<span class="chip chip-blue-outline">PLANNED — NOT YET OWNED</span>')
   const vaultLink="INVENTORY"===slot.kind&&slot.inventoryItemId?'<button type="button" class="pn-pb-vault-link" data-open-entity="inventory" data-id="'+escAttr(slot.inventoryItemId)+'" title="Open in Parts Vault">VAULT ↗</button>':""
   const cost=r?money(r.cost,project.currency):""
-  return'<div class="pn-pb-slot"'+acc+' data-pb-slot="'+slotKey+'"><div class="pn-pb-slot-head"><span class="pn-cat-label '+categoryColorClass(cat)+'">'+label+"</span>"+vaultLink+(locked?"":'<button type="button" class="btn btn-sm" style="margin-left:auto" data-pb-edit-slot="'+slotKey+'">'+("PLANNED"===slot.kind?"EDIT":"SWAP")+"</button>")+'</div><div class="pn-pb-slot-model">'+escHtml(r?r.label:"(unnamed part)")+'</div><div class="pn-pb-slot-foot">'+(cost?"<span>"+cost+"</span>":"")+tierChip+ownTag+"</div>"+(locked?"":'<button type="button" class="btn btn-sm btn-ghost" style="margin-top:6px" data-pb-remove-slot="'+slotKey+'">REMOVE</button>')+"</div>"
+  const modelLabel=isGenericCase?slot.label:(r?r.label:"(unnamed part)")
+  return'<div class="pn-pb-slot"'+acc+' data-pb-slot="'+slotKey+'" data-pb-quality="'+quality.key+'"><div class="pn-pb-slot-head"><span class="pn-cat-label '+categoryColorClass(cat)+'">'+label+"</span>"+vaultLink+(locked?"":'<button type="button" class="btn btn-sm" style="margin-left:auto" data-pb-edit-slot="'+slotKey+'">'+("PLANNED"===slot.kind?"EDIT":"SWAP")+"</button>")+'</div><div class="pn-pb-slot-model-line"><div class="pn-pb-slot-model pn-pb-quality-name '+quality.className+'">'+escHtml(modelLabel)+"</div>"+tierChip+'</div><div class="pn-pb-slot-foot">'+(cost?"<span>"+cost+"</span>":"")+ownTag+"</div>"+(locked?"":'<button type="button" class="btn btn-sm btn-ghost" style="margin-top:6px" data-pb-remove-slot="'+slotKey+'">REMOVE</button>')+"</div>"
 }
 function pbSlotEditorHtml(project){
   const k=PBUI.slotKey,d=PBUI.slot||{},cat=RIG_SLOT_CATEGORY[k],isCat=PB_CATALOG_SLOTS.includes(k)
   const vault=pbAvailableVaultItems(project,cat)
+  if(k==="CASE"){
+    const genMode="GENERIC"===d.mode
+    const modeOpts='<option value="GENERIC"'+(genMode?" selected":"")+">CHOOSE CASE SIZE</option><option value=\"VAULT\""+("VAULT"===d.mode?" selected":"")+">SELECT EXACT MODEL FROM VAULT</option><option value=\"EXACT\""+("EXACT"===d.mode?" selected":"")+">ENTER EXACT MODEL</option>"
+    let body=""
+    if(genMode){
+      const sizeId=d.caseSizeId||""
+      body='<label class="field" style="flex:1 1 100%"><span>CASE SIZE</span><select data-pb-field="caseSizeId">'+PB_CASE_SIZES.map(c=>'<option value="'+c.id+'"'+(sizeId===c.id?" selected":"")+">"+escHtml(c.label)+"</option>").join("")+"</select></label>"
+        +'<label class="field"><span>ESTIMATED COST ('+project.currency+')</span><input type="number" min="0" step="1" data-pb-field="cost" value="'+escAttr(d.cost||"")+'"></label>'
+        +'<label class="field" style="flex:1 1 100%"><span>NOTES</span><input type="text" data-pb-field="notes" value="'+escAttr(d.notes||"")+'"></label>'
+    }else if("VAULT"===d.mode){
+      body=vault.length?'<label class="field" style="flex:1 1 100%"><span>SELECT COMPATIBLE OWNED PART</span><select data-pb-vault-item><option value="">— select '+cat.toLowerCase()+' —</option>'+vault.map(v=>{
+        const already=v.assignedProjectId&&v.assignedProjectId!==project.id
+        return'<option value="'+v.id+'"'+(d.inventoryItemId===v.id?" selected":"")+(already?" disabled":"")+">"+escHtml(v.manufacturer+" "+v.model)+" — "+STATUS_LABEL(v.condition)+" · "+money(v.purchasePrice,v.currency)+" · "+STATUS_LABEL(v.status)+"</option>"
+      }).join("")+"</select></label>":'<p class="hint" style="flex:1 1 100%">No compatible unreserved '+cat.toLowerCase()+' in the Parts Vault — add one to Inventory first, or add a planned part below.</p>'
+    }else{
+      const hits=PBUI.catalogHits||[]
+      body=(isCat?'<label class="field" style="flex:1 1 100%"><span>PART NAME</span><input type="text" data-pb-catalog-search="'+k+'" value="'+escAttr(d.label||"")+'" placeholder="Start typing to search the catalog…" autocomplete="off"></label>'
+          +(hits.length?'<div class="myrig-catalog-results" style="flex:1 1 100%;max-height:160px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);padding:4px">'+hits.map((h,i)=>'<button type="button" class="btn btn-sm btn-ghost" data-pb-catalog-pick="'+i+'" style="display:flex;justify-content:space-between;width:100%;text-align:left;padding:5px 8px">'+escHtml(h.brand+" "+h.model)+"</button>").join("")+"</div>":"")
+        :'<label class="field" style="flex:1 1 100%"><span>PART NAME</span><input type="text" data-pb-field="label" value="'+escAttr(d.label||"")+'" placeholder="e.g. Fractal Design North" autocomplete="off"></label>')
+        +'<label class="field"><span>ESTIMATED COST ('+project.currency+')</span><input type="number" min="0" step="1" data-pb-field="cost" value="'+escAttr(d.cost||"")+'"></label>'
+        +'<label class="field" style="flex:1 1 100%"><span>NOTES</span><input type="text" data-pb-field="notes" value="'+escAttr(d.notes||"")+'"></label>'
+    }
+    return'<div class="panel pn-myrig-edit" style="margin-top:12px"><div class="panel-head"><h2>'+RIG_SLOT_LABELS[k].toUpperCase()+"</h2></div><div class=\"panel-body\"><div class=\"pn-myrig-fgrid\"><label class=\"field\" style=\"flex:1 1 100%\"><span>SOURCE</span><select data-pb-slot-mode>"+modeOpts+"</select></label>"+body+'</div><div class="pn-myrig-form-actions"><button type="button" class="btn btn-primary" data-pb-save-slot="'+k+'">SAVE COMPONENT</button><button type="button" class="btn btn-sm" data-pb-cancel-slot>CANCEL</button></div></div></div>'
+  }
   const modeOpts='<option value="VAULT"'+("VAULT"===d.mode?" selected":"")+">FROM PARTS VAULT</option><option value=\"PLANNED\""+("PLANNED"===d.mode?" selected":"")+">ADD NEW (NOT YET OWNED)</option>"
   let body=""
   if("VAULT"===d.mode){
@@ -62,7 +112,7 @@ function pbExtraFormHtml(project){
 }
 function pbExtrasHtml(project,locked){
   const extras=project.extras||[]
-  const rows=extras.length?extras.map(x=>'<div class="pn-pb-extra-row"><span>'+escHtml(x.label)+"</span>"+(x.inventoryItemId?'<button type="button" class="pn-pb-vault-link" data-open-entity="inventory" data-id="'+escAttr(x.inventoryItemId)+'">VAULT ↗</button>':'<span class="chip chip-blue-outline">PLANNED</span>')+"<span>"+money(x.cost,x.currency||project.currency)+"</span>"+(locked?"":'<button type="button" class="btn btn-sm btn-ghost" data-pb-extra-remove="'+x.id+'">REMOVE</button>')+"</div>").join(""):'<p class="hint">No optional or extra parts added.</p>'
+  const rows=extras.length?extras.map(x=>{const quality=pbExtraQuality(x);return'<div class="pn-pb-extra-row" data-pb-quality="'+quality.key+'"><span class="pn-pb-extra-name pn-pb-quality-name '+quality.className+'">'+escHtml(x.label)+"</span>"+pbQualityChipHtml(quality)+(x.inventoryItemId?'<button type="button" class="pn-pb-vault-link" data-open-entity="inventory" data-id="'+escAttr(x.inventoryItemId)+'">VAULT ↗</button>':'<span class="chip chip-blue-outline">PLANNED</span>')+"<span>"+money(x.cost,x.currency||project.currency)+"</span>"+(locked?"":'<button type="button" class="btn btn-sm btn-ghost" data-pb-extra-remove="'+x.id+'">REMOVE</button>')+"</div>"}).join(""):'<p class="hint">No optional or extra parts added.</p>'
   return'<div class="panel" data-pb-extras><div class="panel-head"><h2>OPTIONAL / EXTRA PARTS</h2>'+(locked?"":'<button type="button" class="btn btn-sm" data-pb-extra-new>+ ADD PART</button>')+'</div><div class="panel-body"><div class="pn-pb-extra-list">'+rows+"</div></div></div>"+(PBUI.extraDraft?pbExtraFormHtml(project):"")
 }
 function pbCompatHtml(project){
@@ -87,13 +137,20 @@ function pbClick(e){
   if(e.target.closest("[data-pb-edit-details]")){const p=pbProject();return p?void openForm("project",p.id):void 0}
   const es=e.target.closest("[data-pb-edit-slot]");if(es){const p=pbProject();if(!p)return;const k=es.dataset.pbEditSlot,cur=p.slots&&p.slots[k]||null
     PBUI.slotKey=k;PBUI.catalogHits=[]
-    PBUI.slot=cur?("INVENTORY"===cur.kind?{mode:"VAULT",inventoryItemId:cur.inventoryItemId}:{mode:"PLANNED",label:cur.label||"",cost:cur.cost||0,notes:cur.notes||""}):{mode:"PLANNED",inventoryItemId:"",label:"",cost:0,notes:""}
+    if(k==="CASE"&&cur&&cur.genericCaseSizeId){
+      PBUI.slot={mode:"GENERIC",caseSizeId:cur.genericCaseSizeId,label:cur.label||"",cost:cur.cost||0,notes:cur.notes||""}}
+    else{
+      PBUI.slot=cur?("INVENTORY"===cur.kind?{mode:"VAULT",inventoryItemId:cur.inventoryItemId}:{mode:"PLANNED",label:cur.label||"",cost:cur.cost||0,notes:cur.notes||""}):{mode:"PLANNED",inventoryItemId:"",label:"",cost:0,notes:""}}
     render();return void pbFocusSlotField(k)}
   if(e.target.closest("[data-pb-cancel-slot]"))return PBUI.slotKey=null,PBUI.slot=null,void render()
   const ss=e.target.closest("[data-pb-save-slot]");if(ss){const p=pbProject();if(!p)return;const k=ss.dataset.pbSaveSlot,d=PBUI.slot||{}
     let res
     if("VAULT"===d.mode){if(!d.inventoryItemId)return pbSetNotice("err","Select a part from the vault, or switch to ADD NEW."),void render()
       res=Actions.setProjectSlot(p.id,k,"INVENTORY",{inventoryItemId:d.inventoryItemId})}
+    else if(k==="CASE"&&"GENERIC"===d.mode){
+      const size=pbCaseSizeById(d.caseSizeId)
+      if(!size)return pbSetNotice("err","Select a case size."),void render()
+      res=Actions.setProjectSlot(p.id,k,"PLANNED",{label:size.label,cost:Math.round(Number(d.cost)||0),notes:String(d.notes||"").trim(),currency:p.currency,genericCaseSizeId:d.caseSizeId})}
     else{if(!String(d.label||"").trim())return pbSetNotice("err","Enter a part name."),void render()
       res=Actions.setProjectSlot(p.id,k,"PLANNED",{label:String(d.label).trim(),cost:Math.round(Number(d.cost)||0),notes:String(d.notes||"").trim(),currency:p.currency,catalogType:PB_CATALOG_SLOTS.includes(k)?k:void 0})}
     PBUI.slotKey=null,PBUI.slot=null
@@ -140,10 +197,10 @@ document.addEventListener("input",pbInput)
 document.addEventListener("change",pbChange)
 if(typeof document!=="undefined"&&document.addEventListener){
   const s=document.createElement("style")
-  s.textContent=".pn-pb-hero{border:1px solid var(--border-strong);border-radius:var(--radius);padding:18px;background:linear-gradient(135deg,rgba(160,180,200,.06),rgba(160,180,200,.02) 60%)}.pn-pb-eyebrow{font:9px var(--mono);letter-spacing:.24em;color:#9fb4c8;margin-bottom:6px}.pn-pb-name{font-size:32px;line-height:1.1;font-weight:900;margin:0 0 10px}.pn-pb-hero-actions{margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}.pn-pb-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.pn-pb-slot{border:1px solid var(--border);border-left:3px solid var(--pb-acc,#8b8495);background:var(--surface-2);border-radius:var(--radius);padding:10px 12px;display:flex;flex-direction:column;gap:5px}.pn-pb-slot.is-empty{background:transparent;border-left-color:var(--border-strong);opacity:.75}.pn-pb-slot-head{display:flex;align-items:center;gap:8px}.pn-pb-slot-model{font-weight:800;font-size:13px;line-height:1.25}.pn-pb-slot-foot{display:flex;align-items:center;gap:8px;font:9px var(--mono);color:var(--text-muted);margin-top:auto;flex-wrap:wrap}.pn-pb-vault-link{font:8px var(--mono);letter-spacing:.12em;color:#9fb4c8;border:1px solid var(--border-strong);padding:1px 5px;border-radius:6px;background:transparent;cursor:pointer}.pn-pb-vault-link:hover{color:var(--text);border-color:#9fb4c8}.pn-pb-extra-list{display:flex;flex-direction:column;gap:6px}.pn-pb-extra-row{display:flex;align-items:center;gap:10px;border:1px solid var(--border);background:var(--surface-2);border-radius:var(--radius);padding:8px 10px;flex-wrap:wrap}.pn-pb-extra-row>span:first-child{flex:1;font-weight:700;font-size:12px}@media(max-width:760px){.pn-pb-grid{grid-template-columns:1fr}}"
+  s.textContent=".pn-pb-hero{border:1px solid var(--border-strong);border-radius:var(--radius);padding:18px;background:linear-gradient(135deg,rgba(160,180,200,.06),rgba(160,180,200,.02) 60%)}.pn-pb-eyebrow{font:9px var(--mono);letter-spacing:.24em;color:#9fb4c8;margin-bottom:6px}.pn-pb-name{font-size:32px;line-height:1.1;font-weight:900;margin:0 0 10px}.pn-pb-hero-actions{margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}.pn-pb-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.pn-pb-slot{border:1px solid var(--border);border-left:3px solid var(--pb-acc,#8b8495);background:var(--surface-2);border-radius:var(--radius);padding:10px 12px;display:flex;flex-direction:column;gap:5px}.pn-pb-slot.is-empty{background:transparent;border-left-color:var(--border-strong);opacity:.75}.pn-pb-slot-head,.pn-pb-slot-model-line{display:flex;align-items:center;gap:8px}.pn-pb-slot-model-line{flex-wrap:wrap}.pn-pb-slot-model{font-weight:800;font-size:13px;line-height:1.25}.pn-pb-quality-name{color:var(--tier-color,#a39cac)}.pn-pb-slot[data-pb-quality=\"LEGENDARY\"] .pn-pb-slot-model{text-shadow:0 0 9px rgba(255,128,0,.3)}.pn-pb-quality{display:inline-flex;align-items:center;padding:2px 6px;border:1px solid var(--tier-border);border-radius:3px;background:var(--tier-wash);color:var(--tier-color);font:800 8px var(--mono);letter-spacing:.08em;line-height:1.2;white-space:nowrap}.pn-tier-unrated{--tier-color:#77717f;--tier-border:rgba(119,113,127,.42);--tier-wash:rgba(119,113,127,.09)}.pn-pb-slot-foot{display:flex;align-items:center;gap:8px;font:9px var(--mono);color:var(--text-muted);margin-top:auto;flex-wrap:wrap}.pn-pb-vault-link{font:8px var(--mono);letter-spacing:.12em;color:#9fb4c8;border:1px solid var(--border-strong);padding:1px 5px;border-radius:6px;background:transparent;cursor:pointer}.pn-pb-vault-link:hover{color:var(--text);border-color:#9fb4c8}.pn-pb-extra-list{display:flex;flex-direction:column;gap:6px}.pn-pb-extra-row{display:flex;align-items:center;gap:10px;border:1px solid var(--border);background:var(--surface-2);border-radius:var(--radius);padding:8px 10px;flex-wrap:wrap}.pn-pb-extra-name{flex:1;font-weight:700;font-size:12px}@media(max-width:760px){.pn-pb-grid{grid-template-columns:1fr}}"
   document.head.appendChild(s)
   if(typeof ROUTES!=="undefined"&&!window.__PN_PROJECT_BUILD_REGISTERED){
-    ROUTES.push({key:"projectbuild",label:"Build Workspace",hidden:!0,render:renderProjectBuild})
+    ROUTES.push({key:"projectbuild",label:"Build Workspace",hidden:!0,parent:"projects",render:renderProjectBuild})
     window.__PN_PROJECT_BUILD_REGISTERED=!0
   }
 }

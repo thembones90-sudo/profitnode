@@ -93,6 +93,22 @@ checks.push(['the build workspace route is nav-hidden (not part of the sidebar b
   const hidden = env.run(sandbox, `ROUTES.find(r => r.key === 'projectbuild').hidden`);
   return hidden === true;
 })()]);
+const navStateProbe = env.run(sandbox, `(() => {
+  const previous=state.route;
+  state.route='projectbuild';
+  const shell=renderShell();
+  state.route=previous;
+  return {
+    parent:activeNavRoute('projectbuild'),
+    exact:activeNavRoute('inventory'),
+    visibleRoutesSelfActivate:ROUTES.filter(r=>!r.hidden).every(r=>activeNavRoute(r.key)===r.key),
+    buildsPowered:shell.includes('class="navlink active is-powered" data-route="projects" aria-current="page" data-nav-active="true"'),
+    activeCount:(shell.match(/data-nav-active="true"/g)||[]).length,
+    hiddenWorkspace:!shell.includes('data-route="projectbuild"')
+  };
+})()`);
+checks.push(['activeNavRoute resolves hidden workspaces to their declared visible parent', navStateProbe.parent === 'projects' && navStateProbe.exact === 'inventory' && navStateProbe.visibleRoutesSelfActivate]);
+checks.push(['BUILD WORKSPACE powers only BUILDS in the rendered sidebar with aria-current', navStateProbe.buildsPowered && navStateProbe.activeCount === 1 && navStateProbe.hiddenWorkspace]);
 checks.push(['plans CSV export retired', !meta.csvKeys.includes('plans')]);
 checks.push(['roulette ledger CSV export registered', meta.csvKeys.includes('rouletteLedger')]);
 checks.push(['mail CSV export registered', meta.csvKeys.includes('mail')]);
@@ -1360,6 +1376,8 @@ const projectBuildProbe = `
   const badPurpose = Actions.addProject({name:'BADPURPOSE', startDate: todayISO(), status:'PLANNING', purpose:'NOT_A_PURPOSE', currency:'RSD'});
   out.push(['an invalid purpose falls back to FLIP', badPurpose.purpose === 'FLIP']);
 
+  HardwareCatalog.boards = [{brand:'Biostar', model:'TB250-BTC', overall:49}];
+  HardwareCatalog.cpus = [{brand:'Intel', model:'Celeron G3900', overall:20}];
   const mobo = Actions.addInventory({category:'MOTHERBOARD', manufacturer:'Biostar', model:'TB250-BTC', purchaseDate: todayISO(), purchasePrice:9000, currency:'RSD', estimatedMarketValue:11000, source:'OTHER', condition:'WORKING', status:'IN_STORAGE'});
   const cpu = Actions.addInventory({category:'CPU', manufacturer:'Intel', model:'Celeron G3900', purchaseDate: todayISO(), purchasePrice:3500, currency:'RSD', estimatedMarketValue:4500, source:'OTHER', condition:'WORKING', status:'IN_STORAGE'});
   const ram = Actions.addInventory({category:'RAM', manufacturer:'Kingston', model:'8GB DDR4', purchaseDate: todayISO(), purchasePrice:2500, currency:'RSD', estimatedMarketValue:3000, source:'OTHER', condition:'WORKING', status:'IN_STORAGE'});
@@ -1400,8 +1418,8 @@ const projectBuildProbe = `
   const removedExtra = Actions.removeProjectExtra(p.id, extraRes.project.extras[0].id);
   out.push(['removing a vault-sourced extra releases the reservation', removedExtra.ok && Store.get('inventory', psu.id).status === 'IN_STORAGE' && Store.get('inventory', psu.id).assignedProjectId === null]);
 
-  HardwareCatalog.gpus = [{ brand:'MSI', model:'RTX 3060' }];
-  const catalogSlot = Actions.setProjectSlot(p2.id, 'GPU', 'PLANNED', {label:'MSI RTX 3060', cost:30000, currency:'RSD', catalogType:'GPU'});
+  HardwareCatalog.gpus = [{ brand:'AMD', model:'RX 560 4GB', overall:10 }];
+  const catalogSlot = Actions.setProjectSlot(p2.id, 'GPU', 'PLANNED', {label:'AMD RX 560 4GB', cost:30000, currency:'RSD', catalogType:'GPU'});
   out.push(['a planned slot saved with catalogType resolves PN tier data from the hardware catalog', catalogSlot.ok && !!rigSlotResolved(catalogSlot.project.slots.GPU, 'RSD', 'GPU').pn]);
   out.push(['PB_CATALOG_SLOTS (which slots get catalogType auto-tagged when saved) matches the catalog-searchable slot set', PB_CATALOG_SLOTS.slice().sort().join(',') === ['CPU','GPU','MOBO','RAM','STORAGE'].sort().join(',')]);
 
@@ -1422,10 +1440,17 @@ const projectBuildProbe = `
   state.pbId = p.id;
   const pageDone = renderProjectBuild();
   out.push(['a completed workspace renders read-only — no edit/remove affordances on its slots', pageDone.indexOf('data-pb-edit-slot') === -1 && pageDone.indexOf('data-pb-remove-slot') === -1 && pageDone.indexOf('BUILD LOCKED') > -1]);
+  out.push(['BUILD loadout inherits canonical catalog quality beside installed motherboard and CPU names', pageDone.includes('data-pb-slot="MOBO" data-pb-quality="UNCOMMON"') && pageDone.includes('pn-pb-slot-model-line') && pageDone.includes('data-pb-quality-badge="UNCOMMON"') && pageDone.includes('pn-tier-uncommon') && pageDone.includes('data-pb-slot="CPU" data-pb-quality="POOR"')]);
+  out.push(['BUILD loadout gives every recorded slot/extra one compact quality badge and explicitly marks manual extras UNRATED', (pageDone.match(/data-pb-quality-badge=/g)||[]).length === 4 && pageDone.includes('data-pb-quality="UNRATED"') && pageDone.includes('data-pb-quality-badge="UNRATED"')]);
+  const artifactPresentation = pbComponentQuality({kind:'PLANNED',label:'Top catalog component'}, 'GPU', {label:'Top catalog component',pn:{tier:'ARTIFACT'}});
+  const missingPresentation = pbComponentQuality(null, null, null);
+  out.push(['BUILD presents canonical ARTIFACT data inside the requested six-tier ladder without rewriting its source tier', artifactPresentation.key === 'LEGENDARY' && artifactPresentation.sourceTier === 'ARTIFACT']);
+  out.push(['BUILD quality never defaults absent data to COMMON', missingPresentation.key === 'UNRATED' && missingPresentation.sourceTier === 'UNRATED']);
 
   state.pbId = p2.id;
   const pageOpen = renderProjectBuild();
   out.push(['an in-progress workspace shows the bench grid with add-slot affordances and empty slots', pageOpen.indexOf('pn-pb-grid') > -1 && pageOpen.indexOf('EMPTY SLOT') > -1 && pageOpen.indexOf('data-pb-edit-slot=') > -1]);
+  out.push(['planned catalog components receive the same canonical quality badge as owned components', pageOpen.includes('data-pb-slot="GPU" data-pb-quality="COMMON"') && pageOpen.includes('data-pb-quality-badge="COMMON"') && pageOpen.includes('pn-tier-common')]);
   out.push(['the bench grid lists exactly the 8 requested primary slots in the requested layout order', PROJECT_BUILD_SLOTS.join(',') === 'MOBO,CPU,RAM,GPU,STORAGE,PSU,CASE,COOLER']);
 
   const addCpuBtn = __pnEl({ tag:'button', attrs:{'data-pb-edit-slot':'CPU'} });

@@ -32,6 +32,16 @@ const PN_GENERIC_CASES = [
   {id:"generic-sfx-sff",label:"Generic SFF / Mini Tower Case",caps:{formFactors:["ITX"],maxGpuLengthMm:200,maxCoolerHeightMm:70,psuSupport:"SFX",maxPsuLengthMm:null,radiator:{front:"none",top:"none",rear:"120"},includedFans:1,maxFanPositions:3,airflow:"FAIR",buildQuality:"BASIC",sidePanel:"steel",notes:"Bare-bones small form factor profile."}}
 ];
 
+const PB_CASE_SIZES=[
+{id:"sff-mini-itx",label:"SFF / MINI-ITX",formFactors:["ITX"]},
+{id:"matx-mini-tower",label:"MICRO-ATX MINI TOWER",formFactors:["ITX","MATX"]},
+{id:"atx-mid-tower",label:"ATX MID TOWER",formFactors:["ITX","MATX","ATX"]},
+{id:"atx-full-tower",label:"ATX FULL TOWER",formFactors:["ITX","MATX","ATX"]},
+{id:"eatx-super-tower",label:"E-ATX / SUPER TOWER",formFactors:["ITX","MATX","ATX","EATX"]},
+{id:"htpc-desktop",label:"HTPC / DESKTOP",formFactors:["ITX"]},
+{id:"open-bench",label:"OPEN BENCH / TEST FRAME",formFactors:["ITX","MATX","ATX","EATX"]}
+];
+
 const PN_GENERIC_COOLERS = [
   {id:"generic-stock",label:"Stock / Bundled Cooler",caps:{type:"STOCK",radiator:null,heightMm:70,sockets:[],coolingClass:"LIGHT",fanCount:1,noiseClass:"LOUD",tdpClass:"LIGHT",ramClearance:"NO",notes:"Bundled units only suit low-heat CPUs."}},
   {id:"generic-low-profile",label:"Low-Profile Cooler",caps:{type:"LOW PROFILE",radiator:null,heightMm:55,sockets:[],coolingClass:"LIGHT",fanCount:1,noiseClass:"NORMAL",tdpClass:"LIGHT",ramClearance:"NO",notes:""}},
@@ -154,6 +164,10 @@ function caseCapabilities(slot,resolvedLabel){
   if(slot.genericId){
     const preset=caseGenericById(slot.genericId);
     if(preset){ slot.caps=normalizeCaseCaps(preset.caps); slot.source="GENERIC"; return slot.caps; }
+  }
+  if(slot.genericCaseSizeId){
+    const size=PB_CASE_SIZES?PB_CASE_SIZES.find(c=>c.id===slot.genericCaseSizeId):null;
+    if(size){slot.caps=normalizeCaseCaps({formFactors:size.formFactors});slot.source="BUILD_GENERIC";return slot.caps}
   }
   return null;
 }

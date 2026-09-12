@@ -108,6 +108,13 @@ nav.mainnav{flex:1;padding:10px 0;overflow-y:auto}
 }
 .navlink:hover{background:var(--panel);color:var(--text)}
 .navlink.active{color:var(--red);border-left-color:var(--red);background:var(--red-wash)}
+.navlink.is-powered{
+  border-left-color:#ff4d58;
+  background:linear-gradient(90deg,rgba(255,53,65,.2),rgba(255,53,65,.07) 58%,transparent);
+  box-shadow:inset 3px 0 9px rgba(255,53,65,.42),inset 0 1px rgba(255,255,255,.025);
+  color:#ff6972;text-shadow:0 0 8px rgba(255,69,80,.5);
+}
+.navlink.is-powered:hover{background:linear-gradient(90deg,rgba(255,53,65,.24),rgba(255,53,65,.09) 62%,transparent)}
 .sidebar-foot{
   padding:14px 18px 18px;border-top:1px solid var(--border);
   font-family:var(--mono);font-size:10px;color:var(--text-mute);letter-spacing:.03em;
@@ -548,7 +555,7 @@ body{background-image:url(data:image/webp;base64,UklGRkJKAABXRUJQVlA4IDZKAADwMQO
 </head>
 <body>
 <div id="root"></div>
-<script src="pn_scripts.js?v=myrig-search-focus-v1"></script>
+<script src="pn_scripts.js?v=component-quality-v2"></script>
 <script src="app.js?v=product-refinement-v1"></script>
 </body>
 </html>

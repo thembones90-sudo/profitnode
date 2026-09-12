@@ -1,0 +1,492 @@
+PROFITNODE - FULL GPT HANDOFF REPORT
+Generated: 2026-09-12
+Workspace: A:\PROFITNODE
+Branch: main
+
+======================================================================
+1. PROJECT CONTEXT
+======================================================================
+
+PROFITNODE is a single-page browser application for a PC-flipping and
+inventory ledger. It is branded as Shadezy Repair Shop.
+
+Technical architecture:
+- Vanilla JavaScript, HTML, and CSS.
+- No backend, package manager, npm dependencies, bundler, or build step.
+- Data is local-first and stored in localStorage.
+- Primary storage key: profitnode_ledger_v1.
+- Legacy fallback key: shadezy_ledger_v1.
+- index.html is the HTML shell and contains the application CSS.
+- pn_scripts.js is the canonical ordered runtime script manifest.
+- app.js only streams the scripts from window.__PN_SCRIPTS with
+  document.write(). This loading approach is intentional.
+- app_core.js contains the core model, Store, Actions, rendering, and UI.
+- Feature files ending in _extension.js append behavior to global objects.
+- Script load order is critical.
+- Runtime script changes require a matching cache-busting version change
+  in pn_scripts.js.
+- app.min.js must not be edited. The unminified files are production code.
+
+The ledger shape includes:
+meta, projects, inventory, deals, sales, timeline, plans, repairs, rigs,
+roadTo, myRig, mail, and treasury.
+
+Important sale/accounting rule:
+- SOLD is a financial event, not a freely editable inventory status.
+- Completed Sales Ledger rows drive dashboard REALIZED PROFIT.
+- Treasury cash movements alone do not drive realized profit.
+- A direct inventory sale must create one canonical completed sale row.
+- SOLD inventory records remain stored for audit/history but are excluded
+  from the default ACTIVE INVENTORY view.
+
+======================================================================
+2. PUSHED WORK
+======================================================================
+
+The current HEAD and origin/main are synchronized at:
+
+b0955bc9d67e5d4ffd9575ba048f490827cd4e12
+b0955bc fix: record inventory sales in completed ledger
+
+Relevant pushed commit history:
+
+5bc4c9e feat: SOLD is a financial transaction, not a free status
+b0d8cd8 Fix: MARK AS SOLD / COMPLETE SALE DATA modal closes on every click inside it
+102779f fix: group inventory sale modal footer into 3 wrap-safe clusters
+b0955bc fix: record inventory sales in completed ledger
+
+The push from b0d8cd8 through b0955bc placed both 102779f and b0955bc on
+origin/main.
+
+-----------------------------------------------------------------------
+2.1 ORIGINAL FUNCTIONAL PROBLEM
+-----------------------------------------------------------------------
+
+The real browser flow was reproduced:
+
+PARTS VAULT -> open inventory item -> MARK AS SOLD -> enter final sale
+data -> COMPLETE SALE
+
+The item became SOLD and Treasury cash was credited, but no completed row
+was created in the Sales Ledger. Because dashboardStats().realizedProfit
+is derived from completed sales, REALIZED PROFIT did not change.
+
+-----------------------------------------------------------------------
+2.2 PUSHED FUNCTIONAL FIX IN b0955bc
+-----------------------------------------------------------------------
+
+Actions.markInventorySold() in sold_transaction_extension.js now:
+
+- Finds an existing sale by saleTransactionId or inventoryItemId.
+- Creates one completed COMPONENT sale when no sale exists.
+- Updates the existing sale in place when one already exists.
+- Stores saleSource as INVENTORY.
+- Stores saleState as COMPLETED.
+- Uses inventoryAcquisitionCost(item, currency) as the cost basis.
+- Links the inventory record through saleTransactionId.
+- Uses the canonical Treasury sale flow with:
+  refType = sale
+  refId = Sales Ledger ID
+  kind = SALE
+- Removes an obsolete inventory-scoped sale flow when present.
+- Prevents duplicate Sales Ledger rows and duplicate cash credits when the
+  sale data is submitted again.
+- Returns the canonical sale ID as transactionId and saleId.
+
+Inventory behavior changed so:
+
+- The default Parts Vault status filter is ACTIVE.
+- ACTIVE means every inventory status except SOLD.
+- SOLD and ALL STATUSES remain available for historical access.
+- The item is not physically deleted; it remains available for audit.
+
+Legacy compatibility was added for previously confirmed v1 direct sales:
+
+- A SOLD inventory record with a historical saleTransactionId, valid sale
+  data, and no matching Sales Ledger row is detected during script load.
+- One completed sale row is created.
+- The inventory record is linked to the new canonical sale ID.
+- The old inventory-scoped Treasury flow is replaced by a sale-scoped flow.
+- Existing cash is preserved exactly; migration does not double-credit it.
+
+The inventory modal footer was also previously fixed and pushed:
+
+- It has three wrap-safe clusters: DELETE on the left, sale status/actions
+  in the center, and CANCEL/SAVE on the right.
+- Backdrop closing only happens when the backdrop itself is clicked.
+- Clicks inside either inventory-sale modal no longer close it accidentally.
+
+======================================================================
+3. CURRENT TESTED WORKING-TREE ENHANCEMENTS
+======================================================================
+
+The user requested five optional workflow improvements and asked to apply
+all of them. They have been implemented and fully tested, but they have NOT
+been committed or pushed yet.
+
+Current modified files:
+
+- app_core.js
+- sold_transaction_extension.js
+- pn_scripts.js
+- smoketest.js
+- rendertest.js
+- browsertest.js
+
+Current diff size before adding this report:
+
+6 files changed, 127 insertions, 17 deletions
+
+This GPT_HANDOFF_REPORT.txt file is also new and uncommitted.
+
+-----------------------------------------------------------------------
+3.1 SALE COMPLETION SUCCESS NOTICE
+-----------------------------------------------------------------------
+
+After COMPLETE SALE succeeds, the Parts Vault now displays a compact green
+success notice containing:
+
+- SALE COMPLETED, or SALE UPDATED for an update.
+- Revenue in the sale currency.
+- Realized profit calculated from saleDerived().
+- A VIEW IN LEDGER button.
+- A DISMISS button.
+
+VIEW IN LEDGER:
+
+- Clears the temporary notice.
+- Routes to the LEDGER/Sales page.
+- Clears the sale search and resets the sale type filter to ALL.
+- Opens the exact linked sale record in the existing sale editor modal.
+
+The notice is intentionally transient UI state only. It is not persisted
+to localStorage. It stays visible until dismissed or opened in the Ledger.
+
+Implementation location:
+- sold_transaction_extension.js
+- state.inventorySaleNotice is added dynamically.
+- The existing inventory route renderer is wrapped after prior extensions,
+  preserving the Inventory Aging injection and other route behavior.
+
+-----------------------------------------------------------------------
+3.2 VIEW SALE FROM SOLD INVENTORY
+-----------------------------------------------------------------------
+
+Opening a completed SOLD inventory record now shows a VIEW SALE button in
+the grouped inventory modal footer.
+
+The button:
+
+- Uses the exact canonical Sales Ledger ID.
+- Routes to LEDGER.
+- Opens that exact sale record.
+- Does not rely on a text search or item-name match.
+
+The realized-profit line shown in a SOLD inventory detail now uses
+saleDerived(sale).profit when a sale exists. This is more accurate than the
+old purchase-price-only calculation because the canonical sale may include
+additional costs.
+
+Implementation location:
+- sold_transaction_extension.js
+
+-----------------------------------------------------------------------
+3.3 NON-BLOCKING LOSS WARNING
+-----------------------------------------------------------------------
+
+The MARK AS SOLD / COMPLETE SALE DATA modal now recalculates a live warning
+when the entered final sale price is below the item's acquisition cost.
+
+The warning displays:
+
+- LOSS WARNING.
+- Acquisition cost in the selected currency.
+- The expected realized loss.
+- Explicit text that the sale can still be completed.
+
+Behavior:
+
+- It reacts to price input changes.
+- It reacts to currency changes.
+- It disappears when the sale price recovers the acquisition cost.
+- It never disables or blocks COMPLETE SALE.
+- inventoryAcquisitionCost() is used, so purchase, repair, and applicable
+  incoming-shipping costs remain part of the true acquisition basis.
+
+Implementation location:
+- sold_transaction_extension.js
+
+-----------------------------------------------------------------------
+3.4 ACTIVE / SOLD / TOTAL INVENTORY COUNTS
+-----------------------------------------------------------------------
+
+The Parts Vault filter bar now includes three compact live counters:
+
+- ACTIVE: every inventory item whose status is not SOLD.
+- SOLD: every inventory item whose status is SOLD.
+- TOTAL: every inventory item on record.
+
+The counters are global inventory counts rather than counts narrowed by the
+current category or text search. This gives a stable shop-level status read
+while filters change.
+
+The counters use explicit data hooks:
+
+data-inventory-count="ACTIVE"
+data-inventory-count="SOLD"
+data-inventory-count="TOTAL"
+
+Responsive behavior:
+
+- Desktop: counters sit at the right of the filter bar.
+- At narrower widths they wrap to their own full-width row.
+- The browser suite confirms they do not cause horizontal overflow at
+  720px.
+
+Implementation locations:
+- app_core.js renders the counts.
+- sold_transaction_extension.js supplies the count and responsive styles.
+
+-----------------------------------------------------------------------
+3.5 LEGACY MIGRATION TIMELINE AUDIT ENTRY
+-----------------------------------------------------------------------
+
+When the automatic legacy direct-sale repair runs successfully, it now adds
+one explicit Timeline entry:
+
+type: SALE_MIGRATED
+relatedType: sale
+relatedId: canonical Sales Ledger ID
+
+The title identifies the migrated item. The description states that the
+confirmed legacy sale was linked to the Sales Ledger and Treasury cash was
+preserved.
+
+The migration remains idempotent:
+
+- Once the sale row exists, the migration filter no longer matches.
+- Reloading does not add another migration event.
+- Cash remains unchanged by migration.
+
+Implementation location:
+- sold_transaction_extension.js
+
+-----------------------------------------------------------------------
+3.6 CACHE-BUSTING UPDATES
+-----------------------------------------------------------------------
+
+pn_scripts.js was updated for both modified runtime files:
+
+app_core.js?v=inventory-sale-followup-v1
+sold_transaction_extension.js?v=sold-transaction-v3
+
+Do not omit these changes when committing. They are required so deployed
+browsers do not silently run stale runtime scripts.
+
+======================================================================
+4. REGRESSION COVERAGE ADDED
+======================================================================
+
+smoketest.js now verifies:
+
+- Legacy confirmed inventory sale creates exactly one completed sale.
+- Legacy migration replaces the old Treasury flow without changing cash.
+- Legacy migration creates exactly one SALE_MIGRATED timeline audit event.
+- Direct sale creates one linked completed Sales Ledger row.
+- Direct sale changes realized profit by sale price minus acquisition cost.
+- Treasury is credited exactly once through a sale-scoped flow.
+- Re-submission updates the same sale and cash delta in place.
+- SOLD items leave ACTIVE INVENTORY but remain in SOLD history.
+- ACTIVE, SOLD, and TOTAL inventory counter markup reports correct values.
+- SOLD inventory detail contains VIEW SALE for the exact transaction ID.
+
+rendertest.js now verifies:
+
+- The inventory filter bar exposes all three inventory counter hooks.
+
+browsertest.js now verifies in real Chrome/Edge:
+
+- Entering 4,000 RSD for an item with a 5,000 RSD acquisition cost displays
+  a 1,000 RSD loss warning.
+- Raising the price to 9,000 RSD clears the warning.
+- The warning does not block completion.
+- COMPLETE SALE closes the modal and creates a completed sale.
+- Realized profit increases by 4,000 RSD.
+- Treasury cash is credited by 9,000 RSD.
+- The sold item disappears from ACTIVE INVENTORY.
+- The success notice displays 9,000 RSD revenue and 4,000 RSD profit.
+- VIEW IN LEDGER opens the exact sale ID.
+- VIEW SALE from the SOLD inventory record opens the exact sale ID.
+- ACTIVE, SOLD, and TOTAL counters render.
+- The new notice and counters stack safely at 720px without horizontal
+  document overflow.
+- The browser console has no errors or warnings.
+
+======================================================================
+5. VERIFICATION RESULTS
+======================================================================
+
+All available suites pass with the current working tree.
+
+Commands and results:
+
+node smoketest.js
+- ALL PASSED: 363 assertions
+
+node rendertest.js
+- ALL PASSED: 72 assertions
+
+node hardwaretest.js
+- ALL PASSED: 295 assertions
+
+node mailparsertest.js
+- MAIL PARSER V2: 45 passed, 0 failed
+
+node costintegritytest.js
+- COST INTEGRITY: 12 passed, 0 failed
+
+node mailworkflowtest.js
+- MAIL WORKFLOW V5: 82 passed, 0 failed
+
+node browsertest.js
+- ALL PASSED: 47 browser assertions
+
+Total passing checks/assertions reported across these suites: 916
+
+Syntax verification also passed for:
+
+- app_core.js
+- sold_transaction_extension.js
+- pn_scripts.js
+- smoketest.js
+- rendertest.js
+- browsertest.js
+
+git diff --check reports no whitespace errors. Git prints only the existing
+Windows line-ending warning that LF will become CRLF when Git next touches
+the files; this is not a test or diff failure.
+
+======================================================================
+6. CURRENT GIT STATE
+======================================================================
+
+Before this report file was added:
+
+## main...origin/main
+ M app_core.js
+ M browsertest.js
+ M pn_scripts.js
+ M rendertest.js
+ M smoketest.js
+ M sold_transaction_extension.js
+
+HEAD and origin/main both resolve to:
+
+b0955bc9d67e5d4ffd9575ba048f490827cd4e12
+
+Therefore:
+
+- The branch itself is synchronized with origin/main.
+- The six enhancement files are unstaged and uncommitted.
+- GPT_HANDOFF_REPORT.txt is also a new uncommitted report file.
+- There are no known unrelated working-tree changes.
+- No commit or push was requested for the five follow-up enhancements, so
+  they were intentionally left in the working tree.
+
+======================================================================
+7. IMPORTANT IMPLEMENTATION INVARIANTS
+======================================================================
+
+Any future edits must preserve these behaviors:
+
+1. A direct inventory sale has exactly one canonical completed sale row.
+2. The inventory item's saleTransactionId equals the canonical sale ID.
+3. The Treasury sale flow uses refType="sale" and refId=<sale ID>.
+4. Re-submitting sale data updates in place without duplicate cash credit.
+5. REALIZED PROFIT comes from completed Sales Ledger rows.
+6. SOLD records stay stored for audit but are hidden from ACTIVE INVENTORY.
+7. Legacy migration never changes the user's existing cash total.
+8. Legacy migration and its SALE_MIGRATED event happen only once.
+9. Loss warnings are informational and must not prevent a real loss sale.
+10. VIEW IN LEDGER and VIEW SALE must open the exact linked sale, not merely
+    navigate to a filtered list.
+11. The script cache suffixes in pn_scripts.js must ship with runtime edits.
+12. The canonical script order in pn_scripts.js must not be duplicated or
+    reordered casually.
+
+======================================================================
+8. RELEVANT FILES
+======================================================================
+
+A:\PROFITNODE\sold_transaction_extension.js
+- Canonical direct-sale creation/update.
+- Legacy flow replacement and migration.
+- Sale completion notice.
+- VIEW IN LEDGER and VIEW SALE routing.
+- Live loss warning.
+- Sale-related UI styling.
+- Migration Timeline event.
+
+A:\PROFITNODE\app_core.js
+- Default ACTIVE inventory filter.
+- ACTIVE filter semantics.
+- ACTIVE/SOLD/TOTAL count rendering.
+- Core inventory and sale render functions.
+
+A:\PROFITNODE\sale_type_extension.js
+- Completed/pending sale semantics.
+- Sales Ledger rendering.
+- saleDerived(), saleIsCompleted(), sale type/source helpers.
+- Sale/Treasury lifecycle wrappers used by the direct-sale workflow.
+
+A:\PROFITNODE\treasury_flow_extension.js
+- Canonical sale-based Treasury accounting and flow idempotency.
+
+A:\PROFITNODE\pn_scripts.js
+- Canonical runtime script order and cache-busting versions.
+
+A:\PROFITNODE\smoketest.js
+- Model-level sale, migration, counter, and linked-action regressions.
+
+A:\PROFITNODE\rendertest.js
+- Inventory render regression for the three counter surfaces.
+
+A:\PROFITNODE\browsertest.js
+- Real-browser direct-sale, warning, notice, linked navigation, counters,
+  responsive layout, and console checks.
+
+A:\PROFITNODE\AGENTS.md
+- Repository architecture, test commands, editing rules, and deployment
+  constraints. Read this before making further changes.
+
+======================================================================
+9. RECOMMENDED NEXT STEPS FOR GPT
+======================================================================
+
+1. Read AGENTS.md and this report.
+2. Inspect git status and the full diff. Do not discard the six tested
+   working-tree changes.
+3. If the user asks to commit/push, stage only:
+   app_core.js
+   sold_transaction_extension.js
+   pn_scripts.js
+   smoketest.js
+   rendertest.js
+   browsertest.js
+   GPT_HANDOFF_REPORT.txt only if the user wants the report versioned
+4. Before committing, rerun at least:
+   node smoketest.js
+   node rendertest.js
+   node hardwaretest.js
+   node mailparsertest.js
+   node costintegritytest.js
+   node mailworkflowtest.js
+   node browsertest.js
+5. Review git diff --check, git status, and recent git log.
+6. Use a concise commit message consistent with recent history, for example:
+   feat: polish completed inventory sale workflow
+7. Push only if explicitly requested.
+
+No blockers or known failing tests remain.
+
+END OF REPORT
