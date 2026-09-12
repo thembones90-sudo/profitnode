@@ -104,6 +104,7 @@ const probe = `
   const vaultHtml = renderShell();
   out.push(['inventory header says PARTS VAULT', vaultHtml.includes('PARTS VAULT')]);
   out.push(['inventory includes intelligence aging panel', vaultHtml.includes('INVENTORY AGING') && vaultHtml.includes('pn-aging-strip')]);
+  out.push(['inventory filter bar exposes active, sold, and total counters', ['ACTIVE','SOLD','TOTAL'].every(key=>vaultHtml.includes('data-inventory-count="'+key+'"'))]);
 
   // --- THE ROULETTE route renders ---
   state.route = 'roulette';

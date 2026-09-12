@@ -64,6 +64,46 @@
       Store.all("sales").find(sale => sale.inventoryItemId === item.id) || null;
   }
 
+  function setInventorySaleNotice(sale, updated){
+    const derived = saleDerived(sale);
+    state.inventorySaleNotice = {
+      saleId:sale.id,
+      title:updated ? "SALE UPDATED" : "SALE COMPLETED",
+      revenue:sale.buyerPrice,
+      profit:derived.profit,
+      currency:sale.currency
+    };
+  }
+
+  function inventorySaleNoticeHtml(){
+    const notice = state.inventorySaleNotice;
+    if (!notice || !Store.get("sales", notice.saleId)) return "";
+    return '<div class="pn-inventory-sale-notice" role="status" data-inventory-sale-notice="'+escAttr(notice.saleId)+'">'+
+      '<div class="pn-inventory-sale-notice-copy"><b>'+escHtml(notice.title)+'</b><span>Revenue '+money(notice.revenue,notice.currency)+' · Realized profit <strong class="'+(notice.profit>=0?"pos":"neg")+'">'+money(notice.profit,notice.currency)+'</strong></span></div>'+
+      '<div class="pn-inventory-sale-notice-actions"><button type="button" class="btn btn-sm btn-primary" data-view-inventory-sale="'+escAttr(notice.saleId)+'">VIEW IN LEDGER</button><button type="button" class="btn btn-sm" data-dismiss-inventory-sale-notice>DISMISS</button></div>'+
+    '</div>';
+  }
+
+  function openInventorySaleInLedger(saleId){
+    if (!Store.get("sales", saleId)) return;
+    state.inventorySaleNotice = null;
+    state.route = "sales";
+    state.filters.sales.q = "";
+    state.filters.sales.type = "ALL";
+    openForm("sale", saleId);
+  }
+
+  function syncInventorySaleWarning(form, item){
+    const warning = form.querySelector("[data-inventory-sale-loss-warning]");
+    if (!warning) return;
+    const price = Number(form.elements.salePrice.value);
+    const currency = String(form.elements.saleCurrency.value || item.currency || "RSD").toUpperCase();
+    const cost = inventoryAcquisitionCost(item, currency);
+    const loss = cost - price;
+    warning.hidden = !(price > 0 && loss > 0);
+    warning.innerHTML = warning.hidden ? "" : '<b>LOSS WARNING</b><span>Acquisition cost is '+money(cost,currency)+' · this sale realizes a '+money(loss,currency)+' loss. You can still complete it.</span>';
+  }
+
   // ---- public action: mark inventory item as sold ----
   Actions.markInventorySold = function(id, saleData){
     const item = Store.get("inventory", id);
@@ -118,14 +158,19 @@
   Store.all("inventory").filter(item =>
     inventoryIsSold(item) && inventorySaleTransactionId(item) &&
     !inventorySaleRecord(item) && Number(item.salePrice) > 0
-  ).forEach(item => Actions.markInventorySold(item.id, {
-    salePrice: item.salePrice,
-    saleCurrency: item.saleCurrency || item.currency,
-    saleDate: item.saleDate || todayISO(),
-    saleChannel: item.saleChannel || "",
-    saleDetail: item.saleDetail || "",
-    saleNotes: item.saleNotes || ""
-  }));
+  ).forEach(item => {
+    const result = Actions.markInventorySold(item.id, {
+      salePrice: item.salePrice,
+      saleCurrency: item.saleCurrency || item.currency,
+      saleDate: item.saleDate || todayISO(),
+      saleChannel: item.saleChannel || "",
+      saleDetail: item.saleDetail || "",
+      saleNotes: item.saleNotes || ""
+    });
+    if (result.ok){
+      Timeline.log("SALE_MIGRATED", ((item.manufacturer || "")+" "+(item.model || "")).trim()+" SALE RECORD MIGRATED", "Linked the confirmed legacy sale to the Sales Ledger; Treasury cash was preserved.", todayISO(), "sale", result.saleId);
+    }
+  });
 
   // ---- block direct status=SOLD through generic update ----
   const origUpdateInventory = Actions.updateInventory;
@@ -171,7 +216,7 @@
       '<label class="field half"><span>Sale Channel</span><select name="saleChannel"><option value="">—</option>' + SALE_CHANNELS.map(c => '<option value="' + escAttr(c) + '"' + (c === channel ? " selected" : "") + '>' + escHtml(c) + "</option>").join("") + "</select></label>" +
       '<label class="field half"><span>Buyer / Detail</span><input type="text" name="saleDetail" value="' + escAttr(detail) + '"></label>' +
       '<label class="field half"><span>Sale Notes</span><input type="text" name="saleNotes" value="' + escAttr(notes) + '"></label>' +
-      '</div></div><div class="modal-foot"><span></span><span style="display:flex;gap:8px"><button type="button" class="btn" data-close-sale-modal>CANCEL</button><button type="submit" class="btn btn-primary">COMPLETE SALE</button></span></div></form></div></div>';
+      '</div><div class="pn-sale-loss-warning" data-inventory-sale-loss-warning role="alert" hidden></div></div><div class="modal-foot"><span></span><span style="display:flex;gap:8px"><button type="button" class="btn" data-close-sale-modal>CANCEL</button><button type="submit" class="btn btn-primary">COMPLETE SALE</button></span></div></form></div></div>';
 
     const wrap = document.createElement("div");
     wrap.id = "pn-inventory-sale-modal";
@@ -179,6 +224,10 @@
     document.body.appendChild(wrap);
 
     const form = wrap.querySelector("[data-inventory-sale-form]");
+    const syncWarning = function(){ syncInventorySaleWarning(form, item); };
+    form.addEventListener("input", syncWarning);
+    form.addEventListener("change", syncWarning);
+    syncWarning();
     form.addEventListener("submit", function(ev){
       ev.preventDefault();
       const fd = new FormData(form);
@@ -191,8 +240,10 @@
         saleNotes: fd.get("saleNotes")
       });
       if (result.ok){
+        const sale = Store.get("sales", result.saleId);
+        if (sale) setInventorySaleNotice(sale, result.message === "Sale updated.");
         closeInventorySaleModal();
-        if (state.modal && state.modal.entityType === "inventory") closeModal();
+        if (state.modal && state.modal.entityType === "inventory") state.modal = null;
         render();
       } else {
         alert(result.error || "Sale failed");
@@ -219,7 +270,8 @@
       let extra = "";
       if (inventoryIsSold(item)){
         const incomplete = inventorySaleIncomplete(item);
-        const profit = Calc.profit(item.salePrice, item.purchasePrice);
+        const sale = inventorySaleRecord(item);
+        const profit = sale ? saleDerived(sale).profit : Calc.profit(item.salePrice, item.purchasePrice);
         extra = '<div style="flex:1 1 100%;padding:8px 0;font-size:12px">' +
           (incomplete ? '<span class="chip chip-red-outline">SALE DATA INCOMPLETE</span> ' : "") +
           (item.salePrice ? '<b>SOLD FOR: ' + money(item.salePrice, item.saleCurrency || item.currency) + '</b> · ' + escHtml(item.saleDate || "") : "") +
@@ -228,6 +280,8 @@
           '</div>';
         if (incomplete){
           extra += '<button type="button" class="btn btn-primary" data-complete-sale-data="' + escAttr(id) + '">COMPLETE SALE DATA</button>';
+        } else if (sale){
+          extra += '<button type="button" class="btn" data-view-inventory-sale="' + escAttr(sale.id) + '">VIEW SALE</button>';
         }
       } else {
         extra = '<button type="button" class="btn btn-primary" data-mark-inventory-sold="' + escAttr(id) + '">MARK AS SOLD</button>';
@@ -256,8 +310,32 @@
     };
   }
 
+  if (typeof ROUTES !== "undefined"){
+    const inventoryRoute = ROUTES.find(route => route.key === "inventory");
+    if (inventoryRoute && typeof inventoryRoute.render === "function"){
+      const previousInventoryRender = inventoryRoute.render;
+      inventoryRoute.render = function(){
+        const html = previousInventoryRender.apply(this, arguments);
+        const notice = inventorySaleNoticeHtml();
+        return notice ? html.replace('<div class="content">', '<div class="content">'+notice) : html;
+      };
+    }
+  }
+
   // ---- global click handlers for sale modal buttons ----
   document.addEventListener("click", function(e){
+    const view = e.target.closest("[data-view-inventory-sale]");
+    if (view){
+      e.preventDefault();
+      e.stopPropagation();
+      openInventorySaleInLedger(view.dataset.viewInventorySale);
+      return;
+    }
+    if (e.target.closest("[data-dismiss-inventory-sale-notice]")){
+      state.inventorySaleNotice = null;
+      render();
+      return;
+    }
     const close = e.target.closest("[data-close-sale-modal]");
     if (close && e.target === close){ closeInventorySaleModal(); return; }
     const mark = e.target.closest("[data-mark-inventory-sold]");
@@ -265,6 +343,10 @@
     const complete = e.target.closest("[data-complete-sale-data]");
     if (complete){ openInventorySaleModal(complete.dataset.completeSaleData); return; }
   });
+
+  const style = document.createElement("style");
+  style.textContent = ".pn-inventory-sale-notice{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 14px;padding:11px 13px;border:1px solid var(--green-dim);border-radius:var(--radius);background:var(--green-wash);box-shadow:inset 3px 0 0 var(--green)}.pn-inventory-sale-notice-copy{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;min-width:0}.pn-inventory-sale-notice-copy>b{font:800 10px var(--mono);letter-spacing:.14em;color:var(--green)}.pn-inventory-sale-notice-copy>span{font:11px var(--mono);color:var(--text-dim)}.pn-inventory-sale-notice-actions{display:flex;gap:7px;flex:0 0 auto}.pn-sale-loss-warning{display:flex;align-items:flex-start;gap:10px;margin-top:4px;padding:10px 12px;border:1px solid var(--red-dim);border-radius:var(--radius);background:var(--red-wash);color:var(--red);font:11px var(--mono);line-height:1.45}.pn-sale-loss-warning>b{letter-spacing:.12em;white-space:nowrap}.pn-sale-loss-warning[hidden]{display:none}.pn-inventory-counts{display:inline-flex;align-items:center;gap:6px;margin-left:auto}.pn-inventory-counts .chip b{margin-left:4px;color:var(--text)}@media(max-width:1180px){.pn-inventory-counts{order:3;width:100%;margin-left:0}}@media(max-width:760px){.pn-inventory-sale-notice{align-items:flex-start;flex-direction:column}.pn-inventory-sale-notice-actions{width:100%;flex-wrap:wrap}}";
+  document.head.appendChild(style);
 
   // ---- expose helpers ----
   window.__pnInventorySaleChannels = function(){ return SALE_CHANNELS.slice(); };

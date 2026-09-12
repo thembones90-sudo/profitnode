@@ -59,9 +59,10 @@ v1SaleSandbox.localStorage.setItem('profitnode_ledger_v1', JSON.stringify({
   treasury:{settings:{baseCurrency:'EUR',usdToEur:.92,rsdToEur:.00851,fortressFloor:500},balances:[{sourceKey:'CASH_RSD',label:'CASH (RSD)',amount:18000,currency:'RSD'}],obligations:[],pendingAssets:[],incomes:[],snapshots:[],flows:[{id:'old-v1-flow',refType:'inventory',refId:'legacy-direct-sale',kind:'SALE',amount:18000,currency:'RSD',signedDelta:18000,createdAt:'2026-02-01T00:00:00.000Z'}]}
 }));
 env.loadAll(v1SaleSandbox, DIR);
-const v1SaleMigration = env.run(v1SaleSandbox, `(()=>{const item=Store.get('inventory','legacy-direct-sale'),sales=Store.all('sales').filter(s=>s.inventoryItemId===item.id),flows=Store.load().treasury.flows,cash=Store.load().treasury.balances.find(b=>b.sourceKey==='CASH_RSD');return {saleCount:sales.length,completed:sales.length===1&&saleIsCompleted(sales[0]),transactionLinked:sales.length===1&&item.saleTransactionId===sales[0].id,inventoryFlowCount:flows.filter(f=>f.refType==='inventory'&&f.refId===item.id&&f.kind==='SALE').length,saleFlowCount:sales.length&&flows.filter(f=>f.refType==='sale'&&f.refId===sales[0].id&&f.kind==='SALE').length,cash:cash&&cash.amount,profit:dashboardStats('RSD').realizedProfit};})()`);
+const v1SaleMigration = env.run(v1SaleSandbox, `(()=>{const item=Store.get('inventory','legacy-direct-sale'),sales=Store.all('sales').filter(s=>s.inventoryItemId===item.id),saleId=sales[0]&&sales[0].id,flows=Store.load().treasury.flows,cash=Store.load().treasury.balances.find(b=>b.sourceKey==='CASH_RSD'),migrationEvents=Store.all('timeline').filter(e=>e.type==='SALE_MIGRATED'&&e.relatedId===saleId);return {saleCount:sales.length,completed:sales.length===1&&saleIsCompleted(sales[0]),transactionLinked:sales.length===1&&item.saleTransactionId===sales[0].id,inventoryFlowCount:flows.filter(f=>f.refType==='inventory'&&f.refId===item.id&&f.kind==='SALE').length,saleFlowCount:sales.length&&flows.filter(f=>f.refType==='sale'&&f.refId===sales[0].id&&f.kind==='SALE').length,cash:cash&&cash.amount,profit:dashboardStats('RSD').realizedProfit,migrationEvents:migrationEvents.length,migrationDetail:migrationEvents[0]&&migrationEvents[0].description};})()`);
 checks.push(['legacy confirmed inventory sale migrates into one canonical completed sale', v1SaleMigration.saleCount===1 && v1SaleMigration.completed && v1SaleMigration.transactionLinked]);
 checks.push(['legacy inventory sale migration replaces the flow without double-crediting cash', v1SaleMigration.inventoryFlowCount===0 && v1SaleMigration.saleFlowCount===1 && v1SaleMigration.cash===18000 && v1SaleMigration.profit===6000]);
+checks.push(['legacy inventory sale migration leaves one explicit audit timeline entry', v1SaleMigration.migrationEvents===1 && /Treasury cash was preserved/.test(v1SaleMigration.migrationDetail||'')]);
 
 // --- Sandbox probe: post-load global state ---
 const meta = env.run(sandbox, `(() => ({
@@ -236,6 +237,19 @@ const probe = `
     const sold = renderInventory();
     state.filters.inventory.status = 'ACTIVE';
     return !active.includes('Ryzen 5 3600') && sold.includes('Ryzen 5 3600');
+  })());
+  log('B. PARTS VAULT filter bar reports ACTIVE, SOLD, and TOTAL counts', (function(){
+    const items = Store.all('inventory');
+    const active = items.filter(item=>item.status!=='SOLD').length;
+    const sold = items.length-active;
+    const html = renderInventory();
+    return html.includes('data-inventory-count="ACTIVE">ACTIVE <b>'+active+'</b>') && html.includes('data-inventory-count="SOLD">SOLD <b>'+sold+'</b>') && html.includes('data-inventory-count="TOTAL">TOTAL <b>'+items.length+'</b>');
+  })());
+  log('B. SOLD inventory detail links to its exact Sales Ledger row', (function(){
+    state.modal = {entityType:'inventory',id:soldItem.id,prefill:null};
+    const html = renderModal();
+    state.modal = null;
+    return html.includes('data-view-inventory-sale="'+soldResult.transactionId+'"') && html.includes('VIEW SALE');
   })());
   const blockItem = Actions.addInventory({category:'CPU',manufacturer:'Intel',model:'BlockTest',purchaseDate:'2026-01-01',purchasePrice:1000,currency:'RSD',estimatedMarketValue:1500,source:'OTHER',condition:'WORKING',status:'IN_STORAGE',notes:''});
   Actions.updateInventory(blockItem.id, {status:'SOLD'});
