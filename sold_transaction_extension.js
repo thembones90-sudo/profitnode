@@ -249,7 +249,7 @@
   // ---- global click handlers for sale modal buttons ----
   document.addEventListener("click", function(e){
     const close = e.target.closest("[data-close-sale-modal]");
-    if (close){ closeInventorySaleModal(); return; }
+    if (close && e.target === close){ closeInventorySaleModal(); return; }
     const mark = e.target.closest("[data-mark-inventory-sold]");
     if (mark){ openInventorySaleModal(mark.dataset.markInventorySold); return; }
     const complete = e.target.closest("[data-complete-sale-data]");
