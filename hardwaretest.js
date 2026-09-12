@@ -228,12 +228,12 @@ const results = env.run(sandbox, `(() => {
   out.push(['every NZXT AM5 board is RELEASED (no fabricated HOLD)', nzxtAm5.every(b=>b.availability_status==='RELEASED')]);
   out.push(['price never enters the NZXT board score', nzxtAm5.every(b=>!('price_eur' in b)&&!('price_rsd' in b)&&b.pn_score===b.overall&&Number.isFinite(b.overall))]);
   out.push(['NZXT N9 X870E carries verified 20+2+1 VRM, 5G/2.5G LAN, Wi-Fi 7 and USB4 facts', (function(){const b=catalogFind('MOBO','NZXT N9 X870E');return b&&b.vrm_phases===23&&b.ethernet_speed==='5G'&&b.wifi_standard==='Wi-Fi 7'&&b.usb4===true&&b.m2_slots===4&&b.pn_score>=85})()]);
-  out.push(['NZXT RARE B650E carries verified 16+2+1 VRM, ALC1220, Wi-Fi 6E and 3x M.2', (function(){const b=catalogFind('MOBO','NZXT RARE B650E');return b&&b.vrm_phases===19&&b.audio_codec==='Realtek ALC1220'&&b.wifi_standard==='Wi-Fi 6E'&&b.m2_slots===3&&b.ethernet_speed==='2.5G'&&b.pn_score>=75})()]);
-  out.push(['NZXT RARE B850 carries verified 16+2+1 VRM with 80A DrMOS and 2.5G LAN', (function(){const b=catalogFind('MOBO','NZXT RARE B850');return b&&b.vrm_phases===19&&b.power_stage_rating===80&&b.ethernet_speed==='2.5G'&&b.wifi_standard==='Wi-Fi 6E'&&b.pn_score>=75})()]);
+  out.push(['N7 B650E carries verified 16+2+1 VRM, ALC1220, Wi-Fi 6E and 3x M.2', (function(){const b=catalogFind('MOBO','N7 B650E');return b&&b.vrm_phases===19&&b.audio_codec==='Realtek ALC1220'&&b.wifi_standard==='Wi-Fi 6E'&&b.m2_slots===3&&b.ethernet_speed==='2.5G'&&b.pn_score>=75})()]);
+  out.push(['N7 B850 carries verified 16+2+1 VRM with 80A DrMOS and 2.5G LAN', (function(){const b=catalogFind('MOBO','N7 B850');return b&&b.vrm_phases===19&&b.power_stage_rating===80&&b.ethernet_speed==='2.5G'&&b.wifi_standard==='Wi-Fi 6E'&&b.pn_score>=75})()]);
   out.push(['NZXT N9 X870E Kraken Elite bundle stays a distinct verified SKU', (function(){const b=catalogFind('MOBO','NZXT N9 X870E + Kraken Elite 360 RGB');return b&&b.rating_method==='PN_AM5_MOBO_V2'&&b.pn_score===catalogFind('MOBO','NZXT N9 X870E').pn_score})()]);
   out.push(['NZXT X870E resolves Gen5 GPU / Gen5 M.2 through the PCIe matrix', detectMoboPcieGeneration('NZXT N9 X870E')===5&&detectMoboStoragePcieGeneration('NZXT N9 X870E')===5]);
-  out.push(['NZXT B650E resolves Gen5 GPU / Gen5 M.2 through the PCIe matrix', detectMoboPcieGeneration('NZXT RARE B650E')===5&&detectMoboStoragePcieGeneration('NZXT RARE B650E')===5]);
-  out.push(['ASRock AM5 rows no longer carry NZXT N-series co-branded boards', HardwareCatalog.boards.filter(b=>b.brand==='ASRock'&&/^RARE|^N9/.test(b.model||'')).length===0]);
+  out.push(['NZXT B650E resolves Gen5 GPU / Gen5 M.2 through the PCIe matrix', detectMoboPcieGeneration('N7 B650E')===5&&detectMoboStoragePcieGeneration('N7 B650E')===5]);
+  out.push(['ASRock AM5 rows no longer carry NZXT N-series co-branded boards', HardwareCatalog.boards.filter(b=>b.brand==='ASRock'&&/^N7|^N9/.test(b.model||'')).length===0]);
 
   const biostarAm5=HardwareCatalog.boards.filter(b=>b.brand==='Biostar'&&b.socket==='AM5');
   out.push(['Biostar AM5 registry is live with 22 verified SKUs', biostarAm5.length===22]);

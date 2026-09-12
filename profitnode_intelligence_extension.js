@@ -167,9 +167,9 @@ function pnCoolerNameTier(text,catalog){
 function pnCaseNameTier(text,catalog){
   const caps=catalog&&catalog.caps||{},quality=String(caps.buildQuality||"").toUpperCase(),airflow=String(caps.airflow||"").toUpperCase();
   if(/FLAGSHIP|HAF 700|7000D|O11D EVO XL|COSMOS C700/.test(text)&&quality==="PREMIUM") return 7;
+  if(/LANCOOL/.test(text)) return 4;
   if(quality==="PREMIUM"||airflow==="EXCELLENT"&&quality!=="BASIC") return 6;
   if(quality==="GOOD"||quality==="SOLID"&&["GOOD","EXCELLENT"].includes(airflow)) return 5;
-  if(/LANCOOL/.test(text)) return 4;
   if(quality==="BASIC"||["FAIR","GOOD"].includes(airflow)) return 3;
   if(quality==="POOR"||airflow==="POOR") return 2;
   return 3;

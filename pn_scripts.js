@@ -1,6 +1,6 @@
 "use strict";
 window.__PN_SCRIPTS = [
-  "app_core.js?v=cost-integrity-v3",
+  "app_core.js?v=for-sale-status-v1",
   "planner_retirement_extension.js?v=planner-retired-v1",
   "terminal_naming_extension.js?v=pending-sales-v1",
   "psu_extension.js?v=mobo-pcie-perboard-v1",
@@ -10,7 +10,7 @@ window.__PN_SCRIPTS = [
   "command_header_glitch_extension.js?v=command-freshness-v1",
   "rig_bench_navigation_extension.js?v=rig-direct-open-v1",
   "command_financial_model_extension.js?v=rig-assembly-nav-v1",
-  "profitnode_intelligence_extension.js?v=data-trust-v1",
+  "profitnode_intelligence_extension.js?v=visual-tier-restraint-v1",
   "command_separator_tune.js?v=command-separator-tune-v1",
   "roulette_extension.js?v=roulette-loss-reason-v1",
   "roulette_ui_extension.js?v=rig-assembly-nav-v1",
