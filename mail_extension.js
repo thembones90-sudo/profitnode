@@ -3,7 +3,7 @@
 /* PROFITNODE MAIL v1 — local-first shipment/postage tracker, integrated with the existing ledger. */
 
 const MAIL_DIRECTIONS=["incoming","outgoing"];
-const MAIL_LINKED_TYPES=["project","inventory","deal","sale","personal","none"];
+const MAIL_LINKED_TYPES=["project","inventory","sale","personal","none"];
 const MAIL_STATUSES=["preparing","sent","in_transit","ready_for_pickup","delivered","delayed","returned","lost"];
 const MAIL_STATUS_META={
   preparing:{chip:"chip-muted"},
@@ -393,7 +393,7 @@ function mailApplyParsedMessage(parsed,raw){
 }
 
 function mailLinkedTypeOptions(direction){
-  return(direction==="outgoing"?["project","sale"]:["project","inventory","deal"]).concat(["personal","none"]);
+  return(direction==="outgoing"?["project","sale"]:["project","inventory"]).concat(["personal","none"]);
 }
 function mailLinkedTypeLabel(t){
   return{project:"Project",inventory:"Inventory Item",deal:"Deal",sale:"Sale",personal:"Personal",none:"None"}[t]||t;
@@ -449,7 +449,6 @@ function mailSuggestLinkForSender(sender,raw){
   function scoreText(text){const t=String(text||"").toLowerCase();return scoreTerms.reduce((sum,term)=>sum+(t.indexOf(term)>-1?(term.length>4?3:2):0),0);}
   function scoreItem(item){let s=scoreText(item.manufacturer)+scoreText(item.model)+scoreText(item.source)+scoreText(item.sourceDetail);return s;}
   const out=[];
-  Store.all("deals").forEach(d=>{const s=scoreText(d.seller)+scoreText(d.source)+scoreText(d.sourceDetail)+scoreText(d.item);if(s>0)out.push({type:"deal",id:d.id,label:d.item,confidence:s>=6?"high":"medium",reason:"seller/source match"});});
   Store.all("projects").forEach(p=>{const s=scoreText(p.name)+scoreText(p.notes);if(s>0)out.push({type:"project",id:p.id,label:p.name,confidence:s>=6?"high":"medium",reason:"name/note match"});});
   Store.all("inventory").forEach(i=>{const s=scoreItem(i);if(s>0)out.push({type:"inventory",id:i.id,label:((i.manufacturer||"")+" "+(i.model||"")).trim(),confidence:s>=6?"high":"medium",reason:"item/source match"});});
   Store.all("sales").forEach(s=>{const sc=scoreText(s.itemName)+scoreText(s.buyerName)+scoreText(s.contact)+scoreText(s.notes);if(sc>0)out.push({type:"sale",id:s.id,label:s.itemName,confidence:sc>=6?"high":"medium",reason:"sale/buyer match"});});
@@ -499,7 +498,6 @@ function mailShippingSum(direction,linkedType,linkedId,currency){
     .reduce((sum,m)=>sum+convert(m.shippingCost||0,m.currency||"RSD",currency),0);
 }
 function mailOutgoingShippingCostForSale(saleId,currency){return mailShippingSum("outgoing","sale",saleId,currency)}
-function mailIncomingShippingCostForDeal(dealId,currency){return mailShippingSum("incoming","deal",dealId,currency)}
 function mailIncomingShippingCostForProject(projectId,currency){return mailShippingSum("incoming","project",projectId,currency)}
 function mailIncomingShippingCostForInventory(inventoryId,currency){return mailShippingSum("incoming","inventory",inventoryId,currency)}
 function mailProfitImpactPreview(d){
@@ -565,23 +563,12 @@ saleDerived=function(sale){
   return Object.assign({},base,{totalCost:totalCost,profit:profit,roi:Calc.roi(profit,totalCost),margin:Calc.profitMargin(profit,sale.buyerPrice),mailShippingCost:shipping});
 };
 
-/* Deal-linked incoming shipping folds into the effective purchase price via the existing Calc helpers — never mutates the stored deal. */
-const PNCoreDealDerivedMail=dealDerived;
-dealDerived=function(deal){
-  const shipping=mailIncomingShippingCostForDeal(deal.id,deal.currency);
-  if(!shipping)return PNCoreDealDerivedMail(deal);
-  const effective=(deal.purchasePrice||0)+shipping;
-  return{amountSaved:Calc.savings(deal.estimatedMarketValue,effective),discountPct:Calc.discountPct(deal.estimatedMarketValue,effective),mailShippingCost:shipping};
-};
-
-/* Inventory acquisition cost includes incoming shipping attached to the item or its originating deal. */
+/* Inventory acquisition cost includes incoming shipping attached to the item. */
 const PNCoreInventoryAcquisitionCostMail=inventoryAcquisitionCost;
 inventoryAcquisitionCost=function(item,currency){
   if(!item)return 0;const cur=currency||item.currency||"RSD",base=PNCoreInventoryAcquisitionCostMail(item,cur),
-  invMail=mailIncomingShippingCostForInventory(item.id,cur),
-  deal=Store.all("deals").find(d=>d.inventoryItemId===item.id),
-  dealMail=deal?mailIncomingShippingCostForDeal(deal.id,cur):0;
-  return base+invMail+dealMail;
+  invMail=mailIncomingShippingCostForInventory(item.id,cur);
+  return base+invMail;
 };
 
 /* Project-linked incoming shipping folds into acquisition/build cost via the existing single source of truth. */

@@ -3,15 +3,12 @@
 /*
   PROFITNODE Treasury Fund Flow v1
 
-  Bridges the shop-side ledgers (inventory, deals, sales, mail) to the
+  Bridges the shop-side ledgers (inventory, sales, mail) to the
   personal treasury cash pool so every acquisition deducts exactly once
   and every completed sale credits the full revenue.
 
   Canonical money rules:
-  - inventory.purchasePrice is the single acquisition amount. A deal is a
-    signal, not a second deduction: when a deal links to an inventory item,
-    the deal's acquisition flow is retired (reversed) and the inventory flow
-    remains.
+  - inventory.purchasePrice is the single acquisition amount.
   - Shipping always spends from the pool (inbound and outbound alike).
   - Only COMPLETED sales credit revenue; PENDING sales create no flow.
   - Edits are delta-based: each flow stores its own signed delta, so
@@ -157,39 +154,6 @@ Actions.removeInventory = function(id){
   if (item) removeTreasuryFlow(ledger.treasury, "inventory", item.id, "ACQUISITION");
   Store.persist();
   return PNCoreRemoveInventoryTreasuryFlow.call(this, id);
-};
-
-const PNCoreAddDealTreasuryFlow = Actions.addDeal;
-Actions.addDeal = function(data){
-  const result = PNCoreAddDealTreasuryFlow.call(this, data);
-  applyTreasuryChange(Store.load().treasury, "deal", result.id, "ACQUISITION", result.purchasePrice, result.currency, "Deal purchase");
-  Store.persist();
-  return result;
-};
-
-const PNCoreUpdateDealTreasuryFlow = Actions.updateDeal;
-Actions.updateDeal = function(id, data){
-  const oldDeal = Store.get("deals", id);
-  const result = PNCoreUpdateDealTreasuryFlow.call(this, id, data);
-  if (!result) return result;
-  const treasury = Store.load().treasury;
-  const newlyLinked = result.inventoryItemId && oldDeal && !oldDeal.inventoryItemId;
-  if (newlyLinked && findTreasuryFlow(treasury, "deal", id, "ACQUISITION") && findTreasuryFlow(treasury, "inventory", result.inventoryItemId, "ACQUISITION")){
-    removeTreasuryFlow(treasury, "deal", id, "ACQUISITION");
-  } else {
-    applyTreasuryChange(treasury, "deal", id, "ACQUISITION", Number(result.purchasePrice) || 0, result.currency, "Deal purchase");
-  }
-  Store.persist();
-  return result;
-};
-
-const PNCoreRemoveDealTreasuryFlow = Actions.removeDeal;
-Actions.removeDeal = function(id){
-  const deal = Store.get("deals", id);
-  const ledger = Store.load();
-  if (deal) removeTreasuryFlow(ledger.treasury, "deal", deal.id, "ACQUISITION");
-  Store.persist();
-  return PNCoreRemoveDealTreasuryFlow.call(this, id);
 };
 
 const PNCoreAddMailTreasuryFlow = Actions.addMail;

@@ -31,30 +31,29 @@ const results = env.run(sandbox, `
     log('A: forwarded Posta message still parses', p.ok && p.carrier.indexOf('Pošta') > -1 && p.trackingNumber === 'PX123456700RS');
   })();
 
-  // B. Sender-based auto-link suggestions against deals/inventory/sales
+  // B. Sender-based auto-link suggestions against inventory/sales
   (function(){
     reset();
-    const deal = Actions.addDeal({item:'Gigabyte RTX 3060', category:'GPU', purchasePrice:20000, estimatedMarketValue:28000, condition:'WORKING', source:'OLX', seller:'Marko PC', date:'2026-09-01'});
     const inv = Actions.addInventory({category:'GPU', manufacturer:'Gigabyte', model:'RTX 3060', purchasePrice:20000, estimatedMarketValue:28000, condition:'WORKING', status:'IN_STORAGE', source:'OLX', purchaseDate:'2026-09-01'});
     const sale = Actions.addSale({itemName:'Gigabyte RTX 3060 Sale', buyerName:'Marko PC', buyerPrice:30000, originalInvestment:20000, additionalCosts:0, currency:'RSD', saleDate:'2026-09-05', saleState:'COMPLETED', category:'GPU'});
-    const sugDeal = mailSuggestLinkForSender('Marko PC', '');
+    const sugSale = mailSuggestLinkForSender('Marko PC', '');
     const sugRaw = mailSuggestLinkForSender('', 'Gigabyte RTX 3060 something');
-    log('B: sender name suggests linked deal', sugDeal.some(s=>s.type==='deal'&&s.id===deal.id));
+    log('B: sender name suggests linked sale', sugSale.some(s=>s.type==='sale'&&s.id===sale.id));
     log('B: raw text suggests linked inventory', sugRaw.some(s=>s.type==='inventory'&&s.id===inv.id));
-    log('B: suggestions are deduplicated and capped', sugDeal.length <= 4);
+    log('B: suggestions are deduplicated and capped', sugSale.length <= 4);
   })();
 
   // C. Smart import preview exposes suggestions and applying one sets linkedType/linkedId
   (function(){
     reset();
-    const deal = Actions.addDeal({item:'ASUS RX 6600', category:'GPU', purchasePrice:18000, estimatedMarketValue:24000, condition:'WORKING', source:'KP', seller:'TechShop', date:'2026-09-01'});
+    const inv = Actions.addInventory({category:'GPU', manufacturer:'ASUS', model:'RX 6600', purchasePrice:18000, estimatedMarketValue:24000, condition:'WORKING', status:'IN_STORAGE', source:'KP', sourceDetail:'TechShop', purchaseDate:'2026-09-01'});
     const raw = 'Posta Srbije: Vaša pošiljka PX123456701RS je poslata od pošiljaoca TechShop.';
     const preview = mailSmartImportPreview(raw, new Date(2026, 8, 10));
-    log('C: preview contains a suggestion for known sender', preview.ok && Array.isArray(preview.suggestions) && preview.suggestions.some(s=>s.id===deal.id));
-    preview.linkedType = 'deal';
-    preview.linkedId = deal.id;
+    log('C: preview contains a suggestion for known sender', preview.ok && Array.isArray(preview.suggestions) && preview.suggestions.some(s=>s.id===inv.id));
+    preview.linkedType = 'inventory';
+    preview.linkedId = inv.id;
     const applied = mailApplyParsedMessage(preview, raw);
-    log('C: applied suggestion persists link on mail record', applied.record.linkedType==='deal' && applied.record.linkedId===deal.id);
+    log('C: applied suggestion persists link on mail record', applied.record.linkedType==='inventory' && applied.record.linkedId===inv.id);
   })();
 
   // D. Pickup deadline dashboard intelligence

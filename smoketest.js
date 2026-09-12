@@ -62,7 +62,7 @@ const meta = env.run(sandbox, `(() => ({
 
 const routes = meta.routes.map(r => r.split('|'));
 const routeKeys = routes.map(r => r[0]);
-checks.push(['ROUTES has 16 entries (treasury + roulette + road-to + my-rig + mail + hidden build workspace; planner retired)', routes.length === 16]);
+checks.push(['ROUTES has 15 entries (treasury + roulette + road-to + my-rig + mail + hidden build workspace; planner retired; deals removed)', routes.length === 15]);
 checks.push(['no Build Planner route', !routeKeys.includes('planner')]);
 checks.push(['roulette route present', routeKeys.includes('roulette')]);
 checks.push(['road-to route present', routeKeys.includes('roadto')]);
@@ -71,7 +71,7 @@ checks.push(['backup route still present', routeKeys.includes('backup')]);
 const expectedSeq = [
   ['dashboard','COMMAND'], ['treasury','TREASURY'], ['analytics','INTEL'], ['rigbuild','RIG ASSEMBLY'], ['myrig','MY RIG'],
   ['projects','BUILDS'], ['inventory','PARTS VAULT'], ['repairs','REPAIR BAY'],
-  ['deals','THE HUNT'], ['roadto','ROAD TO'], ['sales','LEDGER'], ['mail','MAIL'], ['history','ARCHIVE'],
+  ['roadto','ROAD TO'], ['sales','LEDGER'], ['mail','MAIL'], ['history','ARCHIVE'],
   ['roulette','THE ROULETTE'], ['backup','BLACKBOX'], ['projectbuild','Build Workspace']
 ];
 checks.push(['nav order/labels match terminal rename + roulette insert + mail insert + hidden build workspace route',
@@ -1116,7 +1116,6 @@ const mailProbe = `
   out.push(['MAIL: INCOMING added to INVENTORY_STATUSES with matching chip meta', INVENTORY_STATUSES.indexOf('INCOMING') > -1 && !!INVENTORY_STATUS_META.INCOMING]);
 
   const proj = Store.insert('projects', {name:'Mail Test Rig', status:'BUILDING', currency:'RSD', componentIds:[], startDate:'2026-01-01', additionalCosts:0});
-  const deal = Store.insert('deals', {item:'Mail Test Deal', category:'GPU', date:'2026-01-01', purchasePrice:10000, estimatedMarketValue:15000, currency:'RSD', condition:'WORKING', source:'OTHER'});
   const sale = Store.insert('sales', {itemName:'Mail Test Sale', saleDate:'2026-02-01', buyerPrice:50000, currency:'RSD', originalInvestment:30000, additionalCosts:0});
   const item = Store.insert('inventory', {category:'GPU', manufacturer:'Mail', model:'Test Card', purchaseDate:'2026-01-01', purchasePrice:20000, currency:'RSD', estimatedMarketValue:25000, source:'OTHER', condition:'WORKING', status:'INCOMING'});
 
@@ -1171,10 +1170,6 @@ const mailProbe = `
   mailTrack(mail5.id, null);
   out.push(['MAIL: mailTrack copies the tracking number and opens the stored (normalized) tracking URL', calledOpenWith === 'https://posta.rs/lat/alati/pracenje-posiljke.aspx']);
   delete window.open;
-
-  Actions.addMail({direction:'incoming', description:'Deal parts', linkedType:'deal', linkedId:deal.id, shippingCost:1500, currency:'RSD', status:'preparing'});
-  const dealAfter = dealDerived(deal);
-  out.push(['MAIL: incoming shipping folds into dealDerived via the existing Calc helpers, never mutating the stored deal', Math.abs(dealAfter.amountSaved - (15000-11500)) < 0.001 && Math.abs(dealAfter.discountPct - ((15000-11500)/15000*100)) < 0.001 && Store.get('deals',deal.id).purchasePrice === 10000]);
 
   Actions.addMail({direction:'incoming', description:'Build parts', linkedType:'project', linkedId:proj.id, shippingCost:2500, currency:'RSD', status:'preparing'});
   out.push(['MAIL: incoming shipping folds into project acquisition/build cost via Actions.projectTotalInvestment', Actions.projectTotalInvestment(Store.get('projects',proj.id)) === 2500]);
@@ -1232,14 +1227,6 @@ const treasuryFlowProbe = `
   setupPool(100000);
   const a = Actions.addInventory({category:'GPU',manufacturer:'Nvidia',model:'A Card',purchaseDate:'2026-01-01',purchasePrice:5000,currency:'RSD',estimatedMarketValue:7000,source:'OTHER',condition:'WORKING',status:'IN_STORAGE'});
   out.push(['TREASURY FLOW A: inventory acquisition deducts once from the CASH_RSD pool', getPool() === 95000 && flowCount() === 1]);
-
-  setupPool(100000);
-  const d = Actions.addDeal({item:'Deal B',category:'GPU',date:'2026-01-01',purchasePrice:5000,estimatedMarketValue:8000,currency:'RSD',condition:'WORKING',source:'OTHER'});
-  out.push(['TREASURY FLOW B1: deal acquisition deducts the purchase price', getPool() === 95000 && flowCount() === 1]);
-  const b = Actions.addInventory({category:'GPU',manufacturer:'Nvidia',model:'B Card',purchaseDate:'2026-01-01',purchasePrice:5000,currency:'RSD',estimatedMarketValue:8000,source:'OTHER',condition:'WORKING',status:'IN_STORAGE'});
-  out.push(['TREASURY FLOW B2: deal + separate inventory both deduct before linking', getPool() === 90000 && flowCount() === 2]);
-  Actions.updateDeal(d.id,{inventoryItemId:b.id});
-  out.push(['TREASURY FLOW B3: linking a deal to inventory retires the deal flow, keeping one acquisition', getPool() === 95000 && flowCount() === 1 && !findFlow('deal',d.id,'ACQUISITION') && !!findFlow('inventory',b.id,'ACQUISITION')]);
 
   setupPool(100000);
   const c = Actions.addInventory({category:'GPU',manufacturer:'Nvidia',model:'C Card',purchaseDate:'2026-01-01',purchasePrice:5000,currency:'RSD',estimatedMarketValue:7000,source:'OTHER',condition:'WORKING',status:'INCOMING'});
