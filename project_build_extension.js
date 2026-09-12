@@ -79,6 +79,55 @@ function pbRamSearch(query,limit){
   return out
 }
 
+// ---- RAM: multiple, possibly non-matching, stick groups per slot ----
+// A slot's RAM isn't always one uniform kit — a flip shop routinely seats
+// whatever sticks are on hand (e.g. 1x4GB + 2x8GB = 20GB). d.ramGroups
+// holds each confirmed capacity+quantity pick; the module currently staged
+// in the picker (d.ramPicked/d.ram) is folded in as the final group only
+// at save time, so the common single-kit case (search, pick, choose
+// quantity, save) needs no extra "add group" click.
+function pbRamFinalGroups(d){
+  const groups=(d.ramGroups||[]).slice()
+  if(d.ramPicked&&d.ram&&d.ram.moduleCount&&d.ram.perModuleCapacity){
+    groups.push({perModuleCapacity:d.ram.perModuleCapacity,moduleCount:d.ram.moduleCount,technology:d.ram.technology,speed:d.ram.speed,casLatency:d.ram.casLatency,label:pbRamBaseLabel(d.ramPicked)})
+  }
+  return groups
+}
+// Aggregates the groups into the single {technology,moduleCount,
+// perModuleCapacity,totalCapacity,speed,casLatency} shape the existing
+// scoring chain (ramRating/ramV3Rating/ramV31Rating) and rigSlotResolved
+// already expect, so a mixed slot still scores instead of breaking those
+// unrelated, untouched files. totalCapacity/moduleCount are the true sums;
+// perModuleCapacity uses the smallest stick (the matched-channel amount —
+// anything above that runs asymmetric in real hardware); speed/casLatency
+// use the slowest stick's rating (real RAM clocks to its slowest module).
+// The true per-group breakdown always travels alongside in .groups for
+// display, never lost to this synthesis.
+function pbRamAggregate(groups){
+  if(!groups||!groups.length)return null
+  const moduleCount=groups.reduce((s,g)=>s+(Number(g.moduleCount)||0),0)
+  const totalCapacity=groups.reduce((s,g)=>s+(Number(g.moduleCount)||0)*(Number(g.perModuleCapacity)||0),0)
+  const caps=groups.map(g=>Number(g.perModuleCapacity)||0).filter(Boolean)
+  const perModuleCapacity=caps.length?Math.min(...caps):0
+  const withSpeed=groups.filter(g=>Number(g.speed)>0)
+  let speed=0,casLatency=0
+  if(withSpeed.length){
+    const slowest=withSpeed.reduce((m,g)=>Number(g.speed)<Number(m.speed)?g:m)
+    speed=Number(slowest.speed)||0
+    casLatency=Number(slowest.casLatency)||0
+  }
+  return{technology:groups[0].technology||"DDR4",moduleCount:moduleCount,perModuleCapacity:perModuleCapacity,totalCapacity:totalCapacity,speed:speed,casLatency:casLatency,mixed:groups.length>1,groups:groups.map(g=>({perModuleCapacity:Number(g.perModuleCapacity)||0,moduleCount:Number(g.moduleCount)||0,technology:g.technology,speed:Number(g.speed)||0,casLatency:Number(g.casLatency)||0,label:g.label||""}))}
+}
+// A single group keeps the clean brand/series label as before; a mixed set
+// has no one canonical model name, so the slot label names the mix itself
+// and the itemized breakdown (pbRamConfigLine) carries the real detail.
+function pbRamGroupsLabel(groups){
+  if(!groups.length)return""
+  if(1===groups.length)return groups[0].label||""
+  if(2===groups.length)return(groups[0].label||"?")+" + "+(groups[1].label||"?")
+  return groups.length+"x MIXED STICKS"
+}
+
 function pbProject(){return state.pbId?Store.get("projects",state.pbId):null}
 function pbSetNotice(tone,text){PBUI.notice={tone:tone,text:text}}
 function pbVerdictMeta(level){
@@ -133,8 +182,15 @@ function pbPaidAmount(project,slot){
 }
 function pbRamConfigLine(slot){
   const ram=slot&&slot.ram
-  if(ram&&ram.moduleCount&&ram.perModuleCapacity)return ram.moduleCount+" x "+ram.perModuleCapacity+"GB / "+(ram.moduleCount*ram.perModuleCapacity)+"GB TOTAL"
-  return""
+  if(!ram)return""
+  // Legacy slots saved before mixed-stick support have no .groups — treat
+  // the aggregate itself as a single implicit group so old data still
+  // renders exactly as it always has.
+  const groups=Array.isArray(ram.groups)&&ram.groups.length?ram.groups:(ram.moduleCount&&ram.perModuleCapacity?[{moduleCount:ram.moduleCount,perModuleCapacity:ram.perModuleCapacity}]:[])
+  if(!groups.length)return""
+  const total=groups.reduce((s,g)=>s+(Number(g.moduleCount)||0)*(Number(g.perModuleCapacity)||0),0)
+  if(1===groups.length)return groups[0].moduleCount+" x "+groups[0].perModuleCapacity+"GB / "+total+"GB TOTAL"
+  return groups.map(g=>g.moduleCount+"x"+g.perModuleCapacity+"GB").join(" + ")+" / "+total+"GB TOTAL — MIXED"
 }
 function pbSlotCardHtml(project,slotKey,locked){
   const slot=project.slots&&project.slots[slotKey]||null,cat=RIG_SLOT_CATEGORY[slotKey],label=RIG_SLOT_LABELS[slotKey]
@@ -198,21 +254,32 @@ function pbSlotEditorHtml(project){
     }).join("")+"</select></label>":'<p class="hint" style="grid-column:1/-1">No compatible unreserved '+cat.toLowerCase()+' in the Parts Vault — add one to Inventory first, or add a planned part below.</p>'
   }else if(k==="RAM"){
     // ---- RAM: module capacity is the primary search axis (spec section
-    // 10-14), quantity is a separate explicit step (section 13), and the
-    // resulting DIMM+quantity is what gets saved as slot.ram — never a
-    // generic family autocomplete. ----
+    // 10-14), quantity is a separate explicit step (section 13). Each
+    // confirmed capacity+quantity pick can be stacked into d.ramGroups so
+    // a slot can carry genuinely non-matching sticks (e.g. 1x4GB+2x8GB)
+    // instead of forcing every module to share one size — SAVE always
+    // folds whatever is currently staged in the picker in as the final
+    // group, so the common single-kit path (search, pick, choose
+    // quantity, save) still takes no extra click. ----
+    const groups=d.ramGroups||[]
+    const groupsHtml=groups.length?'<div class="field" style="grid-column:1/-1"><span style="display:block;margin-bottom:4px">STICKS ALREADY ADDED</span><div style="display:flex;flex-direction:column;gap:4px">'+groups.map((g,i)=>'<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;border:1px solid var(--border);border-radius:var(--radius);padding:5px 8px"><span>'+g.moduleCount+" x "+g.perModuleCapacity+"GB — "+escHtml(g.label||"")+'</span><button type="button" class="btn btn-sm btn-ghost" data-pb-ram-group-remove="'+i+'">REMOVE</button></div>').join("")+"</div></div>":""
+    const costNotesHtml='<label class="field"><span>PLANNED COST ('+project.currency+')</span><input type="number" min="0" step="1" data-pb-field="cost" value="'+escAttr(d.cost||"")+'"></label>'
+      +'<label class="field" style="grid-column:1/-1"><span>NOTES</span><input type="text" data-pb-field="notes" value="'+escAttr(d.notes||"")+'"></label>'
     if(!d.ramPicked){
       const hits=PBUI.ramHits||[]
-      body='<label class="field" style="grid-column:1/-1"><span>RAM MODULE SIZE / SEARCH</span><input type="text" data-pb-ram-search value="'+escAttr(d.ramQuery||"")+'" placeholder="e.g. 8GB, Corsair 8GB, 16GB DDR5 6000" autocomplete="off"></label>'
+      body=groupsHtml
+        +'<label class="field" style="grid-column:1/-1"><span>'+(groups.length?"ADD ANOTHER MODULE (NON-MATCHING OK) / SEARCH":"RAM MODULE SIZE / SEARCH")+'</span><input type="text" data-pb-ram-search value="'+escAttr(d.ramQuery||"")+'" placeholder="e.g. 8GB, Corsair 8GB, 16GB DDR5 6000" autocomplete="off"></label>'
         +(hits.length?'<div class="myrig-catalog-results" style="grid-column:1/-1;max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);padding:4px">'+hits.map((h,i)=>'<button type="button" class="btn btn-sm btn-ghost" data-pb-ram-pick="'+i+'" style="display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;padding:6px 8px;gap:8px"><span>'+escHtml(pbRamRowLabel(h))+'</span>'+(h.isKit?'<span class="chip chip-blue-outline">KNOWN KIT</span>':"")+"</button>").join("")+"</div>"
           :(d.ramQuery?'<p class="hint" style="grid-column:1/-1">No matching RAM modules — try a different capacity (e.g. 8GB, 16GB) or brand.</p>':'<p class="hint" style="grid-column:1/-1">Start with the module size — e.g. "8GB" — then narrow by brand, DDR generation or speed.</p>'))
+        +(groups.length?costNotesHtml:"")
     }else{
       const ram=d.ram||{moduleCount:d.ramPicked.suggestedCount||2,perModuleCapacity:d.ramPicked.perModuleCapacity}
-      body='<div class="field" style="grid-column:1/-1"><span style="display:block;margin-bottom:4px">SELECTED MODULE</span><div style="font-weight:800;font-size:13px">'+escHtml(pbRamRowLabel(d.ramPicked))+'</div><button type="button" class="btn btn-sm" style="margin-top:6px" data-pb-ram-change>CHANGE MODULE</button></div>'
-        +'<div class="field" style="grid-column:1/-1"><span style="display:block;margin-bottom:4px">QUANTITY (STICKS INSTALLED)</span><div style="display:flex;gap:6px">'+[1,2,3,4].map(n=>'<button type="button" class="btn btn-sm'+(ram.moduleCount===n?" btn-primary":"")+'" data-pb-ram-qty="'+n+'">'+n+"</button>").join("")+"</div></div>"
-        +'<div class="field" style="grid-column:1/-1"><span>TOTAL CAPACITY</span><div style="font-weight:800">'+(ram.moduleCount*ram.perModuleCapacity)+"GB TOTAL</div></div>"
-        +'<label class="field"><span>PLANNED COST ('+project.currency+')</span><input type="number" min="0" step="1" data-pb-field="cost" value="'+escAttr(d.cost||"")+'"></label>'
-        +'<label class="field" style="grid-column:1/-1"><span>NOTES</span><input type="text" data-pb-field="notes" value="'+escAttr(d.notes||"")+'"></label>'
+      const runningTotal=groups.reduce((s,g)=>s+g.moduleCount*g.perModuleCapacity,0)+ram.moduleCount*ram.perModuleCapacity
+      body=groupsHtml
+        +'<div class="field" style="grid-column:1/-1"><span style="display:block;margin-bottom:4px">SELECTED MODULE</span><div style="font-weight:800;font-size:13px">'+escHtml(pbRamRowLabel(d.ramPicked))+'</div><button type="button" class="btn btn-sm" style="margin-top:6px" data-pb-ram-change>CHANGE MODULE</button></div>'
+        +'<div class="field" style="grid-column:1/-1"><span style="display:block;margin-bottom:4px">QUANTITY (STICKS OF THIS SIZE)</span><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'+[1,2,3,4].map(n=>'<button type="button" class="btn btn-sm'+(ram.moduleCount===n?" btn-primary":"")+'" data-pb-ram-qty="'+n+'">'+n+"</button>").join("")+'<button type="button" class="btn btn-sm btn-ghost" data-pb-ram-add-group style="margin-left:auto">+ ADD NON-MATCHING STICK</button></div></div>'
+        +'<div class="field" style="grid-column:1/-1"><span>RUNNING TOTAL</span><div style="font-weight:800">'+runningTotal+"GB TOTAL"+(groups.length?" ("+(groups.length+1)+" different sticks)":"")+"</div></div>"
+        +costNotesHtml
     }
   }else{
     const hits=PBUI.catalogHits||[]
@@ -327,9 +394,15 @@ function pbClick(e){
     else{
       const draft=cur?("INVENTORY"===cur.kind?{mode:"VAULT",inventoryItemId:cur.inventoryItemId}:{mode:"PLANNED",label:cur.label||"",cost:cur.cost||0,notes:cur.notes||"",ram:cur.ram||null}):{mode:"PLANNED",inventoryItemId:"",label:"",cost:0,notes:"",ram:null}
       if(k==="RAM"&&draft.ram){
-        // Re-editing an existing RAM slot jumps straight to the
-        // quantity/summary step instead of forcing a fresh search.
-        draft.ramPicked={brand:"",series:draft.label||"",technology:draft.ram.technology,speed:draft.ram.speed,casLatency:draft.ram.casLatency,perModuleCapacity:draft.ram.perModuleCapacity,suggestedCount:draft.ram.moduleCount}
+        // Re-editing an existing RAM slot restores its full group
+        // breakdown (never just the aggregate — a saved mixed config like
+        // 1x4GB+2x8GB must come back exactly as two groups, not get
+        // collapsed into "3 sticks of the smallest size") and opens
+        // straight on the summary/add-another step.
+        draft.ramGroups=Array.isArray(draft.ram.groups)&&draft.ram.groups.length
+          ?draft.ram.groups.map(g=>Object.assign({},g))
+          :[{perModuleCapacity:draft.ram.perModuleCapacity,moduleCount:draft.ram.moduleCount,technology:draft.ram.technology,speed:draft.ram.speed,casLatency:draft.ram.casLatency,label:draft.label||""}]
+        draft.ramPicked=null
       }
       PBUI.slot=draft}
     render();return void pbFocusSlotField(k)}
@@ -352,6 +425,17 @@ function pbClick(e){
     const n=+ramQty.dataset.pbRamQty,row=PBUI.slot.ramPicked
     PBUI.slot.ram={technology:row.technology,moduleCount:n,perModuleCapacity:row.perModuleCapacity,totalCapacity:n*row.perModuleCapacity,speed:row.speed,casLatency:row.casLatency}
     return void render()}
+  // Commits the currently staged pick+quantity as a confirmed group and
+  // returns to search so a second, non-matching capacity can be picked —
+  // this is the one explicit action needed to build a mixed-stick slot.
+  if(e.target.closest("[data-pb-ram-add-group]")&&PBUI.slot&&PBUI.slot.ramPicked&&PBUI.slot.ram){
+    const row=PBUI.slot.ramPicked,ram=PBUI.slot.ram
+    PBUI.slot.ramGroups=(PBUI.slot.ramGroups||[]).concat([{perModuleCapacity:ram.perModuleCapacity,moduleCount:ram.moduleCount,technology:ram.technology,speed:ram.speed,casLatency:ram.casLatency,label:pbRamBaseLabel(row)}])
+    PBUI.slot.ramPicked=null;PBUI.slot.ram=null;PBUI.slot.ramQuery="";PBUI.ramHits=[]
+    render();return void pbFocusSlotField(PBUI.slotKey)}
+  const ramGroupRemove=e.target.closest("[data-pb-ram-group-remove]");if(ramGroupRemove&&PBUI.slot&&PBUI.slot.ramGroups){
+    PBUI.slot.ramGroups.splice(+ramGroupRemove.dataset.pbRamGroupRemove,1)
+    return void render()}
 
   const ss=e.target.closest("[data-pb-save-slot]");if(ss){const p=pbProject();if(!p)return;const k=ss.dataset.pbSaveSlot,d=PBUI.slot||{}
     let res
@@ -362,9 +446,15 @@ function pbClick(e){
       if(!size)return pbSetNotice("err","Select a case size."),void render()
       res=Actions.setProjectSlot(p.id,k,"PLANNED",{label:size.label,cost:Math.round(Number(d.cost)||0),notes:String(d.notes||"").trim(),currency:p.currency,genericCaseSizeId:d.caseSizeId})}
     else{
-      if(k==="RAM"&&!d.ram)return pbSetNotice("err","Pick a RAM module and quantity first."),void render()
+      let ramFinal=null
+      if(k==="RAM"){
+        const groups=pbRamFinalGroups(d)
+        if(!groups.length)return pbSetNotice("err","Pick a RAM module and quantity first."),void render()
+        ramFinal=pbRamAggregate(groups)
+        d.label=pbRamGroupsLabel(ramFinal.groups)
+      }
       if(!String(d.label||"").trim())return pbSetNotice("err","Enter a part name."),void render()
-      res=Actions.setProjectSlot(p.id,k,"PLANNED",{label:String(d.label).trim(),cost:Math.round(Number(d.cost)||0),notes:String(d.notes||"").trim(),currency:p.currency,catalogType:PB_CATALOG_SLOTS.includes(k)?k:void 0,ram:d.ram||void 0})}
+      res=Actions.setProjectSlot(p.id,k,"PLANNED",{label:String(d.label).trim(),cost:Math.round(Number(d.cost)||0),notes:String(d.notes||"").trim(),currency:p.currency,catalogType:PB_CATALOG_SLOTS.includes(k)?k:void 0,ram:ramFinal||void 0})}
     PBUI.slotKey=null,PBUI.slot=null
     return pbSetNotice(res.ok?"ok":"err",res.ok?"Component saved.":res.error),void render()}
   const rs=e.target.closest("[data-pb-remove-slot]");if(rs){if("1"!==rs.dataset.armed)return rs.dataset.armed="1",rs.textContent="CONFIRM REMOVE?",void 0
