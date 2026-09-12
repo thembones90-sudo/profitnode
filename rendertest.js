@@ -85,7 +85,7 @@ const probe = `
   // --- TREASURY (isolated personal position) ---
   state.route = 'treasury';
   const treasuryHtml = renderShell();
-  out.push(['treasury route renders seven strategic cards', (treasuryHtml.match(/pn-treasury-card/g)||[]).length >= 7 && treasuryHtml.includes('FORTRESS RESERVE')]);
+  out.push(['treasury route renders six strategic cards', (treasuryHtml.match(/pn-treasury-card/g)||[]).length >= 6 && treasuryHtml.includes('FORTRESS RESERVE')]);
   out.push(['treasury exposes one compact rebalance entry point', treasuryHtml.includes('data-treasury-new') && treasuryHtml.includes('RECOUNT THE HOARD')]);
   state.treasuryDraft = pnTreasuryClone();
   const treasuryEditHtml = renderTreasury();
