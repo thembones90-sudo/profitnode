@@ -38,14 +38,19 @@ function pnTreasuryCoreDraft(e){
 }
 function pnTreasuryClone(){return pnTreasuryCoreDraft(JSON.parse(JSON.stringify(pnTreasuryData())))}
 function pnTreasuryCard(e,t,a,r,g){return'<div class="pn-treasury-card '+(r||'')+'"><span>'+(g&&PN_WC_GLYPH[g]||"")+e+'</span><strong>'+t+'</strong>'+(a?'<small>'+a+'</small>':'')+'</div>'}
+const PN_WC_GAUGE_TARGET=800;
 function pnTreasuryHero(t,e,a){
   const floorAmt=Number(e.settings.fortressFloor)||0,surplus=t.fortress-floorAmt,pos=surplus>=0;
-  const maxScale=Math.max(floorAmt*1.4,t.fortress*1.15,floorAmt+1,1);
+  const maxScale=Math.max(floorAmt*1.4,t.fortress*1.15,PN_WC_GAUGE_TARGET*1.15,floorAmt+1,1);
   const fillPct=Math.max(0,Math.min(100,t.fortress/maxScale*100)),floorPct=floorAmt>0?Math.max(0,Math.min(100,floorAmt/maxScale*100)):null;
+  const redStop=floorPct===null?0:floorPct,greenStop=Math.max(redStop,Math.min(100,PN_WC_GAUGE_TARGET/maxScale*100));
+  const gaugeStops='var(--wc-red) 0%,var(--wc-red) '+redStop.toFixed(2)+'%,var(--wc-amber) '+redStop.toFixed(2)+'%,var(--wc-amber) '+greenStop.toFixed(2)+'%,var(--wc-green) '+greenStop.toFixed(2)+'%,var(--wc-green) 100%';
+  const bgSizePct=fillPct>0?10000/fillPct:100;
+  const fillStyle='width:'+fillPct.toFixed(2)+'%;background-image:linear-gradient(90deg,'+gaugeStops+');background-size:'+bgSizePct.toFixed(2)+'% 100%';
   return'<div class="pn-treasury-card pn-wc-hero is-fortress '+a.tone+'">'
     +'<div class="pn-wc-hero-top"><span class="pn-wc-hero-eyebrow">'+PN_WC_GLYPH.fortress+'FORTRESS RESERVE</span><span class="pn-wc-hero-status '+a.tone+'">'+a.label+'</span></div>'
     +'<strong>'+pnTreasuryMoney(t.fortress)+'</strong>'
-    +'<div class="pn-wc-gauge"><div class="pn-wc-gauge-track"><div class="pn-wc-gauge-fill '+a.tone+'" style="width:'+fillPct.toFixed(2)+'%"></div>'+(null===floorPct?'':'<div class="pn-wc-gauge-floor" style="left:'+floorPct.toFixed(2)+'%"></div>')+'</div></div>'
+    +'<div class="pn-wc-gauge"><div class="pn-wc-gauge-track"><div class="pn-wc-gauge-fill" style="'+fillStyle+'"></div>'+(null===floorPct?'':'<div class="pn-wc-gauge-floor" style="left:'+floorPct.toFixed(2)+'%"></div>')+'</div></div>'
     +'<div class="pn-wc-hero-foot"><span>FORTRESS FLOOR <b>'+pnTreasuryMoney(floorAmt)+'</b></span><span class="pn-wc-hero-surplus '+(pos?"pos":"neg")+'">'+(pos?"SURPLUS ":"DEFICIT ")+(pos?"+":"−")+pnTreasuryMoney(Math.abs(surplus))+'</span></div>'
     +'</div>'
 }
@@ -134,10 +139,8 @@ ROUTES.splice(1,0,{key:"treasury",label:"TREASURY",nix:"02",render:renderTreasur
   .pn-wc-hero-status.good{color:var(--wc-gold)}.pn-wc-hero-status.near{color:var(--wc-amber)}.pn-wc-hero-status.danger{color:var(--wc-red)}
   .pn-wc-gauge{margin-top:2px}
   .pn-wc-gauge-track{position:relative;height:18px;border-radius:3px;background:linear-gradient(180deg,rgba(0,0,0,.55),rgba(0,0,0,.32));border:1px solid var(--wc-border-strong);overflow:hidden;box-shadow:inset 0 2px 5px rgba(0,0,0,.65),inset 0 -1px 0 rgba(255,255,255,.04)}
-  .pn-wc-gauge-fill{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(180deg,var(--wc-green-lit) 0%,var(--wc-green) 55%,var(--wc-green-dim) 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),inset 0 -7px 11px -6px rgba(0,0,0,.55);transition:width .35s ease}
+  .pn-wc-gauge-fill{position:absolute;left:0;top:0;bottom:0;background-repeat:no-repeat;background-position:0 0;box-shadow:inset 0 1px 0 rgba(255,255,255,.25),inset 0 -7px 11px -6px rgba(0,0,0,.55);transition:width .35s ease}
   .pn-wc-gauge-fill::after{content:"";position:absolute;left:0;right:0;top:0;height:45%;background:linear-gradient(180deg,rgba(255,255,255,.3),rgba(255,255,255,0))}
-  .pn-wc-gauge-fill.near{background:linear-gradient(180deg,#f0c266 0%,var(--wc-amber) 55%,#6e5220 100%)}
-  .pn-wc-gauge-fill.danger{background:linear-gradient(180deg,#e2777d 0%,var(--wc-red) 55%,#701f25 100%)}
   .pn-wc-gauge-floor{position:absolute;top:-5px;bottom:-5px;width:3px;background:var(--wc-text);opacity:.85;box-shadow:0 0 3px rgba(0,0,0,.7)}
   .pn-wc-gauge-floor::before{content:"";position:absolute;top:-6px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid var(--wc-text);opacity:.9}
   .pn-wc-hero-foot{display:flex;justify-content:space-between;align-items:baseline;margin-top:10px;font:10px var(--mono);letter-spacing:.05em;color:var(--wc-text-mute);text-transform:uppercase}
