@@ -186,13 +186,33 @@ function mailDetectDhlScore(ctx){
 function mailPad2(n){return String(n).padStart(2,"0")}
 function mailLocalDate(d){return d.getFullYear()+"-"+mailPad2(d.getMonth()+1)+"-"+mailPad2(d.getDate())}
 function mailLocalDeadline(d,h,m){return mailLocalDate(d)+"T"+mailPad2(h)+":"+mailPad2(m)}
+function mailDateFromParts(day,month,year,hour,minute,fallbackTime){
+  year=Number(year);year<100&&(year+=2000);
+  const hasTime=hour!==undefined&&hour!==null&&hour!=="",h=hasTime?Number(hour):fallbackTime.getHours(),m=hasTime?Number(minute||0):fallbackTime.getMinutes();
+  const d=new Date(year,Number(month)-1,Number(day),h,m);
+  return d.getFullYear()===year&&d.getMonth()===Number(month)-1&&d.getDate()===Number(day)?d:null;
+}
+function mailExtractShipmentDate(raw,referenceDate){
+  const text=mailFoldSerbian(raw),base=referenceDate instanceof Date&&!isNaN(referenceDate)?new Date(referenceDate.getTime()):new Date;
+  const hit=text.match(/\b(?:shipment\s+date|date\s+of\s+shipment|shipping\s+date|dispatch\s+date|shipped|sent|datum\s+slanja|datum\s+otpreme|poslato|otpremljeno)\s*:?\s*([0-3]?\d)[.\/-]([01]?\d)[.\/-](\d{2}|\d{4})\.?\s*(?:(?:at|u)\s*)?([01]?\d|2[0-3])?\s*(?:[:.]\s*([0-5]\d))?\s*h?\b/);
+  return hit?mailDateFromParts(hit[1],hit[2],hit[3],hit[4],hit[5],base):null;
+}
 function mailExtractDeadline(raw,referenceDate){
   const text=mailFoldSerbian(raw),base=referenceDate instanceof Date&&!isNaN(referenceDate)?new Date(referenceDate.getTime()):new Date;
   let hit=text.match(/\b(danas|sutra)\s+do\s+([01]?\d|2[0-3])(?:[:.]([0-5]\d))?\s*h?\b/);
-  if(hit){const d=new Date(base.getFullYear(),base.getMonth(),base.getDate()+(hit[1]==="sutra"?1:0));return{deadlineAt:mailLocalDeadline(d,Number(hit[2]),Number(hit[3]||0)),sourceText:hit[0]}}
-  hit=text.match(/\b(?:do\s+)?([0-3]?\d)[.\/-]([01]?\d)[.\/-](\d{2}|\d{4})\.?\s*(?:do\s+)?([01]?\d|2[0-3])(?:[:.]([0-5]\d))?\s*h?\b/);
-  if(hit){let year=Number(hit[3]);year<100&&(year+=2000);const d=new Date(year,Number(hit[2])-1,Number(hit[1]));if(d.getFullYear()===year&&d.getMonth()===Number(hit[2])-1&&d.getDate()===Number(hit[1]))return{deadlineAt:mailLocalDeadline(d,Number(hit[4]),Number(hit[5]||0)),sourceText:hit[0]}}
-  return{deadlineAt:"",sourceText:""};
+  if(hit){const d=new Date(base.getFullYear(),base.getMonth(),base.getDate()+(hit[1]==="sutra"?1:0));return{deadlineAt:mailLocalDeadline(d,Number(hit[2]),Number(hit[3]||0)),sourceText:hit[0],sourceType:"relative-day"}}
+  hit=text.match(/\b(?:(?:action|delivery)\s+deadline|(?<!pickup\s)deadline|rok(?:\s+(?:isporuke|za\s+isporuku))?)\s*:?\s*(?:by\s+|do\s+)?([0-3]?\d)[.\/-]([01]?\d)[.\/-](\d{2}|\d{4})\.?\s*(?:(?:at|u|do)\s*)?([01]?\d|2[0-3])?\s*(?:[:.]\s*([0-5]\d))?\s*h?\b/);
+  if(hit){const endOfDay=new Date(base);endOfDay.setHours(23,59,0,0);const d=mailDateFromParts(hit[1],hit[2],hit[3],hit[4],hit[5],endOfDay);if(d)return{deadlineAt:mailLocalDeadline(d,d.getHours(),d.getMinutes()),sourceText:hit[0],sourceType:"explicit"}}
+  hit=text.match(/\b(?:(?:action|delivery)\s+deadline|(?<!pickup\s)deadline|rok(?:\s+(?:isporuke|za\s+isporuku))?)\s*:?\s*(?:is\s+)?(\d{1,3})\s*(?:calendar\s+)?(?:days?|dana)\s+(?:from|after|od)\s+(?:the\s+)?(?:shipment|shipping|dispatch|sending|slanja(?:\s+posiljke)?|otpreme|predaje)\b/);
+  if(hit){const d=mailExtractShipmentDate(text,base)||new Date(base.getTime());d.setDate(d.getDate()+Number(hit[1]));return{deadlineAt:mailLocalDeadline(d,d.getHours(),d.getMinutes()),sourceText:hit[0],sourceType:"shipment-relative"}}
+  hit=text.match(/\bdo\s+([0-3]?\d)[.\/-]([01]?\d)[.\/-](\d{2}|\d{4})\.?\s*(?:(?:u|do)\s*)?([01]?\d|2[0-3])?\s*(?:[:.]\s*([0-5]\d))?\s*h?\b/);
+  if(hit){const window=mailExtractPickupWindow(text,base),insideWindow=window.sourceText&&window.sourceText.indexOf(hit[0])>-1,endOfDay=new Date(base);endOfDay.setHours(23,59,0,0);const d=mailDateFromParts(hit[1],hit[2],hit[3],hit[4],hit[5],endOfDay);if(d&&!insideWindow)return{deadlineAt:mailLocalDeadline(d,d.getHours(),d.getMinutes()),sourceText:hit[0],sourceType:"until"}}
+  return{deadlineAt:"",sourceText:"",sourceType:"none"};
+}
+function mailFallbackActionDeadline(currentSiteTime){
+  const d=currentSiteTime instanceof Date&&!isNaN(currentSiteTime)?new Date(currentSiteTime.getTime()):new Date;
+  d.setDate(d.getDate()+3);
+  return mailLocalDeadline(d,d.getHours(),d.getMinutes());
 }
 function mailParseWindowDateTime(hit,referenceDate){
   let year=Number(hit[3]);year<100&&(year+=2000);
@@ -335,10 +355,11 @@ function mailParseCourierMessage(raw,referenceDate){
   const best=scores[0];
   if(best&&best.score>=MAIL_CARRIER_SCORE_THRESHOLD){
     const parsed=best.detector.parse(ctx);
-    if(parsed&&parsed.ok){parsed.confidence=best.score>=60?"high":"medium";parsed.rawMessage=original;return parsed}
+    if(parsed&&parsed.ok){const deadline=mailExtractDeadline(text,date);deadline.deadlineAt&&(parsed.deadlineAt=deadline.deadlineAt);parsed.confidence=best.score>=60?"high":"medium";parsed.rawMessage=original;return parsed}
     if(parsed&&!parsed.ok){parsed.rawMessage=original;return parsed;}
   }
   const generic=mailGenericParse(ctx);
+  const deadline=mailExtractDeadline(text,date);deadline.deadlineAt&&(generic.deadlineAt=deadline.deadlineAt);
   generic.rawMessage=original;
   return generic;
 }
@@ -357,7 +378,7 @@ function mailSmartImportPreview(raw,referenceDate){
 function mailMessageHistoryEntry(parsed,raw){
   return{id:crypto.randomUUID?crypto.randomUUID():String(Date.now()+Math.random()),importedAt:nowISO(),parserId:parsed.parserId,rawMessage:String(raw||""),status:parsed.status,deadlineAt:parsed.deadlineAt||"",pickupAvailableFrom:parsed.pickupAvailableFrom||"",pickupDeadline:parsed.pickupDeadline||"",pickupDeadlineSource:parsed.pickupDeadlineSource||"none",actionLinks:mailNormalizeActionLinks(parsed.actionLinks)};
 }
-function mailApplyParsedMessage(parsed,raw){
+function mailApplyParsedMessage(parsed,raw,currentSiteTime){
   if(!parsed||!parsed.ok)return null;
   const existing=mailFindByTracking(parsed.trackingNumber),entry=mailMessageHistoryEntry(parsed,raw);
   function mergeField(newVal,oldVal){return newVal!==undefined&&newVal!==null&&String(newVal).trim()!==""?newVal:oldVal}
@@ -374,7 +395,7 @@ function mailApplyParsedMessage(parsed,raw){
   payload.receiver=mergeField(parsed.receiver,existing&&existing.receiver);
   if(null!=parsed.codAmount&&parsed.codAmount>0){payload.codAmount=parsed.codAmount;payload.currency=parsed.currency||existing&&existing.currency||"RSD"}
   else if(existing){payload.codAmount=existing.codAmount;payload.currency=existing.currency}
-  payload.deadlineAt=mergeField(parsed.deadlineAt,existing&&existing.deadlineAt);
+  payload.deadlineAt=mergeField(parsed.deadlineAt,existing&&existing.deadlineAt)||mailFallbackActionDeadline(currentSiteTime);
   payload.pickupLocation=mergeField(parsed.pickupLocation,existing&&existing.pickupLocation);
   payload.pickupPoint=mergeField(parsed.pickupPoint,existing&&existing.pickupPoint);
   payload.pickupCode=mergeField(parsed.pickupCode,existing&&existing.pickupCode);

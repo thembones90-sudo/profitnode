@@ -154,6 +154,24 @@ const results = env.run(sandbox, `
     log('L: record history has two events', r2.record.messageHistory.length === 2);
   })();
 
+  // L2. Action deadline priority: supplied text first, otherwise import-time +3 days
+  (function(){
+    reset();
+    const fallbackRaw = 'Posta Srbije: PX123456799RS je poslata.';
+    const fallbackParsed = mailParseCourierMessage(fallbackRaw, new Date(2026, 0, 5, 8, 0));
+    const fallback = mailApplyParsedMessage(fallbackParsed, fallbackRaw, new Date(2026, 8, 13, 15, 0));
+    log('L2: missing deadline falls back from current site time, not parser or shipment time', fallback.record.deadlineAt === '2026-09-16T15:00');
+
+    const suppliedRaw = 'Posta Srbije: PX123456798RS je poslata. Delivery deadline: 7 days from shipment.';
+    const suppliedParsed = mailParseCourierMessage(suppliedRaw, new Date(2026, 8, 13, 15, 0));
+    const supplied = mailApplyParsedMessage(suppliedParsed, suppliedRaw, new Date(2026, 8, 13, 15, 0));
+    log('L2: supplied seven-day deadline wins over the import-time three-day fallback', supplied.record.deadlineAt === '2026-09-20T15:00');
+
+    const updateRaw = 'Posta Srbije: PX123456798RS je na dostavi.';
+    const updated = mailApplyParsedMessage(mailParseCourierMessage(updateRaw, new Date(2026, 8, 14, 10, 0)), updateRaw, new Date(2026, 8, 14, 10, 0));
+    log('L2: later import without a deadline preserves the previously supplied deadline', updated.record.deadlineAt === '2026-09-20T15:00');
+  })();
+
   // M. Mail CSV export includes direction and linked entity
   (function(){
     reset();

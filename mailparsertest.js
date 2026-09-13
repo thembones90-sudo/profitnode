@@ -172,6 +172,18 @@ const results = env.run(sandbox, `
     log('actionDeadline alone does not trigger pickup urgency', u.level === 'none');
   })();
 
+  // 18. Explicit and shipment-relative action deadlines
+  (function(){
+    const explicit = mailParseCourierMessage('D Express: Shipment DEX123456780. Deadline: 19.09.2026.', new Date(2026, 8, 13, 15, 0));
+    log('date-only deadline uses the supplied date through end of day', explicit.deadlineAt === '2026-09-19T23:59');
+
+    const anchored = mailParseCourierMessage('D Express: Shipment DEX123456781. Shipment date: 10.09.2026 at 08:30. Delivery deadline: 7 days from shipment.', new Date(2026, 8, 13, 15, 0));
+    log('relative deadline uses the supplied shipment timestamp as its anchor', anchored.deadlineAt === '2026-09-17T08:30');
+
+    const relative = mailParseCourierMessage('D Express: Shipment DEX123456782. Delivery deadline: 7 days from shipment.', new Date(2026, 8, 13, 15, 0));
+    log('relative deadline without a shipment timestamp still honors the supplied seven-day rule', relative.deadlineAt === '2026-09-20T15:00');
+  })();
+
   return out;
 })()
 `);
