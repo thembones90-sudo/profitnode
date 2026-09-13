@@ -525,6 +525,8 @@ const results = env.run(sandbox, `(() => {
   const aliasBuild = buildStorageAliasIndex(HardwareCatalog.storage, canonicalNvmeRegistry);
   HardwareCatalog.storageAliasIndex = aliasBuild.index;
   HardwareCatalog.storageAliasPrefixes = aliasBuild.prefixes;
+  HardwareCatalog.nvmeRegistryMeta = {familyCountNew: canonicalNvmeRegistry.family_count_new, modelCountNew: canonicalNvmeRegistry.model_count_new, aliasCount: canonicalNvmeRegistry.alias_count};
+  HardwareCatalog.status = 'ready';
   out.push(['merged storage catalog preserves 1,325 scored rows plus 1,310 non-colliding recognition rows', HardwareCatalog.storage.length===2635]);
   out.push(['every recognition row that survives the merge now carries a real PN Score and tier from the full-rated package — no null ratings remain', HardwareCatalog.storage.filter(e=>e.registry_status==='new_recognition').every(e=>Number.isFinite(e.overall_score)&&null!==storageGearTier(e))]);
   out.push(['newly-rated recognition rows are tagged with an honest confidence level, never presented as lab-verified', HardwareCatalog.storage.filter(e=>e.registry_status==='new_recognition').every(e=>['ESTIMATED-HIGH','ESTIMATED-MEDIUM','ESTIMATED-LOW'].includes(e.rating_confidence))]);
@@ -556,6 +558,12 @@ const results = env.run(sandbox, `(() => {
   const draft=newRigDraft('PC601 RATED TEST');draft.slots.STORAGE={kind:'PLANNED',catalogType:'STORAGE',label:'SK hynix PC601 512GB',cost:0,originalPrice:0,currency:draft.currency};
   const slotHtml=renderRigSlotRow('STORAGE',draft);
   out.push(['the rated PC601 512GB entry renders cleanly inside the live RIG ASSEMBLY slot dropdown with its real score (no crash, no literal undefined/null)', typeof slotHtml==='string'&&!/undefined|NaN/.test(slotHtml)]);
+
+  const coveragePanel = renderCatalogCoveragePanel();
+  out.push(['Catalog Coverage panel reports the real live catalog sizes once HardwareCatalog is ready, not placeholders', coveragePanel.includes('Catalog Coverage') && coveragePanel.includes(String(HardwareCatalog.cpus.length)) && coveragePanel.includes(String(HardwareCatalog.gpus.length)) && coveragePanel.includes(String(HardwareCatalog.storage.length)) && coveragePanel.includes(String(HardwareCatalog.nvmeRegistryMeta.aliasCount)) && !/undefined|NaN/.test(coveragePanel)]);
+  out.push(['Catalog Coverage panel degrades to a loading row instead of misleading zero counts while the catalog is still loading', (function(){const prev=HardwareCatalog.status;HardwareCatalog.status='loading';const html=renderCatalogCoveragePanel();HardwareCatalog.status=prev;return html.includes('Loading Hardware Foundation')&&!html.includes('Recognized')&&!html.includes('Mapped')})()]);
+  const backupHtml = renderBackup();
+  out.push(['the Backup/Archive page embeds the Catalog Coverage panel alongside the user\\'s own ledger stats', backupHtml.includes('Catalog Coverage') && backupHtml.includes('Current Ledger')]);
 
   return out;
 })()`);

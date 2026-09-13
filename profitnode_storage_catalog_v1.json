@@ -6,6 +6,9 @@
   "structural_repairs": [
     "SSD vendor URLs supplied in the HDD-only rpm column were moved to source_url; rpm left null. Canonical scores, tiers, suitability values, and all other fields are unchanged."
   ],
+  "legacy_fields": {
+    "gear_tier": "Legacy per-entry label (values: GHOUL/REVENANT/ALGHOUL/SCRAPBLADE/SCRAPWRAITH) from a pre-PN-tier import on all 1,325 entries. It is NOT the live PROFITNODE tier and must never be read as one - the real tier is always computed at runtime from overall_score via storageGearTier()/tierFromScore() against the actual POOR/COMMON/UNCOMMON/RARE/EPIC/LEGENDARY/ARTIFACT ladder shared with CPU/GPU/MOBO/RAM. As of schema_version 2 of profitnode_nvme_registry_v1.json, a second, unrelated fictional tier scheme (Mass Effect-style HUSK/MERC/VANGUARD/N7/SPECTRE/REAPER/LEVIATHAN) has also shown up twice in uploaded NVMe handoff packages and was deliberately discarded both times rather than imported here - if a future import proposes a gear_tier-shaped field again, treat it the same way: keep the numeric score, drop the label. Not rendered by any live UI code as of 2026-09-13; kept only as historical import data."
+  },
   "entries": [
     {
       "brand": "HGST",
