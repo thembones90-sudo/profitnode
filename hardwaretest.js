@@ -517,19 +517,20 @@ const results = env.run(sandbox, `(() => {
   const missingCaseCaps = caseCapabilities({kind:'PLANNED',catalogType:'CASE',label:'Fractal Design Meshify 2',cost:0,currency:'RSD'},'Fractal Design Meshify 2');
   out.push(['missing case catalog degrades to UNVERIFIED, never a hard fail', missingCaseCaps === null && rigIntegrity(plain).state === 'SOUND']);
 
-  /* ---- NVMe recognition registry: merge, alias resolution, PC601 sanity ---- */
+  /* ---- NVMe recognition + rating registry: merge, alias resolution, PC601 sanity ---- */
   out.push(['NVMe registry counts match the handoff spec (412 new families / 1311 new models / 179 aliases)', canonicalNvmeRegistry.family_count_new===412&&canonicalNvmeRegistry.model_count_new===1311&&canonicalNvmeRegistry.alias_count===179&&canonicalNvmeRegistry.models.length===1311&&canonicalNvmeRegistry.aliases.length===179]);
   const scoredStorage = canonicalStorage.entries.map(e=>Object.assign({overall:e.overall_score,pn_tier:tierName(storageGearTier(e))},e));
-  const recognitionStorage = canonicalNvmeRegistry.models.map(e=>Object.assign({overall:null,pn_tier:null},e));
+  const recognitionStorage = canonicalNvmeRegistry.models.map(e=>Object.assign({overall:e.overall_score,pn_tier:tierName(storageGearTier(e))},e));
   HardwareCatalog.storage = mergeStorageCatalog(scoredStorage,recognitionStorage);
   const aliasBuild = buildStorageAliasIndex(HardwareCatalog.storage, canonicalNvmeRegistry);
   HardwareCatalog.storageAliasIndex = aliasBuild.index;
   HardwareCatalog.storageAliasPrefixes = aliasBuild.prefixes;
   out.push(['merged storage catalog preserves 1,325 scored rows plus 1,310 non-colliding recognition rows', HardwareCatalog.storage.length===2635]);
-  out.push(['new recognition rows resolve to a null (UNRATED) tier, never a fabricated POOR score', HardwareCatalog.storage.filter(e=>e.registry_status==='new_recognition').every(e=>storageGearTier(e)===null&&e.overall_score===undefined)]);
+  out.push(['every recognition row that survives the merge now carries a real PN Score and tier from the full-rated package — no null ratings remain', HardwareCatalog.storage.filter(e=>e.registry_status==='new_recognition').every(e=>Number.isFinite(e.overall_score)&&null!==storageGearTier(e))]);
+  out.push(['newly-rated recognition rows are tagged with an honest confidence level, never presented as lab-verified', HardwareCatalog.storage.filter(e=>e.registry_status==='new_recognition').every(e=>['ESTIMATED-HIGH','ESTIMATED-MEDIUM','ESTIMATED-LOW'].includes(e.rating_confidence))]);
   out.push(['pre-existing scored NVMe rows are untouched by the merge (970 EVO Plus 1TB still resolves with its real score)', (function(){const e=catalogFind('STORAGE','Samsung 970 EVO Plus 1TB');return e&&Number.isFinite(e.overall_score)&&storageGearTier(e)!==null})()]);
   const pc601_512 = catalogFind('STORAGE','SK hynix PC601 512GB');
-  out.push(['the scored SK hynix PC601 512GB row wins over its recognition-only duplicate', pc601_512&&pc601_512.brand==='SK hynix'&&pc601_512.series==='PC601'&&pc601_512.capacity_gb===512&&pc601_512.drive_type==='NVMe SSD'&&pnTier(storageGearTier(pc601_512))==='EPIC']);
+  out.push(['the hand-verified SK hynix PC601 512GB catalog row wins over its full-rated-package duplicate, and neither source’s fictional Mass Effect label ("N7"/"GHOUL") leaks into the real tier', pc601_512&&pc601_512.brand==='SK hynix'&&pc601_512.series==='PC601'&&pc601_512.capacity_gb===512&&pc601_512.drive_type==='NVMe SSD'&&pnTier(storageGearTier(pc601_512))==='EPIC']);
   out.push(['exact OEM part number HFS512GD9TNG-L2A0A BA resolves to the PC601 512GB canonical entry', (function(){const e=catalogFind('STORAGE','HFS512GD9TNG-L2A0A BA');return e&&e.brand==='SK hynix'&&e.series==='PC601'&&e.capacity_gb===512})()]);
   out.push(['normalized OEM part number (no hyphen/case) still resolves the same PC601 512GB entry', (function(){const e=catalogFind('STORAGE','hfs512gd9tng l2a0a ba');return e&&e.series==='PC601'&&e.capacity_gb===512})()]);
   out.push(['Dell alias V4RWG resolves to the PC601 512GB entry the user actually owns', (function(){const e=catalogFind('STORAGE','V4RWG');return e&&e.series==='PC601'&&e.capacity_gb===512})()]);
@@ -543,15 +544,13 @@ const results = env.run(sandbox, `(() => {
   out.push(['a prefix pattern alias (KBG3*) matches an observed part number by prefix', (function(){const e=catalogFind('STORAGE','KBG30ZMV256G');return e&&e.brand==='Kioxia'&&e.series==='BG3'&&e.capacity_gb===256})()]);
   out.push(['prefix alias search returns every capacity in the family when the query carries no capacity', (function(){const r=catalogSearch('STORAGE','KBG3XXXXXXX');return r.length===4&&r.every(e=>e.brand==='Kioxia'&&e.series==='BG3')})()]);
   out.push(['HOLD/unreleased exclusion still applies alongside the new alias path (no availability_status leak)', HardwareCatalog.storage.filter(e=>'DOCUMENTED_UNRELEASED'===e.availability_status).length===0]);
-  const unratedStorage = HardwareCatalog.storage.find(e=>e.registry_status==='new_recognition');
-  const unratedMeta = renderCatalogMeta('STORAGE', unratedStorage, null);
-  out.push(['renderCatalogMeta shows UNRATED / dash placeholders for an unscored recognition row, never the literal text "undefined" or "null"', !/undefined|NaN/.test(unratedMeta) && unratedMeta.includes('UNRATED') && unratedMeta.includes('—') && !unratedMeta.includes('>null<')]);
-  out.push(['pnTierClass falls back to pn-tier-unrated for a null tier and keeps existing tier classes intact', pnTierClass(null)==='pn-tier-unrated'&&pnTierClass('EPIC')==='pn-tier-epic']);
-  out.push(['pnTierLabel shows UNRATED for null and passes real tier names through unchanged', pnTierLabel(null)==='UNRATED'&&pnTierLabel('LEGENDARY')==='LEGENDARY']);
-  out.push(['pnNumOrDash shows an em dash for missing numbers and passes real numbers through unchanged (including zero)', pnNumOrDash(null)==='—'&&pnNumOrDash(undefined)==='—'&&pnNumOrDash(0)===0&&pnNumOrDash(56)===56]);
-  const draft=newRigDraft('UNRATED STORAGE TEST');draft.slots.STORAGE={kind:'PLANNED',catalogType:'STORAGE',label:(unratedStorage.brand+' '+unratedStorage.model).trim(),cost:0,originalPrice:0,currency:draft.currency};
+  const ratedRecognitionSample = HardwareCatalog.storage.find(e=>e.registry_status==='new_recognition');
+  const ratedMeta = renderCatalogMeta('STORAGE', ratedRecognitionSample, null);
+  out.push(['renderCatalogMeta renders a full-rated-package recognition row with its real performance and tier, never a placeholder', !/undefined|NaN/.test(ratedMeta) && !ratedMeta.includes('UNRATED') && !ratedMeta.includes('>—<')]);
+  out.push(['pnTierClass/pnTierLabel/pnNumOrDash still degrade cleanly for a genuinely unscored entry (defensive fallback stays correct even though no live NVMe row needs it anymore)', (function(){const fake={brand:'Unknown',model:'Placeholder 1TB',drive_type:'NVMe SSD'};const html=renderCatalogMeta('STORAGE',fake,null);return pnTierClass(null)==='pn-tier-unrated'&&pnTierClass('EPIC')==='pn-tier-epic'&&pnTierLabel(null)==='UNRATED'&&pnTierLabel('LEGENDARY')==='LEGENDARY'&&pnNumOrDash(null)==='—'&&pnNumOrDash(0)===0&&!/undefined|NaN/.test(html)&&html.includes('UNRATED')})()]);
+  const draft=newRigDraft('PC601 RATED TEST');draft.slots.STORAGE={kind:'PLANNED',catalogType:'STORAGE',label:'SK hynix PC601 512GB',cost:0,originalPrice:0,currency:draft.currency};
   const slotHtml=renderRigSlotRow('STORAGE',draft);
-  out.push(['an unrated recognition row renders cleanly inside the live RIG ASSEMBLY slot dropdown (no crash, no literal undefined/null leaking into the option markup)', typeof slotHtml==='string'&&!/undefined|NaN/.test(slotHtml)]);
+  out.push(['the rated PC601 512GB entry renders cleanly inside the live RIG ASSEMBLY slot dropdown with its real score (no crash, no literal undefined/null)', typeof slotHtml==='string'&&!/undefined|NaN/.test(slotHtml)]);
 
   return out;
 })()`);
