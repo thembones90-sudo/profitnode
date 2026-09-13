@@ -331,7 +331,7 @@ const results = env.run(sandbox, `(() => {
   HardwareCatalog.cases = canonicalCases.cases;
   HardwareCatalog.coolers = canonicalCoolers.coolers;
   out.push(['canonical case catalog is loaded with 24 entries', HardwareCatalog.cases.length === 24]);
-  out.push(['canonical cooler catalog is loaded with 24 entries', HardwareCatalog.coolers.length === 24]);
+  out.push(['canonical cooler catalog is loaded with 30 entries', HardwareCatalog.coolers.length === 30]);
   out.push(['case catalog searches brand + model', catalogSearch('CASE','Lancool 216').some(e => e.brand === 'Lian Li' && e.model === 'Lancool 216')]);
   out.push(['cooler catalog searches brand + model', catalogSearch('COOLER','NH-D15').some(e => e.brand === 'Noctua' && e.caps.type === 'DUAL TOWER')]);
   out.push(['cooler and case names receive restrained category-aware tiers', pnPartNameTier({category:'COOLING',manufacturer:'Noctua',model:'NH-D15'}).key==='LEGENDARY'&&pnPartNameTier({category:'CASE',manufacturer:'Lian Li',model:'Lancool 216'}).key==='RARE'&&pnPartNameHtml({category:'COOLING',manufacturer:'Noctua',model:'NH-D15'}).includes('pn-part-name-subtle')]);
@@ -347,6 +347,16 @@ const results = env.run(sandbox, `(() => {
   out.push(['COOLER slot renders the compact final component editor', coolerSlotHtml.includes('COOLER DETAILS / ADVANCED') && coolerSlotHtml.includes('data-rig-cap-field="COOLER.coolingClass"') && coolerSlotHtml.includes('data-rig-catalog-item="COOLER"') && coolerSlotHtml.includes('FIT:')]);
   out.push(['COOLER UI omits nonessential technical fields', !/TDP class|Fan count|Noise class|RAM clearance|Heatpipe|Pump speed/i.test(coolerSlotHtml)]);
   out.push(['legacy cooler catalog values normalize to AIR and BASIC/MID/HIGH', (function(){const c=normalizeCoolerCaps({type:'DUAL TOWER',coolingClass:'EXTREME'});return c.type==='AIR'&&c.coolingClass==='HIGH'})()]);
+
+  const stockSpec=[["AMD Stock Cooler",30,"COMMON"],["Wraith Stealth",28,"COMMON"],["Wraith Spire",42,"UNCOMMON"],["Wraith Spire RGB",44,"UNCOMMON"],["Wraith Max",57,"RARE"],["Wraith Prism",60,"RARE"],["Intel Stock Cooler",22,"POOR"],["Laminar RS1",24,"POOR"],["Laminar RM1",32,"COMMON"],["Laminar RH1",52,"UNCOMMON"]];
+  const coolerByModel=m=>HardwareCatalog.coolers.find(e=>e.model===m);
+  out.push(['every boxed stock cooler carries an explicit COOLER-category score and quality', stockSpec.every(([m,s,q])=>{const e=coolerByModel(m);return e&&e.pn_score===s&&e.quality===q})]);
+  out.push(['stock cooler scores resolve through COOLER-specific thresholds, never CPU/GPU ones', catalogTier('COOLER',{model:'x',pn_score:28})===1&&cpuGearTier({model:'x',pn_score:28})===0&&catalogTier('COOLER',{model:'x',pn_score:42})===2&&motherboardGearTier({model:'x',pn_score:42})===1&&catalogTier('COOLER',{model:'x',pn_score:57})===3&&motherboardGearTier({model:'x',pn_score:57})===2]);
+  out.push(['stock origin never forces POOR — Wraith Prism and Wraith Max rate RARE', catalogTier('COOLER',coolerByModel('Wraith Prism'))===3&&catalogTier('COOLER',coolerByModel('Wraith Max'))===3&&catalogTier('COOLER',coolerByModel('Wraith Stealth'))===1]);
+  out.push(['boxed cooler scores follow the AMD and Intel capability ladders', coolerByModel('Wraith Prism').pn_score>coolerByModel('Wraith Max').pn_score&&coolerByModel('Wraith Max').pn_score>coolerByModel('Wraith Spire RGB').pn_score&&coolerByModel('Wraith Spire RGB').pn_score>=coolerByModel('Wraith Spire').pn_score&&coolerByModel('Wraith Spire').pn_score>coolerByModel('AMD Stock Cooler').pn_score&&coolerByModel('AMD Stock Cooler').pn_score>coolerByModel('Wraith Stealth').pn_score&&coolerByModel('Laminar RH1').pn_score>coolerByModel('Laminar RM1').pn_score&&coolerByModel('Laminar RM1').pn_score>coolerByModel('Laminar RS1').pn_score&&coolerByModel('Laminar RS1').pn_score>coolerByModel('Intel Stock Cooler').pn_score]);
+  out.push(['stock-class search terms surface the boxed cooler family', ["stock","wraith","stealth","spire","prism","max","laminar","rs1","rm1","rh1","amd stock","intel stock"].every(t=>catalogSearch('COOLER',t).length>=1)&&catalogSearch('COOLER','stock').length===10]);
+  out.push(['scored boxed coolers render a tier pill and glow in the rig slot row', (function(){const r=goodRig();r.slots.COOLER={kind:'CATALOG',catalogType:'COOLER',label:'AMD Wraith Prism',cost:0,originalPrice:0,currency:'RSD'};const h=renderRigSlotRow('COOLER',r);return h.includes('pn-tier-rare')&&h.includes('Tier')&&h.includes('FIT:')})()]);
+  out.push(['uncataloged coolers stay UNRATED with no tier pill', (function(){const r=goodRig();r.slots.COOLER={kind:'CATALOG',catalogType:'COOLER',label:'Arctic Liquid Freezer III 240',cost:0,originalPrice:0,currency:'RSD'};const h=renderRigSlotRow('COOLER',r);return !(/\bTier\b/.test(h))})()]);
 
   function cat2(type,label){ return {kind:'CATALOG',catalogType:type,label,cost:0,originalPrice:0,currency:'RSD'}; }
   function goodRig(){

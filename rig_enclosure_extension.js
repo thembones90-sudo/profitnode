@@ -22,6 +22,14 @@ const PN_ENCLOSURE_RADIATOR = ["none","120","140","240","280","360","420"];
 const PN_ENCLOSURE_COOLER_TYPE = ["STOCK","AIR","AIO"];
 const PN_ENCLOSURE_COOLING_CLASS = ["BASIC","MID","HIGH"];
 const PN_COOLING_RANK = {BASIC:0,MID:1,HIGH:2};
+const COOLER_TIER_THRESHOLDS = [{tier:"POOR",max:27},{tier:"COMMON",max:41},{tier:"UNCOMMON",max:56},{tier:"RARE",max:74},{tier:"EPIC",max:87},{tier:"LEGENDARY",max:96},{tier:"ARTIFACT",max:100}];
+
+function coolerGearTier(e){
+  if(!e) return null;
+  if(null==e.pn_score&&null==e.overall) return null;
+  const s=Number(e.pn_score)||Number(e.overall)||0;
+  return tierFromScore(s,COOLER_TIER_THRESHOLDS);
+}
 
 const PN_GENERIC_CASES = [
   {id:"generic-itx-airflow",label:"Generic ITX Airflow Case",caps:{formFactors:["ITX"],maxGpuLengthMm:260,maxCoolerHeightMm:130,psuSupport:"SFX",maxPsuLengthMm:null,radiator:{front:"none",top:"240",rear:"none"},includedFans:1,maxFanPositions:4,airflow:"FAIR",buildQuality:"BASIC",sidePanel:"steel",notes:"Generic SFF profile — verify the exact chassis dimensions."}},
@@ -570,6 +578,12 @@ catalogEntriesForSlot=function(slotKey){
   return PNEnclosureCoreCatalogEntriesForSlot(slotKey);
 };
 
+const PNEnclosureCoreCatalogTier=catalogTier;
+catalogTier=function(catKey,entry){
+  if(catKey==="COOLER") return coolerGearTier(entry);
+  return PNEnclosureCoreCatalogTier(catKey,entry);
+};
+
 const PNEnclosureCoreCatalogSearchAll=catalogSearchAll;
 catalogSearchAll=function(query){
   let out=PNEnclosureCoreCatalogSearchAll(query);
@@ -594,7 +608,7 @@ loadHardwareCatalog=async function(){
       fetch("profitnode_cooler_catalog_v1.json").then(r=>{if(!r.ok)throw Error("cooler catalog HTTP "+r.status);return r.json()})
     ]);
     HardwareCatalog.cases=casesData.cases||[];
-    HardwareCatalog.coolers=coolersData.coolers||[];
+    HardwareCatalog.coolers=coolersData.coolers.map(c=>Object.assign({},c,{pn_tier:catalogTier("COOLER",c)}));
     HardwareCatalog.caseError=null;
     HardwareCatalog.coolerError=null;
   }catch(err){
@@ -681,13 +695,15 @@ function coolerFitStatus(rig){
   return "PASS";
 }
 
-function renderCoolerMeta(caps,confidence,rig){
+function renderCoolerMeta(caps,confidence,rig,entry){
   const sock=caps.sockets&&caps.sockets.length?caps.sockets.join("/"):"Sockets unverified";
   const size=caps.type==="AIO"?(caps.radiator?caps.radiator+"mm rad":"AIO"):(caps.heightMm?caps.heightMm+"mm":"Height ?");
   const fit=coolerFitStatus(rig),fitClass=fit==="PASS"?"is-pass":fit==="FAIL"?"is-fail":fit==="WARNING"?"is-warn":"is-unverified";
+  const tier=entry&&catalogTier("COOLER",entry);
   return '<div class="rig-catalog-meta">'+
     '<span class="pn-cooler-summary">'+escHtml((caps.type||"?")+" · "+sock+" · "+(caps.coolingClass||"?")+" · "+size)+(confidence==="LOW"?' <span style="color:var(--amber)">· approx spec</span>':"")+'</span>'+
     '<span class="pn-cooler-fit '+fitClass+'">FIT: '+fit+'</span>'+
+    (tier!=null?'<span class="pn-meta-pill pn-tier-pill '+pnTierClass(tier)+'"><span>Tier</span><b>'+escHtml(pnTierLabel(pnTier(tier)))+'</b></span>':"")+
     '</div>';
 }
 
@@ -729,12 +745,13 @@ function renderCoolerPlannedDetail(slot,rig){
       const value=item.brand+" "+item.model;
       const itemCaps=normalizeCoolerCaps(item.caps||{});
       const lead=(itemCaps.type||"COOLER")+" · "+(itemCaps.coolingClass||"UNVERIFIED");
+      const itemTier=catalogTier("COOLER",item);
       return '<button type="button" class="rig-catalog-option" role="option" data-rig-catalog-choice="COOLER" data-rig-catalog-value="'+escAttr(value)+'">'+
         '<span class="rig-option-name">'+escHtml(value)+'</span>'+
-        '<span class="pn-result-badges"><span class="pn-result-rating">'+escHtml(lead)+'</span></span></button>';
+        '<span class="pn-result-badges"><span class="pn-result-rating">'+escHtml(lead)+'</span>'+(itemTier!=null?'<span class="pn-result-tier '+pnTierClass(itemTier)+'">Tier <b>'+escHtml(pnTier(itemTier))+'</b></span>':"")+'</span></button>';
     }).join("")+'</div>':"")+'</div>';
   const metaHtml=(caps&&!isEmptyCoolerCaps(caps))
-    ?renderCoolerMeta(caps,entry&&entry.confidence,rig)
+    ?renderCoolerMeta(caps,entry&&entry.confidence,rig,entry)
     :'<div class="rig-catalog-meta rig-catalog-help">'+escHtml(enclosureHelpText("COOLER",label))+'</div>';
   return searchBox+metaHtml+renderCoolerCapsEditor(caps||normalizeCoolerCaps({}));
 }
@@ -767,7 +784,7 @@ renderRigSlotRow=function(slotKey,rig){
       const caps=slotKey==="CASE"?caseCapabilities(slot,resolved.label):coolerCapabilities(slot,resolved.label);
       if(caps&&!(slotKey==="CASE"?isEmptyCaseCaps(caps):isEmptyCoolerCaps(caps))){
         const entry=slotKey==="CASE"?caseEntryFor(slot):coolerEntryFor(slot);
-        detail+=slotKey==="CASE"?renderCaseMeta(caps,entry&&entry.confidence)+enclosureSourceTag(slot):renderCoolerMeta(caps,entry&&entry.confidence,rig);
+        detail+=slotKey==="CASE"?renderCaseMeta(caps,entry&&entry.confidence)+enclosureSourceTag(slot):renderCoolerMeta(caps,entry&&entry.confidence,rig,entry);
       }
     }
   }else if(kind==="PLANNED"||kind==="CATALOG"){
