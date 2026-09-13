@@ -547,6 +547,11 @@ const results = env.run(sandbox, `(() => {
   const ratedRecognitionSample = HardwareCatalog.storage.find(e=>e.registry_status==='new_recognition');
   const ratedMeta = renderCatalogMeta('STORAGE', ratedRecognitionSample, null);
   out.push(['renderCatalogMeta renders a full-rated-package recognition row with its real performance and tier, never a placeholder', !/undefined|NaN/.test(ratedMeta) && !ratedMeta.includes('UNRATED') && !ratedMeta.includes('>—<')]);
+  out.push(['pnConfidenceLabel maps every real rating_confidence value to a short human label, and anything else (including undefined) to null', pnConfidenceLabel('ESTIMATED-HIGH')==='Est. High' && pnConfidenceLabel('ESTIMATED-MEDIUM')==='Est. Medium' && pnConfidenceLabel('ESTIMATED-LOW')==='Est. Low' && pnConfidenceLabel(undefined)===null && pnConfidenceLabel('LAB_VERIFIED')===null]);
+  out.push(['a bulk-estimated NVMe recognition row carries a visible confidence badge in the catalog dropdown, so it never looks identical to a lab-verified row', ratedMeta.includes('pn-confidence-pill') && ratedMeta.includes(pnConfidenceLabel(ratedRecognitionSample.rating_confidence))]);
+  const lockedMeta = renderCatalogMeta('STORAGE', pc601_512, null);
+  out.push(['the hand-verified, locked-catalog PC601 512GB row carries no confidence badge at all — it is not an estimate', !lockedMeta.includes('pn-confidence-pill')]);
+  out.push(['pnConfidenceBadge stays silent (no stray title attribute or markup) for any entry with no rating_confidence field', pnConfidenceBadge({})===""]);
   out.push(['pnTierClass/pnTierLabel/pnNumOrDash still degrade cleanly for a genuinely unscored entry (defensive fallback stays correct even though no live NVMe row needs it anymore)', (function(){const fake={brand:'Unknown',model:'Placeholder 1TB',drive_type:'NVMe SSD'};const html=renderCatalogMeta('STORAGE',fake,null);return pnTierClass(null)==='pn-tier-unrated'&&pnTierClass('EPIC')==='pn-tier-epic'&&pnTierLabel(null)==='UNRATED'&&pnTierLabel('LEGENDARY')==='LEGENDARY'&&pnNumOrDash(null)==='—'&&pnNumOrDash(0)===0&&!/undefined|NaN/.test(html)&&html.includes('UNRATED')})()]);
   const draft=newRigDraft('PC601 RATED TEST');draft.slots.STORAGE={kind:'PLANNED',catalogType:'STORAGE',label:'SK hynix PC601 512GB',cost:0,originalPrice:0,currency:draft.currency};
   const slotHtml=renderRigSlotRow('STORAGE',draft);
