@@ -20,10 +20,10 @@ const CANONICAL_ORDER = [
   'roulette_extension.js', 'roulette_ui_extension.js', 'treasury_extension.js',
   'road_to_extension.js', 'my_rig_extension.js', 'sidebar_cleanup_extension.js',
   'mail_extension.js', 'treasury_flow_extension.js', 'sold_transaction_extension.js',
-  'project_build_extension.js', 'build_rating_extension.js', 'ram_revaluation_extension.js', 'ram_v31_extension.js'
+  'project_build_extension.js', 'build_rating_extension.js', 'rig_rating_extension.js', 'ram_revaluation_extension.js', 'ram_v31_extension.js'
 ];
-checks.push(['manifest has 28 scripts', entries.length === 28]);
-checks.push(['manifest order matches canonical 28-file load order',
+checks.push(['manifest has 29 scripts', entries.length === 29]);
+checks.push(['manifest order matches canonical 29-file load order',
   entries.map(e => e.split('?')[0]).join(',') === CANONICAL_ORDER.join(',')]);
 checks.push(['first script is app_core.js', entries[0].split('?')[0] === 'app_core.js']);
 checks.push(['last script is ram_v31_extension.js',
@@ -119,7 +119,7 @@ checks.push(['roulette ledger CSV export registered', meta.csvKeys.includes('rou
 checks.push(['mail CSV export registered', meta.csvKeys.includes('mail')]);
 checks.push(['PN_SALE_TYPES = RIG,COMPONENT,OTHER', meta.saleTypes === 'RIG,COMPONENT,OTHER']);
 checks.push(['currencies remain RSD,EUR', meta.curren === 'RSD,EUR']);
-checks.push(['manifest declares 28 scripts in sandbox', meta.manifestLen === 28]);
+checks.push(['manifest declares 29 scripts in sandbox', meta.manifestLen === 29]);
 const migrationProbe = env.run(sandbox, `(() => {
   const legacy={meta:{seeded:true},inventory:[
     {id:'healthy',category:'STORAGE',driveHealthPercent:120,catalogOverride:'  Samsung 970 EVO Plus 1TB  '},
@@ -942,6 +942,48 @@ const rigProbe = `
   out.push(['soleUnassignedMatch finds the one unassigned STORAGE item', soleUnassignedMatch('STORAGE') && soleUnassignedMatch('STORAGE').id === soleStorage.id]);
   Store.update('inventory', soleStorage.id, {assignedProjectId: 'some-project'});
   out.push(['soleUnassignedMatch returns null once the item is assigned to a project', soleUnassignedMatch('STORAGE') === null]);
+
+  const ratingRig = newRigDraft('RATINGFAM');
+  ratingRig.slots.CPU = {kind:'PLANNED', label:'CPU-LABEL-A', cost:6000, currency:'RSD'};
+  ratingRig.slots.GPU = {kind:'PLANNED', label:'GPU-LABEL-A', cost:4000, currency:'RSD'};
+  ratingRig.estimatedMarketValue = 11000;
+  state.rigDraft = ratingRig;
+  const ratingRigId = saveRigDraft();
+  const ratingStored = Store.get('rigs', ratingRigId);
+  const rm = rigRatingModel(ratingStored);
+  out.push(['rig rating model: purpose defaults to FLIP when unset', rm.purpose === 'FLIP']);
+  out.push(['rig rating model: finalScore numeric and bounded', Number.isFinite(rm.finalScore) && rm.finalScore >= 0 && rm.finalScore <= 100]);
+  out.push(['rig rating model: six category scores all bounded', Object.keys(rm.categories).length === 6 && PB_BUILD_CATEGORIES.every(k => Number.isFinite(rm.categories[k]) && rm.categories[k] >= 0 && rm.categories[k] <= 100)]);
+  out.push(['rig rating model: VALUE derives from estimate/parts ratio (11000/10000 = 70)', rm.categories.VALUE === 70]);
+  out.push(['rig rating model: quality key from tier ladder', PB_BUILD_SCORE_TIERS.some(t => t.key === rm.quality)]);
+  out.push(['rig rating model: verdict prose', typeof rm.verdict === 'string' && rm.verdict.length > 0]);
+  const purposeFieldHtml = rigPurposeFieldHtml(ratingStored, false);
+  out.push(['rig purpose field renders 5 options with FLIP selected', (purposeFieldHtml.match(/<option/g) || []).length === 5 && /data-rig-field="purpose"/.test(purposeFieldHtml) && /value="FLIP"[^>]*selected/.test(purposeFieldHtml)]);
+  const chipHtml = rigRatingChipHtml(95);
+  out.push(['rig rating chip carries score + quality hooks for ARTIFACT', /data-rig-rating-score="95"/.test(chipHtml) && /data-rig-rating-quality="ARTIFACT"/.test(chipHtml)]);
+  const cellsHtml = rigRatingCells(ratingStored);
+  out.push(['rig rating cells emit two cells with score + quality hooks', /<td class="num"><b data-rig-rating-score="[0-9]+">/.test(cellsHtml) && /<td><span class="chip[^"]*" data-rig-rating-quality="[A-Z]+">/.test(cellsHtml)]);
+  const resAssembleRating = Actions.assembleRig(ratingRigId);
+  out.push(['rig assemble ok for rating rig', resAssembleRating.ok === true]);
+  const snap = Store.get('rigs', ratingRigId).rigRating;
+  out.push(['rig rating snapshot frozen on assemble matching live model', !!snap && snap.mode === 'FINAL' && snap.finalScore === rm.finalScore && snap.quality === rm.quality]);
+  out.push(['rig rating snapshot stores all slot resolutions', snap.components && snap.components.length === RIG_SLOTS.length]);
+  out.push(['rig rating snapshot has six category scores', Object.keys(snap.categories).length === 6]);
+  const panelLocked = rigRatingPanelHtml(Store.get('rigs', ratingRigId));
+  out.push(['rig editor panel renders BUILD RATING with FINAL chip when locked', panelLocked.indexOf('BUILD RATING') !== -1 && panelLocked.indexOf('>FINAL<') !== -1]);
+  out.push(['rig editor panel has six data-rig-rating-cat rows', (panelLocked.match(/data-rig-rating-cat=/g) || []).length === 6]);
+  Store.update('rigs', ratingRigId, {estimatedMarketValue: 20000});
+  const rigChanged = Store.get('rigs', ratingRigId);
+  out.push(['live model reflects edited market value (VALUE 100)', rigRatingModel(rigChanged).categories.VALUE === 100]);
+  const display = rigRatingModelDisplayed(rigChanged);
+  out.push(['locked rig keeps frozen snapshot and ignores live model drift', display.snap === true && display.m.finalScore === snap.finalScore && display.m.categories.VALUE === snap.categories.VALUE]);
+  const famHtml = renderRigFamilyView('RATINGFAM');
+  out.push(['rig family view has Score + Quality columns', famHtml.indexOf('<th class="num">Score</th>') !== -1 && famHtml.indexOf('<th>Quality</th>') !== -1]);
+  out.push(['rig family view variant row carries rating score + quality cells', /data-rig-rating-score="[0-9]+"/.test(famHtml) && /data-rig-rating-quality="[A-Z]+"/.test(famHtml)]);
+  out.push(['rig family view empty row spans 10 columns', renderRigFamilyView('ZZ-NO-RIGS').indexOf('colspan="10">No variants yet') !== -1]);
+  const resDisRating = Actions.disassembleRig(ratingRigId);
+  out.push(['disassemble clears the frozen rig rating snapshot', resDisRating.ok === true && Store.get('rigs', ratingRigId).rigRating === null]);
+  out.push(['unlocked rig panel reverts to PROJECTED', rigRatingPanelHtml(Store.get('rigs', ratingRigId)).indexOf('>PROJECTED<') !== -1]);
 
   return out;
 })()
