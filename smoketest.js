@@ -1502,6 +1502,9 @@ const projectBuildProbe = `
   out.push(['BUILD loadout inherits canonical catalog quality beside installed motherboard and CPU names', pageDone.includes('data-pb-slot="MOBO" data-pb-quality="UNCOMMON"') && pageDone.includes('pn-pb-slot-model-line') && pageDone.includes('data-pb-quality-badge="UNCOMMON"') && pageDone.includes('pn-tier-uncommon') && pageDone.includes('data-pb-slot="CPU" data-pb-quality="POOR"')]);
   out.push(['BUILD loadout gives every recorded slot/extra one compact quality badge and explicitly marks manual extras UNRATED', (pageDone.match(/data-pb-quality-badge=/g)||[]).length === 4 && pageDone.includes('data-pb-quality="UNRATED"') && pageDone.includes('data-pb-quality-badge="UNRATED"')]);
   out.push(['rated BUILD loadout cards carry the shared tier-glow class and UNRATED extras stay neutral', (pageDone.match(/pn-tier-card/g)||[]).length===3 && pageDone.includes('class="pn-pb-slot pn-tier-card pn-tier-uncommon"') && pageDone.includes('class="pn-pb-slot pn-tier-card pn-tier-poor"') && pageDone.includes('class="pn-pb-slot pn-tier-card pn-tier-rare"') && !pageDone.includes('pn-tier-card pn-tier-unrated')]);
+  const doneModel=buildCheckModel(Store.get('projects',p.id));
+  out.push(['COMPATIBILITY CHECK collapses by default into the header counts summary', doneModel.counts.FAIL===0 && !pageDone.includes('pn-integrity-list') && pageDone.includes('pn-pb-compat-counts') && pageDone.includes('data-pb-compat-total="'+doneModel.findings.length+'"') && (!doneModel.findings.length || (pageDone.includes('▼ EXPAND') && pageDone.includes('data-pb-compat-toggle')))]);
+  out.push(['the collapsed header always carries the verdict chip and a live GREEN/AMBER/RED tally', pageDone.includes('class="panel-head pn-pb-compat-head"') && pageDone.includes('pn-pb-compat-head-cluster') && pageDone.includes('data-pb-compat-red="0"') && pageDone.includes(' data-pb-compat-amber="') && pageDone.includes(' data-pb-compat-green="')]);
   const artifactPresentation = pbComponentQuality({kind:'PLANNED',label:'Top catalog component'}, 'GPU', {label:'Top catalog component',pn:{tier:'ARTIFACT'}});
   const missingPresentation = pbComponentQuality(null, null, null);
   out.push(['BUILD presents canonical ARTIFACT data inside the requested six-tier ladder without rewriting its source tier', artifactPresentation.key === 'LEGENDARY' && artifactPresentation.sourceTier === 'ARTIFACT']);
@@ -1515,6 +1518,44 @@ const projectBuildProbe = `
   out.push(['BUILD summary renders actual, planned, and estimated final cost as separate values', pageOpen.includes('data-pb-cost="actual"') && pageOpen.includes('data-pb-cost="planned"') && pageOpen.includes('data-pb-cost="final"') && pageOpen.includes('ACTUAL SPENT') && pageOpen.includes('ESTIMATED FINAL COST')]);
   out.push(['occupied cards expose their recorded cost and a price-only edit action', pageOpen.includes('data-pb-slot-paid="GPU"') && pageOpen.includes('PLANNED COST') && pageOpen.includes('30.000 RSD') && pageOpen.includes('data-pb-quick-price="GPU"')]);
   out.push(['the bench grid lists exactly the 8 requested primary slots in the requested layout order', PROJECT_BUILD_SLOTS.join(',') === 'MOBO,CPU,RAM,GPU,STORAGE,PSU,CASE,COOLER']);
+
+  // ---- COMPATIBILITY CHECK: expand / filter / ordering / state persistence ----
+  HardwareCatalog.gpus=[{brand:'NVIDIA',model:'GTX 1650 4GB GDDR5 280mm',overall:25}];HardwareCatalog.boards=[{brand:'ASRock',model:'B450M-HDV',overall:55}];HardwareCatalog.cpus=[{brand:'AMD',model:'Ryzen 5 3600',overall:60}];
+  const cWarn=Actions.addProject({name:'COMPAT-WARN', startDate: todayISO(), status:'PLANNING', purpose:'FLIP', currency:'RSD'});
+  Actions.setProjectSlot(cWarn.id,'CPU','PLANNED',{label:'AMD Ryzen 5 3600',cost:0,currency:'RSD',catalogType:'CPU'});
+  Actions.setProjectSlot(cWarn.id,'MOBO','PLANNED',{label:'ASRock B450M-HDV',cost:0,currency:'RSD',catalogType:'MOBO'});
+  Actions.setProjectSlot(cWarn.id,'GPU','PLANNED',{label:'NVIDIA GTX 1650 4GB GDDR5 280mm',cost:0,currency:'RSD',catalogType:'GPU'});
+  Actions.setProjectSlot(cWarn.id,'CASE','PLANNED',{label:'Airflow test case',cost:0,currency:'RSD',catalogType:'CASE',caps:{formFactors:['MATX','ATX'],maxGpuLengthMm:400,maxCoolerHeightMm:180,psuSupport:'ATX',radiator:{front:'360',top:'280',rear:'120'},airflow:'POOR',buildQuality:'SOLID',sidePanel:'mesh',notes:''}});
+  const warnModel=buildCheckModel(Store.get('projects',cWarn.id));
+  state.pbId=cWarn.id;
+  const warnPage=renderProjectBuild();
+  out.push(['a mixed AMBER-only report mixes GREEN and AMBER checks and never forces the panel open', warnModel.verdict==='WARNING' && warnModel.counts.WARN>0 && warnModel.counts.PASS>0 && warnModel.counts.FAIL===0 && !warnPage.includes('pn-integrity-list') && warnPage.includes('▼ EXPAND') && warnPage.includes('data-pb-compat-amber="'+warnModel.counts.WARN+'"') && warnPage.includes('data-pb-compat-green="'+warnModel.counts.PASS+'"') && !warnPage.includes('▲ COLLAPSE')]);
+  pbClick({target:__pnEl({tag:'button',attrs:{'data-pb-compat-toggle':''}})});
+  const warnOpen=renderProjectBuild();
+  out.push(['clicking the collapse control expands the report and flips the header control', warnOpen.includes('▲ COLLAPSE') && warnOpen.includes('pn-pb-compat-filters') && warnOpen.includes('pn-integrity-list') && !warnOpen.includes('▼ EXPAND')]);
+  out.push(['expanded rows list every check ordered RED, then AMBER, then GREEN', (function(){const html=renderProjectBuild(),i=html.indexOf('pn-integrity-row is-warn'),j=html.indexOf('pn-integrity-row is-pass');return i>-1 && j>-1 && i<j})()]);
+  pbClick({target:__pnEl({tag:'button',attrs:{'data-pb-compat-filter':'RED'}})});
+  const warnRed=renderProjectBuild();
+  out.push(['filtering to a bucket with zero results shows an empty-state hint inside the report', warnRed.includes('No RED checks in this build.') && (warnRed.match(/pn-integrity-row is-/g)||[]).length===0]);
+  pbClick({target:__pnEl({tag:'button',attrs:{'data-pb-compat-filter':'AMBER'}})});
+  const warnAmber=renderProjectBuild();
+  out.push(['the AMBER filter keeps only warning rows and activates its chip', warnAmber.includes('data-pb-compat-filter="AMBER"') && warnAmber.includes('pn-pb-compat-filter is-active') && (warnAmber.match(/pn-integrity-row is-warn/g)||[]).length===warnModel.counts.WARN && !warnAmber.includes('pn-integrity-row is-pass')]);
+  pbClick({target:__pnEl({tag:'button',attrs:{'data-pb-compat-filter':'GREEN'}})});
+  const warnGreen=renderProjectBuild();
+  out.push(['the GREEN filter keeps only passing rows and activates its chip', warnGreen.includes('data-pb-compat-filter="GREEN"') && warnGreen.includes('pn-pb-compat-filter is-active') && (warnGreen.match(/pn-integrity-row is-pass/g)||[]).length===warnModel.counts.PASS && !warnGreen.includes('pn-integrity-row is-warn')]);
+  Actions.setProjectSlot(cWarn.id,'PSU','PLANNED',{label:'Corsair CV550',cost:0,currency:'RSD'});
+  const warnAfterEdit=renderProjectBuild();
+  out.push(['editing a component inside the build keeps the report open and keeps its filter', warnAfterEdit.includes('▲ COLLAPSE') && warnAfterEdit.includes('pn-integrity-list') && warnAfterEdit.includes('data-pb-compat-filter="GREEN"')]);
+  HardwareCatalog.cpus=[{brand:'AMD',model:'Ryzen 5 7600',overall:80}];HardwareCatalog.boards=[{brand:'ASRock',model:'B550M-HDV',overall:44}];
+  const cFail=Actions.addProject({name:'COMPAT-FAIL', startDate: todayISO(), status:'PLANNING', purpose:'FLIP', currency:'RSD'});
+  Actions.setProjectSlot(cFail.id,'CPU','PLANNED',{label:'AMD Ryzen 5 7600',cost:0,currency:'RSD',catalogType:'CPU'});
+  Actions.setProjectSlot(cFail.id,'MOBO','PLANNED',{label:'ASRock B550M-HDV',cost:0,currency:'RSD',catalogType:'MOBO'});
+  const failModel=buildCheckModel(Store.get('projects',cFail.id));
+  state.pbId=cFail.id;
+  const failPage=renderProjectBuild();
+  out.push(['a RED compatibility verdict auto-expands the report with its FAIL rows visible', failModel.verdict==='FAIL' && failModel.counts.FAIL>0 && failPage.includes('pn-integrity-row is-fail') && failPage.includes('▲ COLLAPSE') && failPage.includes('data-pb-compat-red="'+failModel.counts.FAIL+'"')]);
+  out.push(['RED-first sorting places the FAIL row ahead of any AMBER or GREEN row', (function(){const html=renderProjectBuild(),i=html.indexOf('pn-integrity-row is-fail'),j=html.indexOf('pn-integrity-row is-warn'),k=html.indexOf('pn-integrity-row is-pass');return i>-1 && (j===-1||i<j) && (k===-1||i<k)})()]);
+  state.pbId=p2.id;
 
   const pickerCpu = Actions.addInventory({category:'CPU', manufacturer:'Intel', model:'Core i7-6700', purchaseDate: todayISO(), purchasePrice:500, currency:'RSD', estimatedMarketValue:3000, source:'OTHER', condition:'WORKING', status:'IN_STORAGE'});
   HardwareCatalog.cpus = [{brand:'Intel',model:'Core i7-6700',overall:35},{brand:'Intel',model:'Core i7-6700K',overall:42},{brand:'Intel',model:'Core i7-6700T',overall:30}];

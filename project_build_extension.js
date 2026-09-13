@@ -13,6 +13,10 @@ const PB_CATALOG_SLOTS=["CPU","GPU","MOBO","RAM","STORAGE","PSU","COOLER"];
 const PB_QUALITY_TIERS=["POOR","COMMON","UNCOMMON","RARE","EPIC","LEGENDARY"];
 function pbCaseSizeById(id){return PB_BUILD_CASE_SIZES.find(c=>c.id===id)||null}
 const PBUI={slotKey:null,slot:null,query:"",results:[],catalogHits:[],ramHits:[],quickPrice:null,caseDraft:null,extraDraft:null,notice:null};
+// COMPATIBILITY CHECK expand/filter state, tracked per project id so a
+// re-render inside the same workspace never resets it. Memory-only while
+// the tab stays open — intentionally not persisted to localStorage.
+const PB_COMPAT_STATE={};
 
 // ---- RAM module search index (SECTION 10-19 of the assembly rework) ----
 // HardwareCatalog.ramFamilies only carries brand+series (+ real commercial
@@ -383,16 +387,27 @@ function pbExtrasHtml(project,locked){
   const rows=extras.length?extras.map(x=>{const quality=pbExtraQuality(x);return'<div class="pn-pb-extra-row'+(quality.key&&"UNRATED"!==quality.key?" pn-tier-card "+quality.className:"")+'" data-pb-quality="'+quality.key+'"><span class="pn-pb-extra-name pn-pb-quality-name '+quality.className+'">'+escHtml(x.label)+"</span>"+pbQualityChipHtml(quality)+(x.inventoryItemId?'<button type="button" class="pn-pb-vault-link" data-open-entity="inventory" data-id="'+escAttr(x.inventoryItemId)+'">VAULT ↗</button>':'<span class="chip chip-blue-outline">PLANNED</span>')+"<span>"+money(x.cost,x.currency||project.currency)+"</span>"+(locked?"":'<button type="button" class="btn btn-sm btn-ghost" data-pb-extra-remove="'+x.id+'">REMOVE</button>')+"</div>"}).join(""):'<p class="hint">No optional or extra parts added.</p>'
   return'<div class="panel" data-pb-extras style="margin-top:8px"><div class="panel-head"><h2>OPTIONAL / EXTRA PARTS</h2>'+(locked?"":'<button type="button" class="btn btn-sm" data-pb-extra-new>+ ADD PART</button>')+'</div><div class="panel-body"><div class="pn-pb-extra-list">'+rows+"</div></div></div>"+(PBUI.extraDraft?pbExtraFormHtml(project):"")
 }
+function pbCompatRank(s){return"FAIL"===s?0:"WARN"===s?1:"PASS"===s?2:"INFO"===s?3:4}
+function pbCompatMatch(f,k){const s=bcStatus(f.status);return"ALL"===k||("RED"===k&&s==="FAIL")||("AMBER"===k&&s==="WARN")||("GREEN"===k&&s==="PASS")}
 function pbCompatHtml(project){
   const model=buildCheckModel({id:project.id,currency:project.currency,slots:project.slots||emptyRigSlots()}),v=pbVerdictMeta(model.verdict)
-  const head='<div class="panel-head"><h2>COMPATIBILITY CHECK</h2><span class="chip '+v.chip+'">'+v.word+" — "+model.verdict+"</span></div>"
+  const st=PB_COMPAT_STATE[project.id],open=st?st.open:model.counts.FAIL>0,filter=st&&st.filter?st.filter:"ALL"
+  const tot=model.findings.length,r=model.counts.FAIL,a=model.counts.WARN,g=model.counts.PASS,other=tot-r-a-g
+  // Collapsed by default; the header alone carries the verdict chip plus a
+  // live three-bucket tally. Auto-expands only on a RED (FAIL) verdict and
+  // only until the user toggles — AMBER never forces it open.
+  const counts='<span class="pn-pb-compat-counts" data-pb-compat-total="'+tot+'" data-pb-compat-red="'+r+'" data-pb-compat-amber="'+a+'" data-pb-compat-green="'+g+'"><b>'+tot+'</b> CHECKS · <b class="c-green">'+g+'</b> GREEN · <b class="c-amber">'+a+'</b> AMBER · <b class="c-red">'+r+'</b> RED'+(other?' · <span class="c-other">'+other+' OTHER</span>':"")+"</span>"
+  const toggle=model.findings.length?'<button type="button" class="btn btn-sm pn-pb-compat-toggle-btn" data-pb-compat-toggle>'+(open?"▲ COLLAPSE":"▼ EXPAND")+"</button>":""
+  const head='<div class="panel-head pn-pb-compat-head"'+(model.findings.length?' data-pb-compat-toggle':"")+'><h2>COMPATIBILITY CHECK</h2><span class="pn-pb-compat-head-cluster"><span class="chip '+v.chip+'">'+v.word+" — "+model.verdict+"</span>"+counts+"</span>"+toggle+"</div>"
   // No findings at all means nothing to itemize — the header chip already
-  // says PASS, so skip the panel-body/row entirely instead of rendering a
-  // single redundant "everything's fine" row underneath it.
+  // says PASS, so keep it header-only instead of a redundant "all fine" row.
   if(!model.findings.length)return'<div class="panel" data-pb-compat style="margin-top:8px">'+head+"</div>"
-  const rows=model.findings.map(f=>{const lv=bcStatus(f.status),vm=pbVerdictMeta("FAIL"===lv?"FAIL":"WARN"===lv?"WARNING":"UNVERIFIED"===lv?"UNVERIFIED":"PASS")
+  const view=model.findings.slice().filter(f=>pbCompatMatch(f,filter)).sort((x,y)=>pbCompatRank(bcStatus(x.status))-pbCompatRank(bcStatus(y.status)))
+  const rows=view.map(f=>{const lv=bcStatus(f.status),vm=pbVerdictMeta("FAIL"===lv?"FAIL":"WARN"===lv?"WARNING":"UNVERIFIED"===lv?"UNVERIFIED":"PASS")
     return'<div class="pn-integrity-row is-'+lv.toLowerCase()+'"><b>'+escHtml(String(f.label).toUpperCase())+" — "+vm.word+'</b><span>'+escHtml(f.detail)+"</span></div>"}).join("")
-  return'<div class="panel" data-pb-compat style="margin-top:8px">'+head+'<div class="panel-body"><div class="pn-integrity-list">'+rows+"</div></div></div>"
+  const filters='<div class="pn-pb-compat-filters">'+[["ALL",tot],["RED",r],["AMBER",a],["GREEN",g]].map(x=>'<button type="button" class="pn-pb-compat-filter'+(filter===x[0]?" is-active":"")+'" data-pb-compat-filter="'+x[0]+'">'+x[0]+" <b>"+x[1]+"</b></button>").join("")+"</div>"
+  const body=open?'<div class="panel-body">'+filters+'<div class="pn-integrity-list">'+(rows||'<p class="hint">No '+filter+' checks in this build.</p>')+"</div></div>":""
+  return'<div class="panel" data-pb-compat style="margin-top:8px">'+head+body+"</div>"
 }
 
 // ---- BUILD cost accounting (SECTION 3): ACTUAL SPENT / PLANNED COST /
@@ -453,6 +468,8 @@ function renderProjectBuild(){
 function pbClick(e){
   if(e.target.closest("[data-pb-back]"))return state.route="projects",state.pbId=null,PBUI.slotKey=null,PBUI.slot=null,PBUI.query="",PBUI.results=[],PBUI.caseDraft=null,PBUI.extraDraft=null,PBUI.quickPrice=null,PBUI.notice=null,void render()
   if(e.target.closest("[data-pb-edit-details]")){const p=pbProject();return p?void openForm("project",p.id):void 0}
+  if(e.target.closest("[data-pb-compat-toggle]")){const p=pbProject();if(!p)return;const s=PB_COMPAT_STATE[p.id]||(PB_COMPAT_STATE[p.id]={open:false,filter:"ALL"});s.open=!s.open;return void render()}
+  if(e.target.closest("[data-pb-compat-filter]")){const p=pbProject();if(!p)return;const s=PB_COMPAT_STATE[p.id]||(PB_COMPAT_STATE[p.id]={open:true,filter:"ALL"});s.filter=e.target.closest("[data-pb-compat-filter]").dataset.pbCompatFilter||"ALL";s.open=true;return void render()}
 
   // ---- quick price edit (SECTION 2) ----
   const qpOpen=e.target.closest("[data-pb-quick-price]");if(qpOpen){const k=qpOpen.dataset.pbQuickPrice,p=pbProject();if(!p)return

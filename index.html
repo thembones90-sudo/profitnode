@@ -464,6 +464,23 @@ tbody tr.clickable[data-open-rig-family]:hover td:last-child::before{opacity:1}
 .pn-bc-details-list{margin:0;border-top:1px solid var(--border)}
 .pn-integrity-row.is-fail{border-left-color:var(--red)}
 .pn-integrity-row.is-fail b,.pn-integrity-row.is-fail span{color:var(--red)}
+.pn-pb-compat-head{cursor:pointer;user-select:none;flex-wrap:wrap}
+.pn-pb-compat-head-cluster{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-left:auto;min-width:0}
+.pn-pb-compat-counts{font-family:var(--mono);font-size:8.5px;letter-spacing:.05em;color:var(--text-mute);white-space:nowrap}
+.pn-pb-compat-counts b{color:var(--text);font-weight:700}
+.pn-pb-compat-counts .c-green{color:var(--green)}
+.pn-pb-compat-counts .c-amber{color:var(--amber)}
+.pn-pb-compat-counts .c-red{color:var(--red)}
+.pn-pb-compat-counts .c-other{color:var(--muted)}
+.pn-pb-compat-toggle-btn{margin-left:4px}
+.pn-pb-compat-filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.pn-pb-compat-filter{font-family:var(--mono);font-size:8.5px;font-weight:800;letter-spacing:.08em;padding:2px 9px;border:1px solid var(--border-strong);border-radius:var(--radius);background:transparent;color:var(--text-mute);cursor:pointer}
+.pn-pb-compat-filter b{font-size:9.5px;font-weight:800;color:inherit}
+.pn-pb-compat-filter:hover{border-color:var(--muted);color:var(--text)}
+.pn-pb-compat-filter.is-active{color:var(--sem-active);border-color:var(--amber-dim);background:var(--sem-active-wash)}
+.pn-pb-compat-filter[data-pb-compat-filter="RED"].is-active{color:var(--red);border-color:var(--red-dim);background:var(--red-wash)}
+.pn-pb-compat-filter[data-pb-compat-filter="AMBER"].is-active{color:var(--amber);border-color:var(--amber-dim);background:var(--amber-wash)}
+.pn-pb-compat-filter[data-pb-compat-filter="GREEN"].is-active{color:var(--green);border-color:var(--green-dim);background:var(--green-wash)}
 @media(max-width:1180px){.pn-bc-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:640px){.pn-bc-tiles{grid-template-columns:1fr}}
 .rig-editor-content{padding:10px 14px 24px;max-width:1680px}
