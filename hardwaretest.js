@@ -13,6 +13,7 @@ const storage = JSON.parse(fs.readFileSync(path.join(DIR, 'profitnode_storage_ca
 const cases = JSON.parse(fs.readFileSync(path.join(DIR, 'profitnode_case_catalog_v1.json'), 'utf8'));
 const coolers = JSON.parse(fs.readFileSync(path.join(DIR, 'profitnode_cooler_catalog_v1.json'), 'utf8'));
 const gpuPsu = JSON.parse(fs.readFileSync(path.join(DIR, 'profitnode_gpu_psu_requirements_v1.json'), 'utf8'));
+const nvmeRegistry = JSON.parse(fs.readFileSync(path.join(DIR, 'profitnode_nvme_registry_v1.json'), 'utf8'));
 
 sandbox.canonicalHardware = hardware;
 sandbox.canonicalBoards = motherboards;
@@ -21,6 +22,7 @@ sandbox.canonicalStorage = storage;
 sandbox.canonicalCases = cases;
 sandbox.canonicalCoolers = coolers;
 sandbox.canonicalGpuPsu = gpuPsu;
+sandbox.canonicalNvmeRegistry = nvmeRegistry;
 
 env.loadAll(sandbox, DIR);
 
@@ -495,6 +497,42 @@ const results = env.run(sandbox, `(() => {
   HardwareCatalog.coolers = [];
   const missingCaseCaps = caseCapabilities({kind:'PLANNED',catalogType:'CASE',label:'Fractal Design Meshify 2',cost:0,currency:'RSD'},'Fractal Design Meshify 2');
   out.push(['missing case catalog degrades to UNVERIFIED, never a hard fail', missingCaseCaps === null && rigIntegrity(plain).state === 'SOUND']);
+
+  /* ---- NVMe recognition registry: merge, alias resolution, PC601 sanity ---- */
+  out.push(['NVMe registry counts match the handoff spec (412 new families / 1311 new models / 179 aliases)', canonicalNvmeRegistry.family_count_new===412&&canonicalNvmeRegistry.model_count_new===1311&&canonicalNvmeRegistry.alias_count===179&&canonicalNvmeRegistry.models.length===1311&&canonicalNvmeRegistry.aliases.length===179]);
+  const scoredStorage = canonicalStorage.entries.map(e=>Object.assign({overall:e.overall_score,pn_tier:tierName(storageGearTier(e))},e));
+  const recognitionStorage = canonicalNvmeRegistry.models.map(e=>Object.assign({overall:null,pn_tier:null},e));
+  HardwareCatalog.storage = scoredStorage.concat(recognitionStorage);
+  const aliasBuild = buildStorageAliasIndex(HardwareCatalog.storage, canonicalNvmeRegistry);
+  HardwareCatalog.storageAliasIndex = aliasBuild.index;
+  HardwareCatalog.storageAliasPrefixes = aliasBuild.prefixes;
+  out.push(['merged storage catalog preserves all 1,324 originally-scored rows plus 1,311 new recognition rows with zero collisions', HardwareCatalog.storage.length===2635]);
+  out.push(['new recognition rows resolve to a null (UNRATED) tier, never a fabricated POOR score', HardwareCatalog.storage.filter(e=>e.registry_status==='new_recognition').every(e=>storageGearTier(e)===null&&e.overall_score===undefined)]);
+  out.push(['pre-existing scored NVMe rows are untouched by the merge (970 EVO Plus 1TB still resolves with its real score)', (function(){const e=catalogFind('STORAGE','Samsung 970 EVO Plus 1TB');return e&&Number.isFinite(e.overall_score)&&storageGearTier(e)!==null})()]);
+  const pc601_512 = catalogFind('STORAGE','SK hynix PC601 512GB');
+  out.push(['SK hynix PC601 512GB is present in the merged catalog as an unrated recognition row', pc601_512&&pc601_512.brand==='SK hynix'&&pc601_512.series==='PC601'&&pc601_512.capacity_gb===512&&pc601_512.drive_type==='NVMe SSD'&&storageGearTier(pc601_512)===null]);
+  out.push(['exact OEM part number HFS512GD9TNG-L2A0A BA resolves to the PC601 512GB canonical entry', (function(){const e=catalogFind('STORAGE','HFS512GD9TNG-L2A0A BA');return e&&e.brand==='SK hynix'&&e.series==='PC601'&&e.capacity_gb===512})()]);
+  out.push(['normalized OEM part number (no hyphen/case) still resolves the same PC601 512GB entry', (function(){const e=catalogFind('STORAGE','hfs512gd9tng l2a0a ba');return e&&e.series==='PC601'&&e.capacity_gb===512})()]);
+  out.push(['Dell alias V4RWG resolves to the PC601 512GB entry the user actually owns', (function(){const e=catalogFind('STORAGE','V4RWG');return e&&e.series==='PC601'&&e.capacity_gb===512})()]);
+  out.push(['Dell alias 0V4RWG resolves to the PC601 512GB entry', (function(){const e=catalogFind('STORAGE','0V4RWG');return e&&e.series==='PC601'&&e.capacity_gb===512})()]);
+  out.push(['Dell alias KR-0V4RWG resolves to the PC601 512GB entry', (function(){const e=catalogFind('STORAGE','KR-0V4RWG');return e&&e.series==='PC601'&&e.capacity_gb===512})()]);
+  out.push(['plain family+capacity search "PC601 512" also finds the same drive through ordinary token search', catalogSearch('STORAGE','PC601 512').some(e=>e.brand==='SK hynix'&&e.series==='PC601'&&e.capacity_gb===512)]);
+  out.push(['exact part numbers are searchable (not just find-able) through catalogSearch', catalogSearch('STORAGE','V4RWG').some(e=>e.series==='PC601'&&e.capacity_gb===512)]);
+  out.push(['a capacity-less family alias (PC601 NVMe) surfaces every PC601 capacity through search without collapsing them', (function(){const r=catalogSearch('STORAGE','PC601 NVMe');return r.length===3&&new Set(r.map(e=>e.capacity_gb)).size===3})()]);
+  out.push(['catalogFind refuses to auto-collapse an ambiguous capacity-less alias to a single guess', catalogFind('STORAGE','PC601 NVMe')===null]);
+  out.push(['a multi-family alias (Kingston OEM OM8/OM3/RBUS, one physical SKU) still resolves to exactly one entry', (function(){const e=catalogFind('STORAGE','OCP0S3512Q-A0');return e&&e.brand==='Kingston'&&e.capacity_gb===512})()]);
+  out.push(['a prefix pattern alias (KBG3*) matches an observed part number by prefix', (function(){const e=catalogFind('STORAGE','KBG30ZMV256G');return e&&e.brand==='Kioxia'&&e.series==='BG3'&&e.capacity_gb===256})()]);
+  out.push(['prefix alias search returns every capacity in the family when the query carries no capacity', (function(){const r=catalogSearch('STORAGE','KBG3XXXXXXX');return r.length===4&&r.every(e=>e.brand==='Kioxia'&&e.series==='BG3')})()]);
+  out.push(['HOLD/unreleased exclusion still applies alongside the new alias path (no availability_status leak)', HardwareCatalog.storage.filter(e=>'DOCUMENTED_UNRELEASED'===e.availability_status).length===0]);
+  const unratedMeta = renderCatalogMeta('STORAGE', pc601_512, null);
+  out.push(['renderCatalogMeta shows UNRATED / dash placeholders for an unscored recognition row, never the literal text "undefined" or "null"', !/undefined|NaN/.test(unratedMeta) && unratedMeta.includes('UNRATED') && unratedMeta.includes('—') && !unratedMeta.includes('>null<')]);
+  out.push(['pnTierClass falls back to pn-tier-unrated for a null tier and keeps existing tier classes intact', pnTierClass(null)==='pn-tier-unrated'&&pnTierClass('EPIC')==='pn-tier-epic']);
+  out.push(['pnTierLabel shows UNRATED for null and passes real tier names through unchanged', pnTierLabel(null)==='UNRATED'&&pnTierLabel('LEGENDARY')==='LEGENDARY']);
+  out.push(['pnNumOrDash shows an em dash for missing numbers and passes real numbers through unchanged (including zero)', pnNumOrDash(null)==='—'&&pnNumOrDash(undefined)==='—'&&pnNumOrDash(0)===0&&pnNumOrDash(56)===56]);
+  const draft=newRigDraft('PC601 TEST');draft.slots.STORAGE={kind:'PLANNED',catalogType:'STORAGE',label:'SK hynix PC601 512GB',cost:0,originalPrice:0,currency:draft.currency};
+  const slotHtml=renderRigSlotRow('STORAGE',draft);
+  out.push(['an unrated recognition row renders cleanly inside the live RIG ASSEMBLY slot dropdown (no crash, no literal undefined/null leaking into the option markup)', typeof slotHtml==='string'&&!/undefined|NaN/.test(slotHtml)]);
+
   return out;
 })()`);
 
