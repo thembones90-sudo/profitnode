@@ -4,43 +4,16 @@ function rigRatingResolved(rig){
   RIG_SLOTS.forEach(k=>{by[k]=rigSlotResolved(slots[k],cur,k)});
   return by;
 }
-function rigValueScore(rig){
-  const inv=typeof rigDerived==="function"?rigDerived(rig).totalCost:0,val=Number(rig&&rig.estimatedMarketValue)||0;
-  if(!inv||inv<=0)return 40;
-  const r=val/inv;
-  if(r>=1.5)return 100;
-  if(r>=1.4)return 95;
-  if(r>=1.3)return 88;
-  if(r>=1.2)return 80;
-  if(r>=1.1)return 70;
-  if(r>=1)return 62;
-  if(r>=0.9)return 50;
-  if(r>=0.8)return 38;
-  return 20;
-}
 function rigRatingModel(rig){
-  const purpose=pbPurposeOf(rig),by=rigRatingResolved(rig),categories={};
-  PB_BUILD_CATEGORIES.forEach(k=>categories[k]={
-    PERFORMANCE:pbPerformanceScore(by,purpose),
-    BALANCE:pbBalanceScore(by,purpose),
-    COMPONENT_QUALITY:pbComponentQualityScore(by),
-    RELIABILITY:pbReliabilityScore(by,rig),
-    VALUE:rigValueScore(rig),
-    UPGRADE_PATH:pbUpgradePathScore(by,rig)
-  }[k]);
-  const w=PB_PURPOSE_WEIGHTS[purpose];
-  let total=0;
-  PB_BUILD_CATEGORIES.forEach(k=>total+=categories[k]*w[k]);
-  const finalScore=clamp(Math.round(total/100),0,100),quality=pbScoreToTier(finalScore).key;
-  return{purpose:purpose,finalScore:finalScore,quality:quality,categories:categories,verdict:pbBuildVerdict({quality:quality,categories:categories},purpose)};
+  return pbRatingCore(rigRatingResolved(rig),rig,RIG_SLOTS);
 }
 function rigRatingSnapshot(rig){
   const m=rigRatingModel(rig),slots=rig&&rig.slots||emptyRigSlots(),cur=rig&&rig.currency||"RSD";
-  return{mode:"FINAL",generatedAt:nowISO(),finalScore:m.finalScore,quality:m.quality,verdict:m.verdict,categories:m.categories,purpose:m.purpose,components:RIG_SLOTS.map(k=>{const r=rigSlotResolved(slots[k],cur,k);return{slotKey:k,label:r&&r.label||null,kind:slots[k]&&slots[k].kind||null,perf:pbPerfOf(r),tier:r&&r.pn&&r.pn.tier||null}})};
+  return{mode:"FINAL",engine:m.engine,generatedAt:nowISO(),finalScore:m.finalScore,quality:m.quality,verdict:m.verdict,categories:m.categories,confidences:m.confidences,purpose:m.purpose,investment:m.investment,estimatedMarketValue:m.estimatedMarketValue,components:RIG_SLOTS.map(k=>{const r=rigSlotResolved(slots[k],cur,k);return{slotKey:k,label:r&&r.label||null,kind:slots[k]&&slots[k].kind||null,perf:pbPerfOf(r),tier:r&&r.pn&&r.pn.tier||null}})};
 }
 function rigRatingModelDisplayed(rig){
   const locked="ASSEMBLED"===rig.status||"SOLD"===rig.status,snap=locked&&rig.rigRating&&Number.isFinite(rig.rigRating.finalScore)?rig.rigRating:null;
-  const m=snap?{finalScore:snap.finalScore,quality:snap.quality,categories:snap.categories,verdict:snap.verdict,purpose:snap.purpose||pbPurposeOf(rig)}:rigRatingModel(rig);
+  const m=snap?Object.assign({},snap,{engine:snap.engine||"build-rating-v1",purpose:snap.purpose||pbPurposeOf(rig),confidences:snap.confidences||pbConfFromCategories(snap.categories)}):rigRatingModel(rig);
   return{locked:locked,snap:!!snap,m:m};
 }
 function rigRatingChipHtml(score){
@@ -50,11 +23,8 @@ function rigRatingChipHtml(score){
 function rigRatingPanelHtml(rig){
   const d=rigRatingModelDisplayed(rig),label=d.locked?(d.snap?"FINAL":"FINAL · LIVE"):"PROJECTED";
   const overallTier=pbScoreToTier(d.m.finalScore),overallClass=typeof pnTierClass==="function"?pnTierClass(overallTier.key):"";
-  const rows=PB_BUILD_CATEGORIES.map(k=>{
-    const score=d.m.categories[k],catTier=pbScoreToTier(score),catClass=typeof pnTierClass==="function"?pnTierClass(catTier.key):"";
-    return'<div class="pn-pb-rating-row '+catClass+'" data-rig-rating-cat="'+k+'" data-rig-rating-cat-value="'+score+'" data-rig-rating-cat-tier="'+catTier.key+'"><span>'+PB_CAT_LABELS[k]+'</span><span class="pn-pb-rating-bar"><i style="width:'+score+'%"></i></span><b>'+score+"/100 · "+catTier.key+"</b></div>";
-  }).join("");
-  return'<div class="panel pn-pb-rating" style="margin-top:8px"><div class="panel-head"><h2>BUILD RATING</h2><span class="chip chip-muted">'+label+'</span></div><div class="panel-body"><div class="pn-pb-rating-overall '+overallClass+'" data-rig-rating-tier="'+overallTier.key+'"><div class="pn-pb-rating-score">'+rigRatingChipHtml(d.m.finalScore)+'</div><p class="pn-pb-rating-verdict">'+escHtml(d.m.verdict)+'</p></div><div class="pn-pb-rating-cats">'+rows+"</div></div></div>";
+  const rows=PB_BUILD_CATEGORIES.map(k=>pbRatingRowHtml(k,'data-rig-rating-cat="'+k+'" ',PB_CAT_LABELS[k],d.m.categories[k],d.m.confidences&&d.m.confidences[k])).join("");
+  return'<div class="panel pn-pb-rating" data-pb-rating-engine="'+(d.m.engine||"build-rating-v1")+'" style="margin-top:8px"><div class="panel-head"><h2>BUILD RATING</h2><span class="chip chip-muted">'+label+'</span></div><div class="panel-body"><div class="pn-pb-rating-overall '+overallClass+'" data-rig-rating-tier="'+overallTier.key+'"><div class="pn-pb-rating-score">'+rigRatingChipHtml(d.m.finalScore)+'</div><p class="pn-pb-rating-verdict">'+escHtml(d.m.verdict)+'</p></div><div class="pn-pb-rating-cats">'+rows+"</div></div></div>";
 }
 function rigRatingCells(rig){
   const d=rigRatingModelDisplayed(rig);
