@@ -1598,7 +1598,11 @@ const projectBuildProbe = `
     if (attrTier !== expectedTier || bTier !== expectedTier) everyRowCorrect = false;
   }
   out.push(['every BUILD RATING category bar derives its own CSS tier class from its own exact 0-100 score (PERFORMANCE/BALANCE/COMPONENT QUALITY/RELIABILITY/VALUE/UPGRADE PATH each independently, never one shared color for the whole panel), bar width still equals the exact score, and the tier label sits next to the number', catRowsSeen === 6 && everyRowCorrect]);
-  out.push(['the BUILD RATING overall score chip carries the canonical pn-tier-* class matching its own tier, reusing the same tier color system as the rest of PROFITNODE rather than a bespoke palette', ratedHtml.includes('chip ' + pnTierClass(rateSnap.quality)) && ratedHtml.includes(rateSnap.quality + ' · ' + rateSnap.finalScore)]);
+  const scoreChipMatch = ratedHtml.match(/<span class="([^"]*)" data-pb-build-score="(\\d+)" data-pb-build-quality="([A-Z]+)">/);
+  out.push(['the BUILD RATING overall score chip carries the canonical pn-tier-* class matching its own tier (as real distinct class tokens, not a coincidental substring), reusing the same tier color system as the rest of PROFITNODE rather than a bespoke palette', !!scoreChipMatch && scoreChipMatch[1].split(' ').includes('chip') && scoreChipMatch[1].split(' ').includes(pnTierClass(rateSnap.quality)) && Number(scoreChipMatch[2]) === rateSnap.finalScore && scoreChipMatch[3] === rateSnap.quality && ratedHtml.includes(rateSnap.quality + ' · ' + rateSnap.finalScore)]);
+  out.push(['the score chip picks up the dedicated pn-pb-score-chip prominence class (bigger, glowing) without losing the base chip or tier classes', !!scoreChipMatch && scoreChipMatch[1].split(' ').includes('pn-pb-score-chip')]);
+  const overallWrapMatch = ratedHtml.match(/<div class="pn-pb-rating-overall ([a-z-]+)" data-pb-overall-tier="([A-Z]+)">/);
+  out.push(['the overall BUILD RATING wrapper (chip + verdict) is itself tagged with the build\\'s tier class, so the verdict text\\'s tier-tinted left border and the chip\\'s glow read the same --tier-color/--tier-wash the rest of PROFITNODE uses', !!overallWrapMatch && overallWrapMatch[1] === pnTierClass(rateSnap.quality) && overallWrapMatch[2] === rateSnap.quality]);
 
   state.pbId=unbal.id;
   const unbalHtml=renderProjectBuild();
