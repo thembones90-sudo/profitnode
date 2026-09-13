@@ -1451,7 +1451,7 @@ const projectBuildProbe = `
 
   state.pbId = p2.id;
   const pageOpen = renderProjectBuild();
-  out.push(['an in-progress workspace shows the bench grid with add-slot affordances and empty slots', pageOpen.indexOf('pn-pb-grid') > -1 && pageOpen.indexOf('EMPTY SLOT') > -1 && pageOpen.indexOf('data-pb-edit-slot=') > -1]);
+  out.push(['an in-progress workspace shows the bench grid with add-slot affordances and empty slots', pageOpen.indexOf('pn-pb-grid') > -1 && pageOpen.indexOf('pn-pb-slot-empty-hint') > -1 && pageOpen.indexOf('data-pb-edit-slot=') > -1]);
   out.push(['planned catalog components receive the same canonical quality badge as owned components', pageOpen.includes('data-pb-slot="GPU" data-pb-quality="COMMON"') && pageOpen.includes('data-pb-quality-badge="COMMON"') && pageOpen.includes('pn-tier-common')]);
   out.push(['the bench grid lists exactly the 8 requested primary slots in the requested layout order', PROJECT_BUILD_SLOTS.join(',') === 'MOBO,CPU,RAM,GPU,STORAGE,PSU,CASE,COOLER']);
 

@@ -205,7 +205,10 @@ async function main() {
     check("1920/1100 browser flow produces a valid rendered frame",!!shot.data&&shot.data.length>10000);
     await evaluate(`document.querySelector('[data-route="roadto"]').click();RoadTo.create({name:'Browser RTX 5090',category:'GPU',target:200000,refType:'catalog'});RoadTo.addFunds(Store.all('roadTo')[0].id,75000);render()`);
     const quest=await evaluate(`(()=>{const h1=document.querySelector('h1')&&document.querySelector('h1').textContent;return {h1:h1,form:!!document.querySelector('[data-roadto-create]'),feat:!!document.querySelector('.pn-roadto-feat')}})()`);
-    check("ROAD TO route opens a live quest page with its controls",quest.h1==='ROAD TO'&&quest.form&&!quest.feat,JSON.stringify(quest));
+    // The active quest is now pinned as the featured card at the top of its
+    // own page too (not just the Dashboard widget), so .pn-roadto-feat is
+    // expected here for the just-created ACTIVE quest.
+    check("ROAD TO route opens a live quest page with its controls",quest.h1==='ROAD TO'&&quest.form&&quest.feat,JSON.stringify(quest));
     const questDetail=await evaluate(`(()=>{RoadToUI.focusId=Store.all('roadTo')[0].id;render();return {add:!!document.querySelector('[data-roadto-add]'),remove:!!document.querySelector('[data-roadto-remove]'),target:!!document.querySelector('[data-roadto-set-target]'),history:document.body.textContent.includes('+75.000 RSD'),open:document.querySelector('.pn-roadto-detail .panel-head h2')&&document.querySelector('.pn-roadto-detail .panel-head h2').textContent}})()`);
     check("ROAD TO detail shows fund controls and persisted history",questDetail.add&&questDetail.remove&&questDetail.target&&questDetail.history&&questDetail.open.includes('Browser RTX 5090'),JSON.stringify(questDetail));
     await evaluate(`document.querySelector('[data-route="myrig"]').click();MyRig.ensure();render()`);
