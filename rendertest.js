@@ -162,6 +162,8 @@ const probe = `
   out.push(['rig editor uses one Rig Name field', htmlEmpty.includes('>Rig Name<') && !htmlEmpty.includes('>Rig Family<') && !htmlEmpty.includes('>Variant Name<')]);
   out.push(['rig editor omits the per-rig Currency field', !htmlEmpty.includes('>Currency<')]);
   out.push(['slot table shows paid and original price columns', htmlEmpty.includes('>Paid Price<') && htmlEmpty.includes('>Original Price<')]);
+  out.push(['rig editor renders the BUILD RATING panel for a draft', htmlEmpty.includes('BUILD RATING') && htmlEmpty.includes('data-rig-rating-cat=') && htmlEmpty.includes('>PROJECTED<')]);
+  out.push(['rig editor renders a Build Purpose selector defaulting to FLIP', htmlEmpty.includes('data-rig-field="purpose"') && htmlEmpty.includes('value="FLIP"')]);
 
   const soleStorageItem = Actions.addInventory({category:'STORAGE',manufacturer:'Crucial',model:'MX500 1TB',purchaseDate:'2026-01-01',purchasePrice:5000,currency:'RSD',estimatedMarketValue:7000,source:'OTHER',condition:'WORKING',status:'IN_STORAGE',notes:''});
   state.rigDraft = newRigDraft(null);

@@ -1,6 +1,6 @@
 "use strict";
 window.__PN_SCRIPTS = [
-  "app_core.js?v=catalog-coverage-panel-v1",
+  "app_core.js?v=rig-rating-merge-v2",
   "cpu_revaluation_extension.js?v=v3-stack-20260912b",
   "gpu_revaluation_extension.js?v=v3-stack-20260912b",
   "motherboard_revaluation_extension.js?v=v3-stack-20260912b",
@@ -26,6 +26,7 @@ window.__PN_SCRIPTS = [
   "sold_transaction_extension.js?v=sold-transaction-v3",
   "project_build_extension.js?v=build-rating-panel-v1",
   "build_rating_extension.js?v=build-rating-tier-bars-polish-v3",
+  "rig_rating_extension.js?v=rig-rating-tier-bars-v2",
   "ram_revaluation_extension.js?v=ram-v3-20260912-live1",
   "ram_v31_extension.js?v=ram-v31-20260912-live2"
 ];
