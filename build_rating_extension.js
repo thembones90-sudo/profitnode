@@ -12,20 +12,20 @@ const PB_BUILD_CATEGORIES=["PERFORMANCE","BALANCE","COMPONENT_QUALITY","RELIABIL
 const PB_CAT_LABELS={PERFORMANCE:"PERFORMANCE",BALANCE:"BALANCE",COMPONENT_QUALITY:"COMPONENT QUALITY",RELIABILITY:"RELIABILITY",VALUE:"VALUE",UPGRADE_PATH:"UPGRADE PATH"};
 const PB_UNIVERSAL_WEIGHTS={PERFORMANCE:30,BALANCE:20,COMPONENT_QUALITY:15,RELIABILITY:15,VALUE:15,UPGRADE_PATH:5};
 const PB_BUILD_PURPOSES=["FLIP","PERSONAL","FAMILY_GIFT","CLIENT","TEST_BENCH"];
-const PB_ENGINE_VERSION="build-rating-v2";
+const PB_ENGINE_VERSION="build-rating-v3";
 const PB_PERF_SLOT_WEIGHTS={CPU:.35,GPU:.35,RAM:.15,STORAGE:.10,MOBO:.05};
 const PB_CQ_SLOT_WEIGHTS={CPU:.11,GPU:.11,RAM:.10,MOBO:.16,STORAGE:.14,PSU:.20,CASE:.05,COOLER:.08};
 const PB_EXTRA_DRIVE_WEIGHT=.02;
 const PB_CONF_ORDER={UNRATED:0,UNVERIFIED:1,ESTIMATED:2,VERIFIED:3};
 const PB_CONF_LABEL={VERIFIED:"VERIFIED",ESTIMATED:"ESTIMATED",UNVERIFIED:"UNVERIFIED — no data",UNRATED:"UNRATED — excluded"};
 const PB_VERDICT_WORDS={
-  POOR:"Not worth assembling",
-  COMMON:"Functional but underwhelming",
-  UNCOMMON:"A reasonable all-rounder",
-  RARE:"A solid, collectible build",
-  EPIC:"A high-end, desirable build",
-  LEGENDARY:"A flagship-grade build",
-  ARTIFACT:"A once-in-a-cycle showpiece"
+  POOR:"A humble machine spirit, still worthy of service",
+  COMMON:"A dependable construct suited to modest duty",
+  UNCOMMON:"A forge-approved workhorse built for practical deployment",
+  RARE:"An N7-grade field machine in the prime deployment band",
+  EPIC:"A Spectre-grade war machine",
+  LEGENDARY:"A Reaper-class convergence of elite hardware",
+  ARTIFACT:"A Leviathan-class relic blessed by the Omnissiah"
 };
 const PB_SOCKET_PATH_SCORE={AM5:100,LGA1700:75,AM4:70,LGA1200:55,LGA1151:45};
 
@@ -205,20 +205,51 @@ function pbRatingConfidences(categories,by,perf,val){
   out.UPGRADE_PATH=(tC!==null||tM!==null)?"VERIFIED":((by.PSU&&(by.PSU.catalog||by.PSU.pn))||(by.RAM&&by.RAM.pn)?"ESTIMATED":"UNVERIFIED");
   return out;
 }
+const PB_NEG_PRIORITY=["RELIABILITY","BALANCE","PERFORMANCE","COMPONENT_QUALITY","VALUE","UPGRADE_PATH"];
+const PB_POS_PRIORITY=["PERFORMANCE","BALANCE","COMPONENT_QUALITY","RELIABILITY","VALUE","UPGRADE_PATH"];
+function pbModifierClause(key,v){
+  if(v===null||v===undefined||!Number.isFinite(v))return null;
+  if(key==="PERFORMANCE"){
+    if(v>=75)return{sign:"pos",text:"combat output is worthy of its class"};
+    if(v<45)return{sign:"neg",text:"combat output is suited to lighter duty"};
+    return null;
+  }
+  if(key==="BALANCE"){
+    if(v>=70)return{sign:"pos",text:"hardware synchronization is strong"};
+    if(v<55)return{sign:"neg",text:"core components show doctrinal imbalance"};
+    return null;
+  }
+  if(key==="COMPONENT_QUALITY"){
+    if(v>=75)return{sign:"pos",text:"the forge recognizes a sanctified component set"};
+    if(v<50)return{sign:"neg",text:"several components remain unsanctified or insufficiently verified"};
+    return null;
+  }
+  if(key==="RELIABILITY"){
+    if(v>=80)return{sign:"pos",text:"system integrity is exemplary"};
+    if(v<60)return{sign:"neg",text:"machine integrity requires rites of correction"};
+    return null;
+  }
+  if(key==="VALUE"){
+    if(v>=75)return{sign:"pos",text:"resource efficiency pleases the Omnissiah"};
+    if(v<50)return{sign:"neg",text:"resource expenditure exceeds tactical value"};
+    return null;
+  }
+  if(key==="UPGRADE_PATH"){
+    if(v>=70)return{sign:"pos",text:"a clear path to ascension remains"};
+    if(v<45)return{sign:"neg",text:"the platform offers limited paths to further ascension"};
+    return null;
+  }
+  return null;
+}
 function pbBuildVerdict(model){
-  const c=model.categories,words=PB_VERDICT_WORDS[model.quality]||"Scored build",bits=[];
-  const slice=(v,hi,lo)=>v===null||v===undefined?null:(v>=hi?1:(v<lo?-1:0));
-  if(slice(c.BALANCE,70,55)===1)bits.push("components are well balanced");
-  else if(slice(c.BALANCE,70,55)===-1)bits.push("CPU/GPU pairing looks imbalanced");
-  if(slice(c.COMPONENT_QUALITY,75,50)===1)bits.push("the parts list is made of solid, verified components");
-  else if(slice(c.COMPONENT_QUALITY,75,50)===-1)bits.push("several parts are low-grade or cannot be rated");
-  if(slice(c.RELIABILITY,80,60)===1)bits.push("power delivery looks dependable");
-  else if(slice(c.RELIABILITY,80,60)===-1)bits.push("reliability needs attention before handover");
-  if(slice(c.UPGRADE_PATH,70,45)===1)bits.push("the platform still has headroom to grow");
-  else if(slice(c.UPGRADE_PATH,70,45)===-1)bits.push("this build is near the end of its upgrade path");
-  if(slice(c.VALUE,50,50)===-1)bits.push("the current value target is thin for resale");
-  const intro=(slice(c.BALANCE,50,50)===-1||slice(c.RELIABILITY,60,60)===-1)?"concerns first":"no blockers";
-  return words+" — "+intro+(bits.length?" · "+bits.slice(0,3).join("; "):"");
+  const c=model.categories,words=PB_VERDICT_WORDS[model.quality]||"Unclassified machine construct";
+  const balanceLow=c.BALANCE!==null&&c.BALANCE!==undefined&&c.BALANCE<50;
+  const reliabilityLow=c.RELIABILITY!==null&&c.RELIABILITY!==undefined&&c.RELIABILITY<60;
+  const intro=(balanceLow||reliabilityLow)?"machine spirit reports doctrinal strain":"machine spirit operating within doctrine";
+  const negatives=PB_NEG_PRIORITY.map(k=>({k:k,clause:pbModifierClause(k,c[k])})).filter(x=>x.clause&&x.clause.sign==="neg");
+  const positives=PB_POS_PRIORITY.map(k=>({k:k,clause:pbModifierClause(k,c[k])})).filter(x=>x.clause&&x.clause.sign==="pos");
+  const bits=negatives.concat(positives).slice(0,3).map(x=>x.clause.text);
+  return words+" — "+intro+(bits.length?" · "+bits.join("; "):"");
 }
 function pbRatingCore(by,source,keys){
   const cur=(source&&source.currency)||"RSD";

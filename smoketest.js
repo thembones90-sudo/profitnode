@@ -958,7 +958,7 @@ const rigProbe = `
   out.push(['rig rating model: unknown parts stay UNRATED while balance/reliability stay neutral', rm.categories.PERFORMANCE === null && rm.categories.COMPONENT_QUALITY === null && rm.categories.RELIABILITY === 100 && rm.categories.BALANCE === 100 && rm.confidences.PERFORMANCE === 'UNRATED' && rm.confidences.COMPONENT_QUALITY === 'UNRATED']);
   out.push(['rig rating model: VALUE is the smooth market-efficiency curve for an unrated-performance build (11000/10000 -> 58)', rm.categories.VALUE === 58 && rm.confidences.VALUE === 'ESTIMATED']);
   out.push(['rig rating model: upgrade path uses neutral defaults when nothing is known', rm.categories.UPGRADE_PATH === 34]);
-  out.push(['rig rating model: weighted final uses only rated categories and stamps the engine', rm.finalScore === 83 && rm.quality === 'LEGENDARY' && PB_BUILD_SCORE_TIERS.some(t => t.key === rm.quality) && rm.engine === 'build-rating-v2']);
+  out.push(['rig rating model: weighted final uses only rated categories and stamps the engine', rm.finalScore === 83 && rm.quality === 'LEGENDARY' && PB_BUILD_SCORE_TIERS.some(t => t.key === rm.quality) && rm.engine === 'build-rating-v3']);
   out.push(['rig rating model: verdict prose', typeof rm.verdict === 'string' && rm.verdict.length > 0]);
   const purposeFieldHtml = rigPurposeFieldHtml(ratingStored, false);
   out.push(['rig purpose field renders 5 options with FLIP selected', (purposeFieldHtml.match(/<option/g) || []).length === 5 && /data-rig-field="purpose"/.test(purposeFieldHtml) && /value="FLIP"[^>]*selected/.test(purposeFieldHtml)]);
@@ -972,7 +972,7 @@ const rigProbe = `
   out.push(['rig rating snapshot frozen on assemble matching live model', !!snap && snap.mode === 'FINAL' && snap.finalScore === rm.finalScore && snap.quality === rm.quality]);
   out.push(['rig rating snapshot stores all slot resolutions', snap.components && snap.components.length === RIG_SLOTS.length]);
   out.push(['rig rating snapshot has six category scores', Object.keys(snap.categories).length === 6]);
-  out.push(['rig rating snapshot records engine, confidences, investment, and market value', snap.engine === 'build-rating-v2' && Object.keys(snap.confidences).length === 6 && snap.investment === 10000 && snap.estimatedMarketValue === 11000]);
+  out.push(['rig rating snapshot records engine, confidences, investment, and market value', snap.engine === 'build-rating-v3' && Object.keys(snap.confidences).length === 6 && snap.investment === 10000 && snap.estimatedMarketValue === 11000]);
   const panelLocked = rigRatingPanelHtml(Store.get('rigs', ratingRigId));
   out.push(['rig editor panel renders BUILD RATING with FINAL chip when locked', panelLocked.indexOf('BUILD RATING') !== -1 && panelLocked.indexOf('>FINAL<') !== -1]);
   out.push(['rig editor panel has six data-rig-rating-cat rows', (panelLocked.match(/data-rig-rating-cat=/g) || []).length === 6]);
@@ -981,6 +981,8 @@ const rigProbe = `
   out.push(['live model reflects edited market value (VALUE 96)', rigRatingModel(rigChanged).categories.VALUE === 96]);
   const display = rigRatingModelDisplayed(rigChanged);
   out.push(['locked rig keeps frozen snapshot and ignores live model drift', display.snap === true && display.m.finalScore === snap.finalScore && display.m.categories.VALUE === snap.categories.VALUE]);
+  const historicalRig=rigRatingModelDisplayed(Object.assign({},rigChanged,{rigRating:Object.assign({},snap,{engine:'build-rating-v2',verdict:'Historical rig verdict'})}));
+  out.push(['BUILD RATING V3 preserves an existing frozen rig verdict without regeneration', historicalRig.snap===true && historicalRig.m.engine==='build-rating-v2' && historicalRig.m.verdict==='Historical rig verdict']);
   const famHtml = renderRigFamilyView('RATINGFAM');
   out.push(['rig family view has Score + Quality columns', famHtml.indexOf('<th class="num">Score</th>') !== -1 && famHtml.indexOf('<th>Quality</th>') !== -1]);
   out.push(['rig family view variant row carries rating score + quality cells', /data-rig-rating-score="[0-9]+"/.test(famHtml) && /data-rig-rating-quality="[A-Z]+"/.test(famHtml)]);
@@ -1654,13 +1656,32 @@ const projectBuildProbe = `
 
   out.push(['BUILD RATING score-to-tier ladder spans all 7 quality grades', pbScoreToTier(0).key==='POOR' && pbScoreToTier(24).key==='POOR' && pbScoreToTier(25).key==='COMMON' && pbScoreToTier(39).key==='COMMON' && pbScoreToTier(40).key==='UNCOMMON' && pbScoreToTier(54).key==='UNCOMMON' && pbScoreToTier(55).key==='RARE' && pbScoreToTier(69).key==='RARE' && pbScoreToTier(70).key==='EPIC' && pbScoreToTier(82).key==='EPIC' && pbScoreToTier(83).key==='LEGENDARY' && pbScoreToTier(92).key==='LEGENDARY' && pbScoreToTier(93).key==='ARTIFACT' && pbScoreToTier(100).key==='ARTIFACT']);
   out.push(['BUILD RATING one universal weight set sums to 100 over the six categories', PB_BUILD_CATEGORIES.length===6 && Object.values(PB_UNIVERSAL_WEIGHTS).reduce((a,b)=>a+b,0)===100]);
+  out.push(['BUILD RATING V3 uses the exact seven-tier machine-spirit vocabulary', PB_VERDICT_WORDS.POOR==='A humble machine spirit, still worthy of service' && PB_VERDICT_WORDS.COMMON==='A dependable construct suited to modest duty' && PB_VERDICT_WORDS.UNCOMMON==='A forge-approved workhorse built for practical deployment' && PB_VERDICT_WORDS.RARE==='An N7-grade field machine in the prime deployment band' && PB_VERDICT_WORDS.EPIC==='A Spectre-grade war machine' && PB_VERDICT_WORDS.LEGENDARY==='A Reaper-class convergence of elite hardware' && PB_VERDICT_WORDS.ARTIFACT==='A Leviathan-class relic blessed by the Omnissiah']);
+  const modifierBoundaries=[
+    ['PERFORMANCE',75,'pos','combat output is worthy of its class'],['PERFORMANCE',74,null,null],['PERFORMANCE',45,null,null],['PERFORMANCE',44,'neg','combat output is suited to lighter duty'],
+    ['BALANCE',70,'pos','hardware synchronization is strong'],['BALANCE',69,null,null],['BALANCE',55,null,null],['BALANCE',54,'neg','core components show doctrinal imbalance'],
+    ['COMPONENT_QUALITY',75,'pos','the forge recognizes a sanctified component set'],['COMPONENT_QUALITY',74,null,null],['COMPONENT_QUALITY',50,null,null],['COMPONENT_QUALITY',49,'neg','several components remain unsanctified or insufficiently verified'],
+    ['RELIABILITY',80,'pos','system integrity is exemplary'],['RELIABILITY',79,null,null],['RELIABILITY',60,null,null],['RELIABILITY',59,'neg','machine integrity requires rites of correction'],
+    ['VALUE',75,'pos','resource efficiency pleases the Omnissiah'],['VALUE',74,null,null],['VALUE',50,null,null],['VALUE',49,'neg','resource expenditure exceeds tactical value'],
+    ['UPGRADE_PATH',70,'pos','a clear path to ascension remains'],['UPGRADE_PATH',69,null,null],['UPGRADE_PATH',45,null,null],['UPGRADE_PATH',44,'neg','the platform offers limited paths to further ascension']
+  ];
+  out.push(['BUILD RATING V3 modifier wording and threshold boundaries are exact', modifierBoundaries.every(([key,score,sign,text])=>{const clause=pbModifierClause(key,score);return sign===null?clause===null:clause&&clause.sign===sign&&clause.text===text})]);
+  const verdictCategories=overrides=>Object.assign({PERFORMANCE:60,BALANCE:60,COMPONENT_QUALITY:60,RELIABILITY:70,VALUE:60,UPGRADE_PATH:60},overrides||{});
+  const negativeFirst=pbBuildVerdict({quality:'RARE',categories:verdictCategories({PERFORMANCE:44,BALANCE:49,COMPONENT_QUALITY:49,RELIABILITY:59,VALUE:49,UPGRADE_PATH:44})});
+  out.push(['BUILD RATING V3 caps verdicts at three negative-first modifiers in doctrine priority', negativeFirst==='An N7-grade field machine in the prime deployment band — machine spirit reports doctrinal strain · machine integrity requires rites of correction; core components show doctrinal imbalance; combat output is suited to lighter duty']);
+  const positiveOrder=pbBuildVerdict({quality:'EPIC',categories:verdictCategories({PERFORMANCE:75,BALANCE:70,COMPONENT_QUALITY:75,RELIABILITY:80,VALUE:75,UPGRADE_PATH:70})});
+  out.push(['BUILD RATING V3 fills an all-positive verdict in doctrine priority and still caps at three', positiveOrder==='A Spectre-grade war machine — machine spirit operating within doctrine · combat output is worthy of its class; hardware synchronization is strong; the forge recognizes a sanctified component set']);
+  const mixedOrder=pbBuildVerdict({quality:'LEGENDARY',categories:verdictCategories({PERFORMANCE:75,COMPONENT_QUALITY:75,RELIABILITY:59,VALUE:49,UPGRADE_PATH:70})});
+  out.push(['BUILD RATING V3 selects every available negative before filling with positives', mixedOrder==='A Reaper-class convergence of elite hardware — machine spirit reports doctrinal strain · machine integrity requires rites of correction; resource expenditure exceeds tactical value; combat output is worthy of its class']);
+  out.push(['BUILD RATING V3 intro boundaries are category doctrine, not compatibility language', pbBuildVerdict({quality:'COMMON',categories:verdictCategories({BALANCE:49,RELIABILITY:60})}).includes('machine spirit reports doctrinal strain') && pbBuildVerdict({quality:'COMMON',categories:verdictCategories({BALANCE:50,RELIABILITY:60})}).includes('machine spirit operating within doctrine')]);
+  out.push(['BUILD RATING V3 fallback is an unclassified machine construct', pbBuildVerdict({quality:'UNKNOWN',categories:verdictCategories()}).startsWith('Unclassified machine construct — ')]);
 
   HardwareCatalog.cpus.push({brand:'AMD',model:'Ryzen 7 7700',overall:90});
   HardwareCatalog.gpus.push({brand:'NVIDIA',model:'RTX 4070',overall:92});
   HardwareCatalog.boards.push({brand:'ASRock',model:'B650M Pro RS',overall:75});
 
   const rated=buildRatingModel(Store.get('projects',p.id));
-  out.push(['BUILD RATING model returns a bounded score, matching tier, six category states, confidence, engine, and a verdict', Number.isFinite(rated.finalScore) && rated.finalScore>=0 && rated.finalScore<=100 && pbScoreToTier(rated.finalScore).key===rated.quality && Object.keys(rated.categories).length===6 && Object.keys(rated.confidences).length===6 && PB_BUILD_CATEGORIES.every(c=>rated.categories[c]===null||(Number.isFinite(rated.categories[c])&&rated.categories[c]>=0&&rated.categories[c]<=100)) && PB_BUILD_CATEGORIES.every(c=>['VERIFIED','ESTIMATED','UNVERIFIED','UNRATED'].includes(rated.confidences[c])) && rated.engine==='build-rating-v2' && rated.verdict.length>0]);
+  out.push(['BUILD RATING model returns a bounded score, matching tier, six category states, confidence, engine, and a verdict', Number.isFinite(rated.finalScore) && rated.finalScore>=0 && rated.finalScore<=100 && pbScoreToTier(rated.finalScore).key===rated.quality && Object.keys(rated.categories).length===6 && Object.keys(rated.confidences).length===6 && PB_BUILD_CATEGORIES.every(c=>rated.categories[c]===null||(Number.isFinite(rated.categories[c])&&rated.categories[c]>=0&&rated.categories[c]<=100)) && PB_BUILD_CATEGORIES.every(c=>['VERIFIED','ESTIMATED','UNVERIFIED','UNRATED'].includes(rated.confidences[c])) && rated.engine==='build-rating-v3' && rated.verdict.length>0]);
 
   const unbal=Actions.addProject({name:'UNBAL',startDate:todayISO(),status:'PLANNING',purpose:'FLIP',currency:'RSD'});
   Actions.setProjectSlot(unbal.id,'CPU','PLANNED',{label:'Intel Core i7-6700',cost:0,currency:'RSD',catalogType:'CPU'});
@@ -1690,10 +1711,12 @@ const projectBuildProbe = `
   const parRigId=saveRigDraft();
   const parB=buildRatingModel(Store.get('projects',parProj.id));
   const parR=rigRatingModel(Store.get('rigs',parRigId));
-  out.push(['identical BUILD and RIG configs produce byte-identical ratings from one shared engine', parB.finalScore===parR.finalScore && parB.quality===parR.quality && parB.engine===parR.engine && parB.engine==='build-rating-v2' && PB_BUILD_CATEGORIES.every(k=>parB.categories[k]===parR.categories[k]) && PB_BUILD_CATEGORIES.every(k=>parB.confidences[k]===parR.confidences[k]) && parB.investment===parR.investment && parB.investment===85000]);
+  out.push(['identical BUILD and RIG configs produce byte-identical ratings from one shared engine', parB.finalScore===parR.finalScore && parB.quality===parR.quality && parB.engine===parR.engine && parB.engine==='build-rating-v3' && PB_BUILD_CATEGORIES.every(k=>parB.categories[k]===parR.categories[k]) && PB_BUILD_CATEGORIES.every(k=>parB.confidences[k]===parR.confidences[k]) && parB.investment===parR.investment && parB.investment===85000]);
   const rateComplete=Actions.markProjectBuildComplete(rateProj.id);
   const rateSnap=rateComplete.ok && rateComplete.project.buildRating;
-  out.push(['marking a build complete freezes a BUILD RATING snapshot with score, quality, categories, confidences, engine, investment, market value, and per-slot components', !!rateSnap && rateSnap.mode==='FINAL' && rateSnap.engine==='build-rating-v2' && Number.isFinite(rateSnap.finalScore) && rateSnap.finalScore===preRate.finalScore && rateSnap.quality===preRate.quality && Object.keys(rateSnap.categories).length===6 && Object.keys(rateSnap.confidences).length===6 && rateSnap.investment===85000 && rateSnap.estimatedMarketValue===120000 && rateSnap.components.length===PROJECT_BUILD_SLOTS.length]);
+  out.push(['marking a build complete freezes a BUILD RATING snapshot with score, quality, categories, confidences, engine, investment, market value, and per-slot components', !!rateSnap && rateSnap.mode==='FINAL' && rateSnap.engine==='build-rating-v3' && Number.isFinite(rateSnap.finalScore) && rateSnap.finalScore===preRate.finalScore && rateSnap.quality===preRate.quality && Object.keys(rateSnap.categories).length===6 && Object.keys(rateSnap.confidences).length===6 && rateSnap.investment===85000 && rateSnap.estimatedMarketValue===120000 && rateSnap.components.length===PROJECT_BUILD_SLOTS.length]);
+  const historicalProject=buildRatingModelDisplayed(Object.assign({},Store.get('projects',rateProj.id),{buildRating:Object.assign({},rateSnap,{engine:'build-rating-v2',verdict:'Historical project verdict'})}));
+  out.push(['BUILD RATING V3 preserves an existing frozen project verdict without regeneration', historicalProject.snap===true && historicalProject.m.engine==='build-rating-v2' && historicalProject.m.verdict==='Historical project verdict']);
 
   HardwareCatalog.gpus=[{brand:'NVIDIA',model:'RTX 4070',overall:5}].concat(HardwareCatalog.gpus);
   state.pbId=rateProj.id;
@@ -1715,7 +1738,7 @@ const projectBuildProbe = `
     if (attrTier !== expectedTier || bTier !== expectedTier) everyRowCorrect = false;
   }
   out.push(['every BUILD RATING category bar derives its own CSS tier class from its own exact 0-100 score and carries its own confidence state (PERFORMANCE/BALANCE/COMPONENT QUALITY/RELIABILITY/VALUE/UPGRADE PATH each independently, never one shared color for the whole panel), bar width still equals the exact score, and the tier label sits next to the number', catRowsSeen === 6 && everyRowCorrect]);
-  out.push(['every BUILD RATING category row renders a confidence line and the panel stamps the engine version', (ratedHtml.match(/pn-pb-rating-conf/g)||[]).length === 6 && ratedHtml.includes('data-pb-rating-engine="build-rating-v2"')]);
+  out.push(['every BUILD RATING category row renders a confidence line and the panel stamps the engine version', (ratedHtml.match(/pn-pb-rating-conf/g)||[]).length === 6 && ratedHtml.includes('data-pb-rating-engine="build-rating-v3"')]);
   const scoreChipMatch = ratedHtml.match(/<span class="([^"]*)" data-pb-build-score="(\\d+)" data-pb-build-quality="([A-Z]+)">/);
   out.push(['the BUILD RATING overall score chip carries the canonical pn-tier-* class as a real distinct class token, reusing the same tier color system as the rest of PROFITNODE rather than a bespoke palette', !!scoreChipMatch && scoreChipMatch[1].split(' ').includes('chip') && scoreChipMatch[1].split(' ').includes(pnTierClass(rateSnap.quality)) && Number(scoreChipMatch[2]) === rateSnap.finalScore && scoreChipMatch[3] === rateSnap.quality && ratedHtml.includes(rateSnap.quality + ' · ' + rateSnap.finalScore)]);
   out.push(['the score chip picks up the dedicated pn-pb-score-chip prominence class (bigger, glowing) without losing the base chip or tier classes', !!scoreChipMatch && scoreChipMatch[1].split(' ').includes('pn-pb-score-chip')]);
