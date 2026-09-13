@@ -162,14 +162,84 @@ const results = env.run(sandbox, `
     const fallback = mailApplyParsedMessage(fallbackParsed, fallbackRaw, new Date(2026, 8, 13, 15, 0));
     log('L2: missing deadline falls back from current site time, not parser or shipment time', fallback.record.deadlineAt === '2026-09-16T15:00');
 
-    const suppliedRaw = 'Posta Srbije: PX123456798RS je poslata. Delivery deadline: 7 days from shipment.';
+    const suppliedRaw = 'Posta Srbije: PX123456798RS je poslata. Shipment date: 13.09.2026 at 15:00. Delivery deadline: 7 days from shipment.';
     const suppliedParsed = mailParseCourierMessage(suppliedRaw, new Date(2026, 8, 13, 15, 0));
     const supplied = mailApplyParsedMessage(suppliedParsed, suppliedRaw, new Date(2026, 8, 13, 15, 0));
-    log('L2: supplied seven-day deadline wins over the import-time three-day fallback', supplied.record.deadlineAt === '2026-09-20T15:00');
+    log('L2: shipment-relative seven-day deadline wins over the import-time three-day fallback', supplied.record.deadlineAt === '2026-09-20T15:00' && supplied.record.deadlineSource === 'relative');
 
     const updateRaw = 'Posta Srbije: PX123456798RS je na dostavi.';
     const updated = mailApplyParsedMessage(mailParseCourierMessage(updateRaw, new Date(2026, 8, 14, 10, 0)), updateRaw, new Date(2026, 8, 14, 10, 0));
-    log('L2: later import without a deadline preserves the previously supplied deadline', updated.record.deadlineAt === '2026-09-20T15:00');
+    log('L2: later import without a deadline preserves the relative deadline and provenance', updated.record.deadlineAt === '2026-09-20T15:00' && updated.record.deadlineSource === 'relative' && updated.record.deadlineAnchorAt === '2026-09-13T15:00');
+  })();
+
+  // L3. Deadline source precedence never downgrades higher-quality information
+  (function(){
+    reset();
+    const tracking = 'PX123456797RS';
+    let rec = mailApplyParsedMessage(mailParseCourierMessage('Posta Srbije: '+tracking+' je poslata.', new Date(2026,8,13,9,0)), 'auto', new Date(2026,8,13,9,0)).record;
+    log('L3: missing deadline creates AUTO +3 DAYS with calculation provenance', rec.deadlineAt === '2026-09-16T09:00' && rec.deadlineSource === 'auto' && rec.deadlineRule === 'No deadline detected' && rec.deadlineDays === 3);
+
+    const relativeRaw = 'Posta Srbije: '+tracking+' je poslata. Shipment date: 13.09.2026 at 09:00. Delivery deadline: 7 days from shipment.';
+    rec = mailApplyParsedMessage(mailParseCourierMessage(relativeRaw, new Date(2026,8,13,9,0)), relativeRaw, new Date(2026,8,13,9,0)).record;
+    log('L3: RELATIVE replaces AUTO', rec.deadlineAt === '2026-09-20T09:00' && rec.deadlineSource === 'relative');
+
+    const suppliedRaw = 'Posta Srbije: '+tracking+' je na dostavi. Deadline: 22.09.2026 at 11:30.';
+    rec = mailApplyParsedMessage(mailParseCourierMessage(suppliedRaw, new Date(2026,8,14,9,0)), suppliedRaw, new Date(2026,8,14,9,0)).record;
+    log('L3: SUPPLIED replaces RELATIVE', rec.deadlineAt === '2026-09-22T11:30' && rec.deadlineSource === 'supplied');
+
+    const downgradeRaw = 'Posta Srbije: '+tracking+' je na dostavi. Shipment date: 14.09.2026 at 09:00. Delivery deadline: 10 days from shipment.';
+    rec = mailApplyParsedMessage(mailParseCourierMessage(downgradeRaw, new Date(2026,8,14,9,0)), downgradeRaw, new Date(2026,8,14,9,0)).record;
+    log('L3: RELATIVE cannot downgrade SUPPLIED', rec.deadlineAt === '2026-09-22T11:30' && rec.deadlineSource === 'supplied');
+  })();
+
+  // L4. dateSent facts and manual edits preserve source quality
+  (function(){
+    reset();
+    const tracking = 'DEX123456796';
+    const dispatchRaw = 'D Express: Shipment '+tracking+'. Dispatched: 12.09.2026 at 15:00.';
+    let rec = mailApplyParsedMessage(mailParseCourierMessage(dispatchRaw, new Date(2026,8,13,9,0)), dispatchRaw, new Date(2026,8,13,9,0)).record;
+    log('L4: dispatch fact populates dateSent', rec.dateSent === '2026-09-12' && rec.dateSentAt === '2026-09-12T15:00' && rec.dateSentSource === 'dispatch');
+    const acceptedRaw = 'D Express: Shipment '+tracking+'. Package accepted: 10.09.2026 at 08:15.';
+    rec = mailApplyParsedMessage(mailParseCourierMessage(acceptedRaw, new Date(2026,8,14,9,0)), acceptedRaw, new Date(2026,8,14,9,0)).record;
+    log('L4: acceptance fact replaces lower-quality dispatch date', rec.dateSent === '2026-09-10' && rec.dateSentAt === '2026-09-10T08:15' && rec.dateSentSource === 'acceptance');
+    const laterDispatchRaw = 'D Express: Shipment '+tracking+'. Dispatched: 14.09.2026 at 16:00.';
+    rec = mailApplyParsedMessage(mailParseCourierMessage(laterDispatchRaw, new Date(2026,8,15,9,0)), laterDispatchRaw, new Date(2026,8,15,9,0)).record;
+    log('L4: later dispatch does not overwrite earlier acceptance date', rec.dateSentAt === '2026-09-10T08:15' && rec.dateSentSource === 'acceptance');
+
+    const manual = Actions.addMail({description:'manual provenance'}, new Date(2026,8,13,10,0));
+    const edited = Actions.updateMail(manual.id,{deadlineAt:'2026-09-30T18:00',dateSent:'2026-09-11'});
+    log('L4: direct manual deadline edit becomes SUPPLIED', edited.deadlineSource === 'supplied' && edited.deadlineRule === '' && edited.deadlineAnchorAt === '');
+    log('L4: direct manual dateSent edit records manual provenance', edited.dateSentSource === 'manual' && edited.dateSentAt === '');
+  })();
+
+  // L5. Preview explanation, legacy migration, and dynamic urgency states
+  (function(){
+    reset();
+    const now = new Date(2026,8,13,12,0);
+    const auto = mailSmartImportPreview('Posta Srbije: PX123456795RS je poslata.', now, now);
+    const autoHtml = mailSmartImportPreviewHtml(auto);
+    log('L5: AUTO preview shows badge, rule, and anchor-to-deadline calculation', autoHtml.indexOf('AUTO +3 DAYS') > -1 && autoHtml.indexOf('No deadline detected') > -1 && autoHtml.indexOf('13.09.2026 12:00 → 16.09.2026 12:00') > -1);
+    const autoApplied = mailApplyParsedMessage(auto, 'Posta Srbije: PX123456795RS je poslata.', new Date(2026,8,13,12,5));
+    log('L5: AUTO is finalized from import time rather than stale preview time', autoApplied.record.deadlineAt === '2026-09-16T12:05' && autoApplied.record.deadlineAnchorAt === '2026-09-13T12:05');
+    const relative = mailSmartImportPreview('D Express: Shipment DEX123456795. Package accepted: 10.09.2026 at 08:30. Delivery deadline: 7 days from shipment.', now, now);
+    const relativeHtml = mailSmartImportPreviewHtml(relative);
+    log('L5: RELATIVE preview shows badge, rule, and explicit anchor calculation', relativeHtml.indexOf('RELATIVE') > -1 && relativeHtml.indexOf('7 days from shipment') > -1 && relativeHtml.indexOf('10.09.2026 08:30 → 17.09.2026 08:30') > -1);
+
+    const legacy = Object.assign(mailDefaultRecord(),{deadlineAt:'2026-09-20T18:00',deadlineSource:'',messageHistory:[{deadlineAt:'2026-09-20T18:00'}]});
+    mailNormalizeDeadlineRecord(legacy);
+    log('L5: legacy deadlines migrate conservatively to SUPPLIED', legacy.deadlineSource === 'supplied' && legacy.messageHistory[0].deadlineSource === 'supplied');
+    const migrated = migrateLedger({meta:{schemaVersion:4},mail:[{deadlineAt:'2026-09-21T18:00',messageHistory:[]}]});
+    log('L5: ledger migration applies safe provenance to existing saved MAIL records', migrated.ledger.mail[0].deadlineSource === 'supplied');
+
+    log('L5: action deadline urgency detects OVERDUE', mailActionDeadlineUrgency({status:'in_transit',deadlineAt:'2026-09-13T11:59'},now).label === 'OVERDUE');
+    log('L5: action deadline urgency detects DUE TODAY', mailActionDeadlineUrgency({status:'in_transit',deadlineAt:'2026-09-13T20:00'},now).label === 'DUE TODAY');
+    log('L5: action deadline urgency detects DUE <24H', mailActionDeadlineUrgency({status:'in_transit',deadlineAt:'2026-09-14T10:00'},now).label === 'DUE <24H');
+    log('L5: action deadline urgency detects UPCOMING', mailActionDeadlineUrgency({status:'in_transit',deadlineAt:'2026-09-16T12:00'},now).label === 'UPCOMING');
+    log('L5: terminal shipments suppress action urgency', mailActionDeadlineUrgency({status:'delivered',deadlineAt:'2026-09-12T12:00'},now).level === 'none');
+
+    const supplied = Actions.addMail({description:'card source',deadlineAt:'2026-09-20T18:00',deadlineSource:'supplied'});
+    const cardHtml = mailCard(supplied);
+    log('L5: shipment card renders deadline source and urgency badges', cardHtml.indexOf('SUPPLIED') > -1 && cardHtml.indexOf('pn-mail-action-urgency') > -1);
   })();
 
   // M. Mail CSV export includes direction and linked entity

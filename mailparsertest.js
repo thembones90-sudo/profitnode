@@ -176,12 +176,26 @@ const results = env.run(sandbox, `
   (function(){
     const explicit = mailParseCourierMessage('D Express: Shipment DEX123456780. Deadline: 19.09.2026.', new Date(2026, 8, 13, 15, 0));
     log('date-only deadline uses the supplied date through end of day', explicit.deadlineAt === '2026-09-19T23:59');
+    log('explicit deadline carries SUPPLIED provenance', explicit.deadlineSource === 'supplied' && explicit.deadlineRule === 'Explicit deadline');
 
     const anchored = mailParseCourierMessage('D Express: Shipment DEX123456781. Shipment date: 10.09.2026 at 08:30. Delivery deadline: 7 days from shipment.', new Date(2026, 8, 13, 15, 0));
     log('relative deadline uses the supplied shipment timestamp as its anchor', anchored.deadlineAt === '2026-09-17T08:30');
+    log('relative deadline carries its rule, anchor, and day count', anchored.deadlineSource === 'relative' && anchored.deadlineRule === '7 days from shipment' && anchored.deadlineAnchorAt === '2026-09-10T08:30' && anchored.deadlineDays === 7);
 
     const relative = mailParseCourierMessage('D Express: Shipment DEX123456782. Delivery deadline: 7 days from shipment.', new Date(2026, 8, 13, 15, 0));
-    log('relative deadline without a shipment timestamp still honors the supplied seven-day rule', relative.deadlineAt === '2026-09-20T15:00');
+    log('relative deadline without a shipment fact does not use an arbitrary parser timestamp', !relative.deadlineAt);
+    const preview = mailSmartImportPreview('D Express: Shipment DEX123456782. Delivery deadline: 7 days from shipment.', new Date(2026, 8, 13, 15, 0), new Date(2026, 8, 13, 15, 0));
+    log('unanchored relative rule falls back to AUTO from current site time', preview.deadlineAt === '2026-09-16T15:00' && preview.deadlineSource === 'auto' && preview.deadlineAnchorAt === '2026-09-13T15:00');
+  })();
+
+  // 19. Explicit shipment facts populate dateSent and prefer acceptance over later scans
+  (function(){
+    const p = mailParseCourierMessage('D Express: Shipment DEX123456783. Package accepted: 10.09.2026 at 08:30. Dispatched: 11.09.2026 at 14:45. Delivery deadline: 7 days from shipment.', new Date(2026, 8, 13, 15, 0));
+    log('acceptance fact populates canonical dateSent fields', p.dateSent === '2026-09-10' && p.dateSentAt === '2026-09-10T08:30' && p.dateSentSource === 'acceptance');
+    log('later dispatch scan does not replace earlier acceptance anchor', p.deadlineAnchorAt === '2026-09-10T08:30' && p.deadlineAt === '2026-09-17T08:30');
+
+    const sr = mailParseCourierMessage('Posta Srbije: Posiljka PX123456784RS. Prijem: 09.09.2026 u 12:15. Rok isporuke: 7 dana od prijema.', new Date(2026, 8, 13, 15, 0));
+    log('Serbian acceptance and relative rule parse deterministically', sr.dateSentAt === '2026-09-09T12:15' && sr.dateSentSource === 'acceptance' && sr.deadlineAt === '2026-09-16T12:15' && sr.deadlineSource === 'relative');
   })();
 
   return out;
