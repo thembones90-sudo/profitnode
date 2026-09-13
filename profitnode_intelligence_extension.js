@@ -848,10 +848,6 @@ function pnPartTierExplanationHtml(item){
   pnWrapRoute("rigbuild",function(html){
     if (typeof state !== "undefined" && state.rigDraft){
       html = html.replace("Paid Price","True Cost");
-      html = html.replace(
-        '<div class="content rig-editor-content">',
-        '<div class="content rig-editor-content"><div class="pn-true-cost-note"><b>TRUE COST BASIS ACTIVE</b><span>Inventory parts include purchase price plus logged repair expense.</span></div>'
-      );
     }
     return html;
   });
@@ -1078,28 +1074,6 @@ function pnPartTierExplanationHtml(item){
   }
 
   .pn-intelligence-empty span{
-    font-size:9px;
-  }
-
-  .pn-true-cost-note{
-    display:flex;
-    align-items:center;
-    gap:12px;
-    border:1px solid rgba(168,85,247,.28);
-    border-left:3px solid #a855f7;
-    background:rgba(91,31,119,.10);
-    padding:9px 12px;
-    margin-bottom:10px;
-  }
-
-  .pn-true-cost-note b{
-    color:#bd72ea;
-    font-size:9px;
-    letter-spacing:.08em;
-  }
-
-  .pn-true-cost-note span{
-    color:var(--muted);
     font-size:9px;
   }
 
