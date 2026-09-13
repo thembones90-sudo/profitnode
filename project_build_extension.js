@@ -448,7 +448,7 @@ function renderProjectBuild(){
     +'<div class="kpi"><div class="kpi-label">EST. VALUE</div><div class="kpi-value">'+(p.estimatedMarketValue?money(p.estimatedMarketValue,p.currency):"—")+'</div><div class="kpi-sub">manual estimate</div></div>'
     +'<div class="kpi"><div class="kpi-label">COMPLETION</div><div class="kpi-value">'+stats.completionPct+'%</div><div class="kpi-sub">'+stats.slotsFilled+" / "+stats.slotsTotal+' slots</div></div>'
     +"</div>"
-  return pageHeader("BUILD WORKSPACE",p.name,"")+'<div class="content pn-pb-page">'+pbNoticeHtml()+hero+statsRow+'<div class="panel" data-pb-loadout style="margin-top:8px"><div class="panel-head"><h2>COMPONENT LOADOUT</h2></div><div class="panel-body"><div class="pn-pb-grid">'+grid+"</div></div></div>"+(PBUI.slotKey?pbSlotEditorHtml(p):"")+pbCostBreakdownHtml(p)+pbExtrasHtml(p,locked)+pbCompatHtml(p)+"</div>"
+  return pageHeader("BUILD WORKSPACE",p.name,"")+'<div class="content pn-pb-page">'+pbNoticeHtml()+hero+(typeof buildRatingPanelHtml==="function"?buildRatingPanelHtml(p):"")+statsRow+'<div class="panel" data-pb-loadout style="margin-top:8px"><div class="panel-head"><h2>COMPONENT LOADOUT</h2></div><div class="panel-body"><div class="pn-pb-grid">'+grid+"</div></div></div>"+(PBUI.slotKey?pbSlotEditorHtml(p):"")+pbCostBreakdownHtml(p)+pbExtrasHtml(p,locked)+pbCompatHtml(p)+"</div>"
 }
 function pbClick(e){
   if(e.target.closest("[data-pb-back]"))return state.route="projects",state.pbId=null,PBUI.slotKey=null,PBUI.slot=null,PBUI.query="",PBUI.results=[],PBUI.caseDraft=null,PBUI.extraDraft=null,PBUI.quickPrice=null,PBUI.notice=null,void render()
