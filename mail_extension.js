@@ -769,17 +769,17 @@ function mailCard(m){
   const pickupClass=urg&&urg.level!=="none"&&urg.level!=="later"?((urg.level==="overdue"||urg.level==="today")?" is-urgent":" is-soon"):"";
   const actionUrg=mailActionDeadlineUrgency(m),actionClass=actionUrg.level==="overdue"?" is-overdue":actionUrg.level==="today"?" is-today":actionUrg.level==="under24"?" is-under24":actionUrg.level==="upcoming"?" is-upcoming":"";
   const row=(label,val)=>'<div class="pn-mail-card-row"><span>'+label+"</span>"+val+"</div>";
-  const codAmt=Number(m.codAmount);
+const codAmt=Number(m.codAmount);
   const codRow=codAmt>0?
-    '<div class="pn-mail-cod-row"><span>'+(m.direction==="incoming"?"COD / TO PAY":"COD TO COLLECT")+"</span><b>"+money(codAmt,m.currency)+"</b></div>":"";
+    '<div class="pn-mail-cod-row"><span>'+(m.direction==="incoming"?"COD / TO PAY":"COD TO COLLECT")+"</span><b>"+formatMoney(codAmt)+"</b></div>":"";
   const metaRows=
     row("CARRIER","<b>"+escHtml(m.carrier||"—")+"</b>")+
     (m.trackingNumber||mailSafeUrl(m.trackingUrl)?'<div class="pn-mail-card-row pn-mail-track"><span>TRACKING</span>'+
       (m.trackingNumber?'<b class="mono">'+escHtml(m.trackingNumber)+'</b><button type="button" class="btn btn-sm btn-ghost" data-mail-copy="'+escAttr(m.trackingNumber)+'">COPY TRACKING</button>':"<b class=\"mono\">—</b>")+
-      (mailSafeUrl(m.trackingUrl)?'<button type="button" class="btn btn-sm btn-ghost" data-mail-track="'+m.id+'" title="'+(m.trackingNumber?"Copies the tracking number, then opens the carrier’s tracker":"Opens the carrier’s tracker")+'">TRACK ONLINE ↗</button>':"")+
+      (mailSafeUrl(m.trackingUrl)?'<button type="button" class="btn btn-sm btn-ghost" data-mail-track="'+m.id+'" title="'+(m.trackingNumber?"Copies the tracking number, then opens the carrier's tracker":"Opens the carrier's tracker")+'">TRACK ONLINE \u2197</button>':"")+
       "</div>":"");
   const subRows=
-    row("SHIPPING","<b>"+money(m.shippingCost||0,m.currency)+"</b>")+
+    row("SHIPPING","<b>"+formatMoney(m.shippingCost||0)+"</b>")+
     row("SENT","<b>"+(m.dateSent?fmtDate(m.dateSent):"—")+"</b>")+
     (m.deadlineAt?'<div class="pn-mail-card-row pn-mail-deadline-row pn-mail-action-deadline'+actionClass+'"><span>ACTION DEADLINE</span><b>'+escHtml(mailDeadlineLabel(m.deadlineAt))+"</b></div>":"")+
     (m.pickupAvailableFrom?'<div class="pn-mail-card-row pn-mail-deadline-row"><span>PICKUP FROM</span><b>'+escHtml(mailDeadlineLabel(m.pickupAvailableFrom))+"</b></div>":"")+
@@ -854,11 +854,11 @@ function mailModalHtml(){
   const profitPreview=mailProfitImpactPreview(d);
   const profitHtml=profitPreview?
     '<div class="pn-mail-profit-preview"><div class="pn-mail-profit-preview-head"><span>PROFIT IMPACT PREVIEW</span><span class="chip chip-blue-outline">'+escHtml(Store.get("sales",d.linkedId).currency)+" SALE</span></div>"+
-    '<div class="pn-mail-profit-preview-row"><span>Current profit</span><b style="color:'+(profitPreview.currentProfit>=0?"var(--green)":"var(--red)")+'">'+money(profitPreview.currentProfit,profitPreview.currency)+"</b></div>"+
-    '<div class="pn-mail-profit-preview-row"><span>Current shipping</span><b>'+money(profitPreview.currentShipping,profitPreview.currency)+"</b></div>"+
-    '<div class="pn-mail-profit-preview-row"><span>+ This shipment</span><b>'+money(profitPreview.addedCost,profitPreview.currency)+"</b></div>"+
-    '<div class="pn-mail-profit-preview-row"><span>Projected profit</span><b style="color:'+(profitPreview.nextProfit>=0?"var(--green)":"var(--red)")+'">'+money(profitPreview.nextProfit,profitPreview.currency)+"</b></div>"+
-    '<div class="pn-mail-profit-preview-row"><span>Delta</span><b style="color:'+(profitPreview.delta>=0?"var(--green)":"var(--red)")+'">'+money(profitPreview.delta,profitPreview.currency)+"</b></div></div>" :"";
+    '<div class="pn-mail-profit-preview-row"><span>Current profit</span><b style="color:'+(profitPreview.currentProfit>=0?"var(--green)":"var(--red)")+'">'+formatMoney(profitPreview.currentProfit)+"</b></div>"+
+    '<div class="pn-mail-profit-preview-row"><span>Current shipping</span><b>'+formatMoney(profitPreview.currentShipping)+"</b></div>"+
+    '<div class="pn-mail-profit-preview-row"><span>+ This shipment</span><b>'+formatMoney(profitPreview.addedCost)+"</b></div>"+
+    '<div class="pn-mail-profit-preview-row"><span>Projected profit</span><b style="color:'+(profitPreview.nextProfit>=0?"var(--green)":"var(--red)")+'">'+formatMoney(profitPreview.nextProfit)+"</b></div>"+
+    '<div class="pn-mail-profit-preview-row"><span>Delta</span><b style="color:'+(profitPreview.delta>=0?"var(--green)":"var(--red)")+'">'+formatMoney(profitPreview.delta)+"</b></div></div>" :"";
   return'<div class="modal-backdrop" data-mail-close><div class="modal" role="dialog" aria-modal="true"><div class="modal-head"><h3>'+(isEdit?"EDIT SHIPMENT":"NEW SHIPMENT")+'</h3><button type="button" class="modal-close" data-mail-close aria-label="Close">✕</button></div><div class="modal-body"><div class="field-row-wrap" style="display:flex;flex-wrap:wrap;gap:0 14px">'+body+"</div>"+profitHtml+mailMessageHistoryHtml(d)+'</div><div class="modal-foot">'+(isEdit?'<button type="button" class="btn btn-danger" data-mail-delete="'+d.id+'">DELETE</button>':"<span></span>")+'<span style="display:flex;gap:8px"><button type="button" class="btn" data-mail-cancel>CANCEL</button><button type="button" class="btn btn-primary" data-mail-save>'+(isEdit?"SAVE CHANGES":"CREATE")+"</button></span></div></div></div>";
 }
 function mailSmartImportPreviewHtml(p){
@@ -869,8 +869,8 @@ function mailSmartImportPreviewHtml(p){
   const calculation=(p.deadlineSource==="relative"||p.deadlineSource==="auto")&&p.deadlineAnchorAt?'<div class="pn-mail-deadline-calculation">'+sourceChip+'<b>'+escHtml(p.deadlineRule||"")+'</b><span>'+escHtml(mailDeadlineMathLabel(p.deadlineAnchorAt))+" → "+escHtml(mailDeadlineMathLabel(p.deadlineAt))+"</span></div>":"";
   const suggestions=Array.isArray(p.suggestions)&&p.suggestions.length?
     '<div class="pn-mail-import-suggestions"><span>SUGGESTED LINKS</span>'+p.suggestions.map((s,i)=>'<div class="pn-mail-import-suggest" data-mail-import-link-suggest="'+i+'"><span class="chip '+(s.confidence==="high"?"chip-green":"chip-amber")+'">'+escHtml(s.type.toUpperCase())+'</span><b>'+escHtml(s.label)+'</b><span class="pn-mail-import-suggest-reason">'+escHtml(s.reason)+'</span><button type="button" class="btn btn-sm" data-mail-import-link-apply="'+i+'">LINK</button><button type="button" class="btn btn-sm btn-ghost" data-mail-import-link-ignore="'+i+'">IGNORE</button></div>').join("")+"</div>":"";
-  return'<div class="pn-mail-import-preview"><div class="pn-mail-import-verdict"><span class="chip '+(p.mode==="update"?"chip-amber":"chip-green")+'">'+(p.mode==="update"?"UPDATE EXISTING":"CREATE NEW")+'</span><span class="chip '+confChip+'">'+(p.confidence||"low").toUpperCase()+' CONFIDENCE</span><span>'+escHtml(p.parserId||"generic")+"</span></div>"+
-    row("TRACKING",p.trackingNumber)+row("SENDER",p.sender)+row("RECEIVER",p.receiver)+row("CARRIER",p.carrier)+row("DIRECTION",p.direction)+row("STATUS",mailStatusLabel(p.status))+row("COD",null==p.codAmount?"NOT PRESENT":money(p.codAmount,p.currency||"RSD"))+row("DATE SENT",p.dateSentAt?mailDeadlineMathLabel(p.dateSentAt):p.dateSent?fmtDate(p.dateSent):"NOT PRESENT")+row("ACTION DEADLINE",p.deadlineAt?mailDeadlineLabel(p.deadlineAt):"NOT PRESENT")+(calculation||sourceChip?calculation||'<div class="pn-mail-deadline-calculation">'+sourceChip+"</div>":"")+row("PICKUP FROM",p.pickupAvailableFrom?mailDeadlineLabel(p.pickupAvailableFrom):"NOT PRESENT")+row("PICKUP DEADLINE",p.pickupDeadline?mailDeadlineLabel(p.pickupDeadline)+(p.pickupDeadlineSource==="inferred_3_day"?" (INFERRED)":""):"NOT PRESENT")+row("TRACKING LINK",p.trackingUrl)+
+return'<div class="pn-mail-import-preview"><div class="pn-mail-import-verdict"><span class="chip '+(p.mode==="update"?"chip-amber":"chip-green")+'">'+(p.mode==="update"?"UPDATE EXISTING":"CREATE NEW")+'</span><span class="chip '+confChip+'">'+(p.confidence||"low").toUpperCase()+' CONFIDENCE</span><span>'+escHtml(p.parserId||"generic")+"</span></div>"+
+    row("TRACKING",p.trackingNumber)+row("SENDER",p.sender)+row("RECEIVER",p.receiver)+row("CARRIER",p.carrier)+row("DIRECTION",p.direction)+row("STATUS",mailStatusLabel(p.status))+row("COD",null==p.codAmount?"NOT PRESENT":formatMoney(p.codAmount))+row("DATE SENT",p.dateSentAt?mailDeadlineMathLabel(p.dateSentAt):p.dateSent?fmtDate(p.dateSent):"NOT PRESENT")+row("ACTION DEADLINE",p.deadlineAt?mailDeadlineLabel(p.deadlineAt):"NOT PRESENT")+(calculation||sourceChip?calculation||'<div class="pn-mail-deadline-calculation">'+sourceChip+"</div>":"")+row("PICKUP FROM",p.pickupAvailableFrom?mailDeadlineLabel(p.pickupAvailableFrom):"NOT PRESENT")+row("PICKUP DEADLINE",p.pickupDeadline?mailDeadlineLabel(p.pickupDeadline)+(p.pickupDeadlineSource==="inferred_3_day"?" (INFERRED)":""):"NOT PRESENT")+row("TRACKING LINK",p.trackingUrl)+
     (links.length?'<div class="pn-mail-import-links"><span>ACTION LINKS</span>'+links.map(link=>'<a href="'+escAttr(link.url)+'" target="_blank" rel="noopener noreferrer">'+escHtml(link.label)+' ↗</a>').join("")+"</div>":"")+suggestions+"</div>";
 }
 function mailSmartImportModalHtml(){

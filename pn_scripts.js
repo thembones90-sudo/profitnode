@@ -1,6 +1,6 @@
 "use strict";
 window.__PN_SCRIPTS = [
-  "app_core.js?v=ui-consistency-pass-v1",
+  "app_core.js?v=currency-system-v1",
   "cpu_revaluation_extension.js?v=v3-stack-20260912b",
   "gpu_revaluation_extension.js?v=v3-stack-20260912b",
   "motherboard_revaluation_extension.js?v=v3-stack-20260912b",
@@ -21,7 +21,7 @@ window.__PN_SCRIPTS = [
   "road_to_extension.js?v=pulse-finite-v1",
   "my_rig_extension.js?v=myrig-leviathan-canonical-v1",
   "sidebar_cleanup_extension.js?v=product-refinement-v3",
-  "mail_extension.js?v=smart-import-deadline-provenance-v1",
+  "mail_extension.js?v=currency-display-fix-v1",
   "treasury_flow_extension.js?v=treasury-fund-flow-v1",
   "sold_transaction_extension.js?v=sold-transaction-v3",
   "project_build_extension.js?v=loadout-typography-v1",
