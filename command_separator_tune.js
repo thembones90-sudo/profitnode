@@ -1,7 +1,7 @@
 "use strict";
 
 /*
-  PROFITNODE COMMAND SEPARATOR TUNE v2
+  PROFITNODE COMMAND SEPARATOR TUNE v3
   Restrained separators, spacing, and depth hierarchy for THE COMMAND.
 */
 
@@ -74,9 +74,9 @@
     content:"";
     position:absolute;
     z-index:-1;
-    left:-6%;
+    left:-20px;
     top:50%;
-    width:72%;
+    width:min(560px,calc(100% + 40px));
     height:112px;
     transform:translateY(-50%);
     background:radial-gradient(ellipse at 36% 50%,rgba(62,207,126,.105),rgba(62,207,126,.035) 38%,transparent 72%);
