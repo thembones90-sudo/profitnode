@@ -1055,6 +1055,14 @@ const enclosureProbe = `
   out.push(['GPU over the case limit drops integrity to MARGINAL', b.state === 'MARGINAL' && b.checks.some(c => c.id === 'GPU_CLEARANCE' && c.status === 'WARN')]);
   out.push(['integrity findings stay out of core rigWarnings', !rigWarnings(bad).some(w => w.includes('GPU EXCEEDS CASE CLEARANCE'))]);
 
+  HardwareCatalog.cpus=[{brand:'AMD',model:'Ryzen 7 7700',overall:88}];
+  const glowRig=baseRig();
+  glowRig.slots.CPU=cat('CPU','AMD Ryzen 7 7700');
+  glowRig.slots.MOBO=cat('MOBO','Gigabyte B550 AORUS MASTER');
+  const cpuGlow=renderRigSlotRow('CPU',glowRig),moboGlow=renderRigSlotRow('MOBO',glowRig);
+  const cpuTier=rigSlotResolved(glowRig.slots.CPU,'RSD','CPU').pn.tier,moboTier=rigSlotResolved(glowRig.slots.MOBO,'RSD','MOBO').pn.tier;
+  out.push(['RIG slot rows glow per resolved catalog tier and unrated slots stay unlit', cpuGlow.includes('pn-tier-card pn-tier-'+cpuTier.toLowerCase()) && moboGlow.includes('pn-tier-card pn-tier-'+moboTier.toLowerCase()) && !renderRigSlotRow('CASE',unknown).includes('pn-tier-card') && !renderRigSlotRow('PSU',unknown).includes('pn-tier-card')]);
+
   return out;
 })()
 `;
@@ -1493,6 +1501,7 @@ const projectBuildProbe = `
   out.push(['a completed workspace renders read-only — no edit/remove/price affordances on its slots', pageDone.indexOf('data-pb-edit-slot') === -1 && pageDone.indexOf('data-pb-quick-price') === -1 && pageDone.indexOf('data-pb-remove-slot') === -1 && pageDone.indexOf('BUILD LOCKED') > -1]);
   out.push(['BUILD loadout inherits canonical catalog quality beside installed motherboard and CPU names', pageDone.includes('data-pb-slot="MOBO" data-pb-quality="UNCOMMON"') && pageDone.includes('pn-pb-slot-model-line') && pageDone.includes('data-pb-quality-badge="UNCOMMON"') && pageDone.includes('pn-tier-uncommon') && pageDone.includes('data-pb-slot="CPU" data-pb-quality="POOR"')]);
   out.push(['BUILD loadout gives every recorded slot/extra one compact quality badge and explicitly marks manual extras UNRATED', (pageDone.match(/data-pb-quality-badge=/g)||[]).length === 4 && pageDone.includes('data-pb-quality="UNRATED"') && pageDone.includes('data-pb-quality-badge="UNRATED"')]);
+  out.push(['rated BUILD loadout cards carry the shared tier-glow class and UNRATED extras stay neutral', (pageDone.match(/pn-tier-card/g)||[]).length===3 && pageDone.includes('class="pn-pb-slot pn-tier-card pn-tier-uncommon"') && pageDone.includes('class="pn-pb-slot pn-tier-card pn-tier-poor"') && pageDone.includes('class="pn-pb-slot pn-tier-card pn-tier-rare"') && !pageDone.includes('pn-tier-card pn-tier-unrated')]);
   const artifactPresentation = pbComponentQuality({kind:'PLANNED',label:'Top catalog component'}, 'GPU', {label:'Top catalog component',pn:{tier:'ARTIFACT'}});
   const missingPresentation = pbComponentQuality(null, null, null);
   out.push(['BUILD presents canonical ARTIFACT data inside the requested six-tier ladder without rewriting its source tier', artifactPresentation.key === 'LEGENDARY' && artifactPresentation.sourceTier === 'ARTIFACT']);
@@ -1502,6 +1511,7 @@ const projectBuildProbe = `
   const pageOpen = renderProjectBuild();
   out.push(['an in-progress workspace shows the bench grid with add-slot affordances and empty slots', pageOpen.indexOf('pn-pb-grid') > -1 && pageOpen.indexOf('pn-pb-slot-empty-hint') > -1 && pageOpen.indexOf('data-pb-edit-slot=') > -1]);
   out.push(['planned catalog components receive the same canonical quality badge as owned components', pageOpen.includes('data-pb-slot="GPU" data-pb-quality="COMMON"') && pageOpen.includes('data-pb-quality-badge="COMMON"') && pageOpen.includes('pn-tier-common')]);
+  out.push(['planned-catalog BUILD cards glow by the same shared tier class in an in-progress workspace', (pageOpen.match(/pn-tier-card/g)||[]).length===1 && pageOpen.includes('class="pn-pb-slot pn-tier-card pn-tier-common"')]);
   out.push(['BUILD summary renders actual, planned, and estimated final cost as separate values', pageOpen.includes('data-pb-cost="actual"') && pageOpen.includes('data-pb-cost="planned"') && pageOpen.includes('data-pb-cost="final"') && pageOpen.includes('ACTUAL SPENT') && pageOpen.includes('ESTIMATED FINAL COST')]);
   out.push(['occupied cards expose their recorded cost and a price-only edit action', pageOpen.includes('data-pb-slot-paid="GPU"') && pageOpen.includes('PLANNED COST') && pageOpen.includes('30.000 RSD') && pageOpen.includes('data-pb-quick-price="GPU"')]);
   out.push(['the bench grid lists exactly the 8 requested primary slots in the requested layout order', PROJECT_BUILD_SLOTS.join(',') === 'MOBO,CPU,RAM,GPU,STORAGE,PSU,CASE,COOLER']);
