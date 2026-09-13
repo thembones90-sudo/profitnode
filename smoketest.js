@@ -43,6 +43,8 @@ checks.push(['index.html loads pn_scripts.js before app.js',
   /<script src="pn_scripts\.js(?:\?[^" ]+)?"><\/script>/.test(indexCss) && indexCss.indexOf('pn_scripts.js') < indexCss.indexOf('app.js')]);
 checks.push(['page-mount layer bridges .main into a bounded flex column (content is the scroll layer)',
   indexCss.includes('#page-mount{flex:1;min-height:0;display:flex;flex-direction:column}')]);
+checks.push(['a chip combined with a canonical pn-tier-* class (BUILD RATING\'s overall score chip, the Projects Quality column) actually renders in that tier\'s color, not the generic dim chip color',
+  /\.chip\.pn-tier-poor,\.chip\.pn-tier-common,\.chip\.pn-tier-uncommon,\.chip\.pn-tier-rare,\.chip\.pn-tier-epic,\.chip\.pn-tier-legendary,\.chip\.pn-tier-artifact\{border-color:var\(--tier-border\);background:var\(--tier-wash\);color:var\(--tier-color\)\}/.test(indexCss)]);
 checks.push(['app shell keeps height:100vh on .main with overflow:hidden (no doc-level scroll)',
   /\.main\{[^}]*height:100vh[^}]*overflow:hidden/.test(indexCss)]);
 checks.push(['.content is the single internal scroll container with min-height:0',
@@ -1582,6 +1584,21 @@ const projectBuildProbe = `
   state.pbId=rateProj.id;
   const ratedHtml=renderProjectBuild();
   out.push(['the completed workspace renders the frozen snapshot as FINAL and survives live catalog changes', ratedHtml.indexOf('PROJECTED')===-1 && ratedHtml.includes('BUILD RATING') && ratedHtml.includes('data-pb-build-score="'+rateSnap.finalScore+'"') && (ratedHtml.match(/data-pb-cat-score=/g)||[]).length===6]);
+
+  const catRowRe = /<div class="pn-pb-rating-row ([a-z-]+)" data-pb-cat-score="([A-Z_]+)" data-pb-cat-value="(\\d+)" data-pb-cat-tier="([A-Z]+)"><span>[^<]+<\\/span><span class="pn-pb-rating-bar"><i style="width:(\\d+)%"><\\/i><\\/span><b>(\\d+)\\/100 · ([A-Z]+)<\\/b><\\/div>/g;
+  let catMatch, catRowsSeen = 0, everyRowCorrect = true;
+  while ((catMatch = catRowRe.exec(ratedHtml))) {
+    catRowsSeen++;
+    const [, rowClass, catKey, attrVal, attrTier, barWidth, bVal, bTier] = catMatch;
+    const realScore = rateSnap.categories[catKey];
+    const expectedTier = pbScoreToTier(realScore).key;
+    const expectedClass = pnTierClass(expectedTier);
+    if (rowClass !== expectedClass) everyRowCorrect = false;
+    if (Number(attrVal) !== realScore || Number(barWidth) !== realScore || Number(bVal) !== realScore) everyRowCorrect = false;
+    if (attrTier !== expectedTier || bTier !== expectedTier) everyRowCorrect = false;
+  }
+  out.push(['every BUILD RATING category bar derives its own CSS tier class from its own exact 0-100 score (PERFORMANCE/BALANCE/COMPONENT QUALITY/RELIABILITY/VALUE/UPGRADE PATH each independently, never one shared color for the whole panel), bar width still equals the exact score, and the tier label sits next to the number', catRowsSeen === 6 && everyRowCorrect]);
+  out.push(['the BUILD RATING overall score chip carries the canonical pn-tier-* class matching its own tier, reusing the same tier color system as the rest of PROFITNODE rather than a bespoke palette', ratedHtml.includes('chip ' + pnTierClass(rateSnap.quality)) && ratedHtml.includes(rateSnap.quality + ' · ' + rateSnap.finalScore)]);
 
   state.pbId=unbal.id;
   const unbalHtml=renderProjectBuild();
