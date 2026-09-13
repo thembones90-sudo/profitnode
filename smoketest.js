@@ -20,10 +20,10 @@ const CANONICAL_ORDER = [
   'roulette_extension.js', 'roulette_ui_extension.js', 'treasury_extension.js',
   'road_to_extension.js', 'my_rig_extension.js', 'sidebar_cleanup_extension.js',
   'mail_extension.js', 'treasury_flow_extension.js', 'sold_transaction_extension.js',
-  'project_build_extension.js', 'ram_revaluation_extension.js', 'ram_v31_extension.js'
+  'project_build_extension.js', 'build_rating_extension.js', 'ram_revaluation_extension.js', 'ram_v31_extension.js'
 ];
-checks.push(['manifest has 27 scripts', entries.length === 27]);
-checks.push(['manifest order matches canonical 27-file load order',
+checks.push(['manifest has 28 scripts', entries.length === 28]);
+checks.push(['manifest order matches canonical 28-file load order',
   entries.map(e => e.split('?')[0]).join(',') === CANONICAL_ORDER.join(',')]);
 checks.push(['first script is app_core.js', entries[0].split('?')[0] === 'app_core.js']);
 checks.push(['last script is ram_v31_extension.js',
@@ -117,7 +117,7 @@ checks.push(['roulette ledger CSV export registered', meta.csvKeys.includes('rou
 checks.push(['mail CSV export registered', meta.csvKeys.includes('mail')]);
 checks.push(['PN_SALE_TYPES = RIG,COMPONENT,OTHER', meta.saleTypes === 'RIG,COMPONENT,OTHER']);
 checks.push(['currencies remain RSD,EUR', meta.curren === 'RSD,EUR']);
-checks.push(['manifest declares 27 scripts in sandbox', meta.manifestLen === 27]);
+checks.push(['manifest declares 28 scripts in sandbox', meta.manifestLen === 28]);
 const migrationProbe = env.run(sandbox, `(() => {
   const legacy={meta:{seeded:true},inventory:[
     {id:'healthy',category:'STORAGE',driveHealthPercent:120,catalogOverride:'  Samsung 970 EVO Plus 1TB  '},
@@ -1552,6 +1552,45 @@ const projectBuildProbe = `
   const legacyLedger = {meta:{seeded:true,schemaVersion:0}, projects:[{id:'legacy1', name:'REVENANT', componentIds:[cpu.id]}], inventory:[{id:cpu.id, category:'CPU', manufacturer:'AMD', model:'Legacy CPU', status:'IN_STORAGE'}]};
   const migrated = migrateLedger(legacyLedger).ledger.projects[0];
   out.push(['migrating a pre-workspace project backfills a slots object and default purpose', migrated.slots && migrated.slots.CPU && migrated.slots.CPU.inventoryItemId === cpu.id && migrated.purpose === 'FLIP' && Array.isArray(migrated.extras)]);
+
+  out.push(['BUILD RATING score-to-tier ladder spans all 7 quality grades', pbScoreToTier(29).key==='POOR' && pbScoreToTier(30).key==='COMMON' && pbScoreToTier(44).key==='COMMON' && pbScoreToTier(45).key==='UNCOMMON' && pbScoreToTier(59).key==='UNCOMMON' && pbScoreToTier(60).key==='RARE' && pbScoreToTier(79).key==='RARE' && pbScoreToTier(80).key==='EPIC' && pbScoreToTier(82).key==='EPIC' && pbScoreToTier(84).key==='EPIC' && pbScoreToTier(89).key==='EPIC' && pbScoreToTier(90).key==='LEGENDARY' && pbScoreToTier(94).key==='LEGENDARY' && pbScoreToTier(95).key==='ARTIFACT' && pbScoreToTier(100).key==='ARTIFACT']);
+  out.push(['BUILD RATING purpose weights each sum to 100 over the six categories', PB_BUILD_CATEGORIES.length===6 && Object.values(PB_PURPOSE_WEIGHTS).every(w=>Object.values(w).reduce((a,b)=>a+b,0)===100)]);
+
+  HardwareCatalog.cpus.push({brand:'AMD',model:'Ryzen 7 7700',overall:90});
+  HardwareCatalog.gpus.push({brand:'NVIDIA',model:'RTX 4070',overall:92});
+  HardwareCatalog.boards.push({brand:'ASRock',model:'B650M Pro RS',overall:75});
+
+  const rated=buildRatingModel(Store.get('projects',p.id));
+  out.push(['BUILD RATING model returns a bounded score, matching tier, six category scores, and a verdict', Number.isFinite(rated.finalScore) && rated.finalScore>=0 && rated.finalScore<=100 && pbScoreToTier(rated.finalScore).key===rated.quality && Object.keys(rated.categories).length===6 && PB_BUILD_CATEGORIES.every(c=>Number.isFinite(rated.categories[c])) && rated.verdict.length>0]);
+
+  const unbal=Actions.addProject({name:'UNBAL',startDate:todayISO(),status:'PLANNING',purpose:'FLIP',currency:'RSD'});
+  Actions.setProjectSlot(unbal.id,'CPU','PLANNED',{label:'Intel Core i7-6700',cost:0,currency:'RSD',catalogType:'CPU'});
+  Actions.setProjectSlot(unbal.id,'GPU','PLANNED',{label:'NVIDIA RTX 4070',cost:0,currency:'RSD',catalogType:'GPU'});
+  const unbalBy=pbBuildResolved(Store.get('projects',unbal.id));
+  out.push(['BUILD RATING balance penalizes a GPU-heavy weak-CPU pairing harder for FLIP than for FAMILY / GIFT', pbBalanceScore(unbalBy,'FLIP') < pbBalanceScore(unbalBy,'FAMILY_GIFT')]);
+
+  const rateProj=Actions.addProject({name:'RATED',startDate:todayISO(),status:'PLANNING',purpose:'FLIP',currency:'RSD',estimatedMarketValue:120000});
+  Actions.setProjectSlot(rateProj.id,'CPU','PLANNED',{label:'AMD Ryzen 7 7700',cost:30000,currency:'RSD',catalogType:'CPU'});
+  Actions.setProjectSlot(rateProj.id,'GPU','PLANNED',{label:'NVIDIA RTX 4070',cost:40000,currency:'RSD',catalogType:'GPU'});
+  Actions.setProjectSlot(rateProj.id,'MOBO','PLANNED',{label:'ASRock B650M Pro RS',cost:15000,currency:'RSD',catalogType:'MOBO'});
+  const preRate=buildRatingModel(Store.get('projects',rateProj.id));
+  const rateComplete=Actions.markProjectBuildComplete(rateProj.id);
+  const rateSnap=rateComplete.ok && rateComplete.project.buildRating;
+  out.push(['marking a build complete freezes a BUILD RATING snapshot with score, quality, categories, and per-slot components', !!rateSnap && rateSnap.mode==='FINAL' && Number.isFinite(rateSnap.finalScore) && rateSnap.finalScore===preRate.finalScore && rateSnap.quality===preRate.quality && Object.keys(rateSnap.categories).length===6 && rateSnap.components.length===PROJECT_BUILD_SLOTS.length]);
+
+  HardwareCatalog.gpus=[{brand:'NVIDIA',model:'RTX 4070',overall:5}].concat(HardwareCatalog.gpus);
+  state.pbId=rateProj.id;
+  const ratedHtml=renderProjectBuild();
+  out.push(['the completed workspace renders the frozen snapshot as FINAL and survives live catalog changes', ratedHtml.indexOf('PROJECTED')===-1 && ratedHtml.includes('BUILD RATING') && ratedHtml.includes('data-pb-build-score="'+rateSnap.finalScore+'"') && (ratedHtml.match(/data-pb-cat-score=/g)||[]).length===6]);
+
+  state.pbId=unbal.id;
+  const unbalHtml=renderProjectBuild();
+  out.push(['a not-yet-completed build workspace labels its BUILD RATING as PROJECTED with live values', unbalHtml.includes('PROJECTED') && unbalHtml.includes('BUILD RATING') && /data-pb-build-score="\\d+"/.test(unbalHtml)]);
+  state.pbId=null;
+
+  const projectsNow=renderProjects();
+  out.push(['the Projects overview gains COMPLETION, SCORE, and QUALITY columns', projectsNow.includes('<th class="num">Completion</th>') && projectsNow.includes('<th class="num">Score</th>') && projectsNow.includes('<th>Quality</th>') && projectsNow.includes('data-pb-completion-pct=') && projectsNow.includes('data-pb-build-score=') && projectsNow.includes('data-pb-build-quality=')]);
+  out.push(['the overview SCORE and QUALITY for the completed build mirror its frozen snapshot', projectsNow.includes('data-pb-build-score="'+rateSnap.finalScore+'"') && projectsNow.includes('data-pb-build-quality="'+rateSnap.quality+'"')]);
 
   return out;
 })()
