@@ -601,7 +601,6 @@ function pbInput(e){
   if(t.matches&&t.matches("[data-pb-component-search]")){const val=t.value||"",k=t.dataset.pbComponentSearch,p=pbProject()
     PBUI.query=val;PBUI.results=p?pbComponentResults(p,k,val):[];render();const next=document.querySelector('[data-pb-component-search="'+k+'"]')
     if(next){next.focus();if(next.setSelectionRange)next.setSelectionRange(next.value.length,next.value.length)}return}
-  if(t.matches&&t.matches("[data-pb-price-input]"))return void(PBUI.priceValue=t.value)
   return pbSecondaryInput(e)
 }
 function pbChange(e){
