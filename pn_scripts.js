@@ -1,6 +1,6 @@
 "use strict";
 window.__PN_SCRIPTS = [
-  "app_core.js?v=profit-reconcile-catalog-cache-v1",
+  "app_core.js?v=ui-consistency-pass-v1",
   "cpu_revaluation_extension.js?v=v3-stack-20260912b",
   "gpu_revaluation_extension.js?v=v3-stack-20260912b",
   "motherboard_revaluation_extension.js?v=v3-stack-20260912b",
@@ -8,7 +8,7 @@ window.__PN_SCRIPTS = [
   "terminal_naming_extension.js?v=sidebar-navigation-v2",
   "psu_extension.js?v=tier-glow-v1",
   "rig_enclosure_extension.js?v=stock-cooler-ratings-v1",
-  "sale_type_extension.js?v=pending-sales-v1",
+  "sale_type_extension.js?v=escape-consume-fix-v1",
   "command_center_extension.js?v=rig-assembly-nav-v1",
   "command_header_glitch_extension.js?v=commander-welcome-v1",
   "rig_bench_navigation_extension.js?v=rig-direct-open-v1",

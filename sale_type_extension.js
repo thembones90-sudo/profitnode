@@ -737,6 +737,7 @@ document.addEventListener("keydown",function(event){
     return;
   }
   if (event.key === "Escape" && res){
+    event.preventDefault();
     res.style.display = "none";
     res.innerHTML = "";
     window.__pnSaleComponentMatches = null;
