@@ -573,6 +573,7 @@ Patriot,Viper VPN100,2000,NVMe SSD,PCIe 3.0 x4,M.2 2280,https://support.patriotm
 SK hynix,Gold P31,500,NVMe SSD,PCIe 3.0 x4,M.2 2280,https://ssd.skhynix.com/,3500,3200,TLC,True,False,375.0,77,65,96,88,79,GHOUL,82,73,71,87,79,family,family,
 SK hynix,Gold P31,1000,NVMe SSD,PCIe 3.0 x4,M.2 2280,https://ssd.skhynix.com/,3500,3200,TLC,True,False,750.0,77,85,96,88,85,ALGHOUL,82,80,87,93,86,family,family,
 SK hynix,Gold P31,2000,NVMe SSD,PCIe 3.0 x4,M.2 2280,https://ssd.skhynix.com/,3500,3200,TLC,True,False,1500.0,77,100,96,88,90,ALGHOUL,82,85,99,97,91,family,family,
+SK hynix,PC601,512,NVMe SSD,PCIe 3.0 x4,M.2 2280,,3400,2500,TLC,True,False,300.0,73,65,96,88,78,GHOUL,79,70,71,87,78,https://www.productchart.com/ssd_drives/51259,exact,"Canonical HFS512GD9TNG-L2A0A PC601 512GB entry; aliases and OEM metadata are stored in the JSON registry."
 SK hynix,Platinum P41,500,NVMe SSD,PCIe 4.0 x4,M.2 2280,https://ssd.skhynix.com/,7000,6500,TLC,True,False,375.0,88,65,98,88,84,GHOUL,90,80,72,88,84,family,family,
 SK hynix,Platinum P41,1000,NVMe SSD,PCIe 4.0 x4,M.2 2280,https://ssd.skhynix.com/,7000,6500,TLC,True,False,750.0,88,85,98,88,90,ALGHOUL,90,87,88,94,90,family,family,
 SK hynix,Platinum P41,2000,NVMe SSD,PCIe 4.0 x4,M.2 2280,https://ssd.skhynix.com/,7000,6500,TLC,True,False,1500.0,88,100,98,88,94,ALGHOUL,90,92,100,99,95,family,family,

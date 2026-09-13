@@ -80,7 +80,7 @@ const probe = `
   out.push(['COMMAND financial matrix distinguishes major and supporting metrics', (dashHtml.match(/pn-terminal-kpi is-major/g)||[]).length===2&&(dashHtml.match(/pn-terminal-kpi/g)||[]).length>=5]);
   out.push(['COMMAND panels expose primary, operational and utility hierarchy', dashHtml.includes('pn-command-panel-primary')&&dashHtml.includes('pn-command-panel-operational')&&dashHtml.includes('pn-command-panel-utility')]);
   out.push(['COMMAND header exposes a compact data freshness indicator', dashHtml.includes('data-pn-command-updated')&&dashHtml.includes('LAST UPDATED')&&dashHtml.includes('pn-command-updated')]);
-  out.push(['ROAD TO featured card stays hidden with no active quest', !dashHtml.includes('pn-roadto-feat')]);
+  out.push(['COMMAND uses the commander welcome heading without a ROAD TO banner', dashHtml.includes('WELCOME BACK, COMMANDER')&&!dashHtml.includes('pn-roadto-feat')]);
 
   // --- TREASURY (isolated personal position) ---
   state.route = 'treasury';
@@ -129,8 +129,8 @@ const probe = `
   RoadTo.addFunds(roadG.id, 47500);
   state.route = 'dashboard';
   const dashRoadHtml = renderShell();
-  out.push(['ROAD TO featured card pins above the COMMAND dashboard', dashRoadHtml.includes('pn-roadto-feat') && dashRoadHtml.indexOf('pn-roadto-feat') < dashRoadHtml.indexOf('pn-command-content') && dashRoadHtml.includes('data-roadto-open="' + roadG.id + '"')]);
-  out.push(['ROAD TO featured card shows saved, target, pct and remaining', dashRoadHtml.includes('47.500 RSD') && dashRoadHtml.includes('110.000 RSD') && dashRoadHtml.includes('hbar-fill') && dashRoadHtml.includes('62.500 RSD TO GO')]);
+  out.push(['active ROAD TO quests do not inject duplicate content into COMMAND', !dashRoadHtml.includes('pn-roadto-feat')&&!dashRoadHtml.includes('data-roadto-open="' + roadG.id + '"')&&dashRoadHtml.includes('pn-command-content')]);
+  out.push(['COMMAND keeps its normal dashboard content when a quest is active', dashRoadHtml.includes('WELCOME BACK, COMMANDER')&&dashRoadHtml.includes('BUILD PIPELINE')&&dashRoadHtml.includes('TOTAL SPENT')]);
   state.route = 'roadto';
   const roadHtml = renderShell();
   out.push(['ROAD TO nav label navigates to the quest page', roadHtml.includes('data-route="roadto"') && roadHtml.includes('>ROAD TO<')]);

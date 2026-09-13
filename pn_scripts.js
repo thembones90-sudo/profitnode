@@ -1,6 +1,6 @@
 "use strict";
 window.__PN_SCRIPTS = [
-  "app_core.js?v=nvme-registry-v1",
+  "app_core.js?v=nvme-aliases-build-picker-merge-v3",
   "cpu_revaluation_extension.js?v=v3-stack-20260912b",
   "gpu_revaluation_extension.js?v=v3-stack-20260912b",
   "motherboard_revaluation_extension.js?v=v3-stack-20260912b",
@@ -10,21 +10,21 @@ window.__PN_SCRIPTS = [
   "rig_enclosure_extension.js?v=case-generic-v2",
   "sale_type_extension.js?v=pending-sales-v1",
   "command_center_extension.js?v=rig-assembly-nav-v1",
-  "command_header_glitch_extension.js?v=command-freshness-v1",
+  "command_header_glitch_extension.js?v=commander-welcome-v1",
   "rig_bench_navigation_extension.js?v=rig-direct-open-v1",
   "command_financial_model_extension.js?v=rig-assembly-nav-v1",
-  "profitnode_intelligence_extension.js?v=visual-tier-restraint-v1",
+  "profitnode_intelligence_extension.js?v=storage-aliases-v1",
   "command_separator_tune.js?v=command-separator-tune-v1",
   "roulette_extension.js?v=roulette-loss-reason-v1",
   "roulette_ui_extension.js?v=rig-assembly-nav-v1",
   "treasury_extension.js?v=treasury-core-sources-v2",
-  "road_to_extension.js?v=roadto-reason-v1",
+  "road_to_extension.js?v=command-banner-removed-v1",
   "my_rig_extension.js?v=myrig-leviathan-canonical-v1",
   "sidebar_cleanup_extension.js?v=product-refinement-v3",
   "mail_extension.js?v=mail-card-polish-v1",
   "treasury_flow_extension.js?v=treasury-fund-flow-v1",
   "sold_transaction_extension.js?v=sold-transaction-v3",
-  "project_build_extension.js?v=assembly-rework-v1",
+  "project_build_extension.js?v=assembly-case-workflow-v2",
   "ram_revaluation_extension.js?v=ram-v3-20260912-live1",
-  "ram_v31_extension.js?v=ram-v31-20260912-live1"
+  "ram_v31_extension.js?v=ram-v31-20260912-live2"
 ];

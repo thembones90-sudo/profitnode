@@ -139,7 +139,7 @@
 
     // Feed V3 a legal topology so its component subscores remain useful.
     // Then replace topology contribution for 3 DIMMs.
-    const baseInput = Object.assign({}, e, {technology:"DDR4"});
+    const baseInput = Object.assign({}, e, {technology:"DDR4",totalCapacity:total});
     if (count === 3) baseInput.moduleCount = 4;
     const base = baseRamRating(baseInput);
 
@@ -169,7 +169,9 @@
     score = Math.min(score, CEIL_SCORE.LEGENDARY);
 
     const finalTier = tierFromScore(score);
-    const warnings = Array.isArray(base.warnings) ? base.warnings.slice() : [];
+    const warnings = Array.isArray(base.warnings)
+      ? base.warnings.filter(x => count !== 3 || !/four-dimm/i.test(x))
+      : [];
     if (count === 1 && !warnings.some(x => /single/i.test(x))) {
       warnings.push("Single-DIMM DDR4 is topology-limited and cannot claim full matched-kit class.");
     }

@@ -4,7 +4,7 @@
   PROFITNODE COMMAND header upgrade.
 
   Dashboard / COMMAND becomes:
-  - THE COMMAND
+  - WELCOME BACK, COMMANDER
   - BATTLE CONTROLS ONLINE
   with restrained glitch and flicker styling.
 */
@@ -16,8 +16,8 @@
     pageHeader = function(title,subtitle,actionHtml){
       const key = String(title || "").trim().toUpperCase();
 
-      if (key === "DASHBOARD" || key === "COMMAND" || key === "THE COMMAND"){
-        title = "THE COMMAND";
+      if (key === "DASHBOARD" || key === "COMMAND" || key === "THE COMMAND" || key === "WELCOME BACK, COMMANDER"){
+        title = "WELCOME BACK, COMMANDER";
         const freshness = typeof window.pnCommandFreshnessHtml === "function" ? window.pnCommandFreshnessHtml() : "";
         subtitle = '<span class="pn-battle-controls" data-text="BATTLE CONTROLS ONLINE">BATTLE CONTROLS ONLINE</span>'+freshness;
       }

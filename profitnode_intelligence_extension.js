@@ -36,9 +36,9 @@ function pnPartCatalogResolution(item){
   const category=pnPartTierCategory(item&&item.category),key=pnPartTierCatalogKey(category);
   const list=typeof catalogEntriesForSlot==="function"?(catalogEntriesForSlot(key)||[]):[];
   const override=pnNorm(item&&item.catalogOverride),full=pnNorm(((item&&item.manufacturer)||"")+" "+((item&&item.model)||"")),model=pnNorm(item&&item.model);
-  const rowFull=row=>pnNorm((row.brand||"")+" "+(row.model||row.series||"")),rowModel=row=>pnNorm(row.model||row.series||"");
+  const rowFull=row=>pnNorm((row.brand||"")+" "+(row.model||row.series||"")),rowModel=row=>pnNorm(row.model||row.series||""),rowAliases=row=>(Array.isArray(row.aliases)?row.aliases:[]).map(pnNorm).filter(Boolean);
   if(override){
-    const manual=list.find(row=>rowFull(row)===override||rowModel(row)===override);
+    const manual=list.find(row=>rowFull(row)===override||rowModel(row)===override||rowAliases(row).includes(override));
     return manual?{item:manual,confidence:"MANUAL",reason:"Manual canonical catalog link"}:{item:null,confidence:"UNRESOLVED",reason:"Manual catalog link did not resolve"};
   }
   if(!model) return {item:null,confidence:"NONE",reason:"No model recorded"};
@@ -46,9 +46,13 @@ function pnPartCatalogResolution(item){
   if(match) return {item:match,confidence:"EXACT",reason:"Exact brand and model match"};
   match=list.find(row=>rowModel(row)===model);
   if(match) return {item:match,confidence:"MODEL",reason:"Exact model match"};
+  match=list.find(row=>rowAliases(row).includes(full)||rowAliases(row).includes(model));
+  if(match) return {item:match,confidence:"EXACT",reason:"Exact catalog alias match"};
   const normalized=pnPartCatalogIdentity(model,category);
   match=list.find(row=>pnPartCatalogIdentity(rowModel(row),category)===normalized);
   if(match) return {item:match,confidence:"NORMALIZED",reason:"Normalized model match"};
+  match=list.find(row=>rowAliases(row).some(alias=>pnPartCatalogIdentity(alias,category)===normalized));
+  if(match) return {item:match,confidence:"NORMALIZED",reason:"Normalized catalog alias match"};
   match=normalized.length>=3?list.find(row=>{const candidate=pnPartCatalogIdentity(rowModel(row),category);return candidate.length>=5&&(candidate.includes(normalized)||normalized.includes(candidate));}):null;
   return match?{item:match,confidence:"FAMILY",reason:"Closest catalog family match"}:{item:null,confidence:"NONE",reason:"Category heuristic — no canonical match"};
 }

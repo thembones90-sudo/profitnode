@@ -11,18 +11,19 @@ const checks = [];
 
 // --- Manifest / architecture checks (Node side) ---
 const CANONICAL_ORDER = [
-  'app_core.js', 'cpu_revaluation_extension.js', 'gpu_revaluation_extension.js', 'motherboard_revaluation_extension.js',
-  'planner_retirement_extension.js', 'terminal_naming_extension.js',
+  'app_core.js', 'cpu_revaluation_extension.js', 'gpu_revaluation_extension.js',
+  'motherboard_revaluation_extension.js', 'planner_retirement_extension.js', 'terminal_naming_extension.js',
   'psu_extension.js', 'rig_enclosure_extension.js', 'sale_type_extension.js',
   'command_center_extension.js', 'command_header_glitch_extension.js',
   'rig_bench_navigation_extension.js', 'command_financial_model_extension.js',
   'profitnode_intelligence_extension.js', 'command_separator_tune.js',
   'roulette_extension.js', 'roulette_ui_extension.js', 'treasury_extension.js',
-  'road_to_extension.js', 'my_rig_extension.js', 'sidebar_cleanup_extension.js', 'mail_extension.js', 'treasury_flow_extension.js', 'sold_transaction_extension.js', 'project_build_extension.js',
-  'ram_revaluation_extension.js', 'ram_v31_extension.js'
+  'road_to_extension.js', 'my_rig_extension.js', 'sidebar_cleanup_extension.js',
+  'mail_extension.js', 'treasury_flow_extension.js', 'sold_transaction_extension.js',
+  'project_build_extension.js', 'ram_revaluation_extension.js', 'ram_v31_extension.js'
 ];
 checks.push(['manifest has 27 scripts', entries.length === 27]);
-checks.push(['manifest order matches canonical load order',
+checks.push(['manifest order matches canonical 27-file load order',
   entries.map(e => e.split('?')[0]).join(',') === CANONICAL_ORDER.join(',')]);
 checks.push(['first script is app_core.js', entries[0].split('?')[0] === 'app_core.js']);
 checks.push(['last script is ram_v31_extension.js',
@@ -1029,8 +1030,8 @@ const roadToProbe = `
   const g4 = RoadTo.get(g.id);
   out.push(['ROAD TO reaching the target flips reached + caps percent at 100', RoadTo.reached(g4) && RoadTo.pct(g4) === 100]);
   const feat = roadToFeaturedCard();
-  out.push(['ROAD TO featured card surfaces for the active quest', feat.indexOf('pn-roadto-feat') > -1 && feat.indexOf('RTX 5070 Ti') > -1 && feat.indexOf('TARGET REACHED') > -1]);
-  out.push(['ROAD TO featured card is pinned above the command dashboard', (function(){const h=renderDashboard();return h.indexOf('pn-roadto-feat') > -1 && h.indexOf('pn-roadto-feat') < h.indexOf('pn-command-content')})()]);
+  out.push(['ROAD TO renders the active quest as the featured card on its dedicated page', feat.indexOf('pn-roadto-feat') > -1 && feat.indexOf('RTX 5070 Ti') > -1]);
+  out.push(['active ROAD TO quests stay out of the command dashboard', (function(){const h=renderDashboard();return h.indexOf('pn-roadto-feat') === -1 && h.indexOf('pn-command-content') > -1})()]);
   const list = renderRoadTo();
   out.push(['ROAD TO page renders the new-quest form', list.indexOf('data-roadto-cat') > -1 && list.indexOf('data-roadto-create') > -1 && list.indexOf('START QUEST') > -1]);
   RoadToUI.focusId = g.id;
@@ -1043,7 +1044,7 @@ const roadToProbe = `
   RoadToUI.focusId = null;
   const closedHtml = renderRoadTo();
   out.push(['ROAD TO purchased quest lists under CLOSED QUESTS', closedHtml.indexOf('CLOSED QUESTS') > -1 && closedHtml.indexOf('PURCHASED') > -1]);
-  out.push(['ROAD TO featured card clears once the quest is purchased', roadToFeaturedCard() === '']);
+  out.push(['ROAD TO command fragment remains absent once the quest is purchased', roadToFeaturedCard() === '']);
   RoadToUI.focusId = null;
   out.push(['ROAD TO goals are recognized by the backup inspector', !!inspectBackupFile({roadTo:[{name:'x'}]})]);
   out.push(['ROAD TO restore carries goals through replaceAll', (function(){Store.replaceAll({meta:{},projects:[],inventory:[],deals:[],sales:[],timeline:[],plans:[],repairs:[],rigs:[],roadTo:[{id:'kept',name:'RTX 5070 Ti',saved:100,target:200,status:'ACTIVE',history:[]}]});return !!(Store.all('roadTo')||[]).find(x=>x.id==='kept')})()]);
@@ -1071,8 +1072,8 @@ const roadToOpenProbe = `
   const q1 = RoadTo.create({name:'NVIDIA RTX 5070 Ti 16GB',category:'GPU',target:110000,saved:0,status:'ACTIVE',refType:'catalog',targetSlot:null,history:[]});
   const q2 = RoadTo.create({name:'RX 7900 XTX',category:'GPU',target:160000,saved:0,status:'ACTIVE',refType:'catalog',targetSlot:'GPU',history:[]});
 
-  const feat = roadToFeaturedCard();
-  out.push(['OPEN QUEST renders on the ROAD TO card with the active quest id', (function(){const prim=RoadTo.primary();return feat.indexOf('pn-roadto-feat') > -1 && prim && feat.indexOf('data-roadto-open="' + prim.id + '"') > -1 && feat.indexOf('>OPEN QUEST<') > -1})()]);
+  const roadList = renderRoadTo();
+  out.push(['OPEN controls remain on the dedicated ROAD TO cards', roadList.indexOf('data-roadto-open="' + q1.id + '"') > -1 && roadList.indexOf('data-roadto-open="' + q2.id + '"') > -1]);
 
   state.route = 'dashboard';
   RoadToUI.focusId = null;
@@ -1403,7 +1404,7 @@ const projectBuildProbe = `
   out.push(['a planned (not-yet-owned) slot never touches inventory', swap.project.slots.RAM.kind === 'PLANNED' && swap.project.slots.RAM.label === 'Corsair Vengeance 16GB']);
 
   const stats = Actions.projectBuildStats(Store.get('projects', p.id));
-  out.push(['project build stats separate owned parts from planned cost', stats.slotsOwned === 3 && stats.slotsPlanned === 1 && stats.plannedCost === 5000]);
+  out.push(['project build stats separate actual, planned, and estimated final cost', stats.slotsOwned === 3 && stats.slotsPlanned === 1 && stats.actualCost === 12500 && stats.plannedCost === 5000 && stats.estimatedFinalCost === 17500]);
   out.push(['project build stats report completion against the 8-slot bench', stats.slotsTotal === PROJECT_BUILD_SLOTS.length && stats.completionPct === Math.round(100 * 4 / PROJECT_BUILD_SLOTS.length)]);
 
   const clr = Actions.clearProjectSlot(p.id, 'COOLER');
@@ -1441,7 +1442,7 @@ const projectBuildProbe = `
 
   state.pbId = p.id;
   const pageDone = renderProjectBuild();
-  out.push(['a completed workspace renders read-only — no edit/remove affordances on its slots', pageDone.indexOf('data-pb-edit-slot') === -1 && pageDone.indexOf('data-pb-remove-slot') === -1 && pageDone.indexOf('BUILD LOCKED') > -1]);
+  out.push(['a completed workspace renders read-only — no edit/remove/price affordances on its slots', pageDone.indexOf('data-pb-edit-slot') === -1 && pageDone.indexOf('data-pb-quick-price') === -1 && pageDone.indexOf('data-pb-remove-slot') === -1 && pageDone.indexOf('BUILD LOCKED') > -1]);
   out.push(['BUILD loadout inherits canonical catalog quality beside installed motherboard and CPU names', pageDone.includes('data-pb-slot="MOBO" data-pb-quality="UNCOMMON"') && pageDone.includes('pn-pb-slot-model-line') && pageDone.includes('data-pb-quality-badge="UNCOMMON"') && pageDone.includes('pn-tier-uncommon') && pageDone.includes('data-pb-slot="CPU" data-pb-quality="POOR"')]);
   out.push(['BUILD loadout gives every recorded slot/extra one compact quality badge and explicitly marks manual extras UNRATED', (pageDone.match(/data-pb-quality-badge=/g)||[]).length === 4 && pageDone.includes('data-pb-quality="UNRATED"') && pageDone.includes('data-pb-quality-badge="UNRATED"')]);
   const artifactPresentation = pbComponentQuality({kind:'PLANNED',label:'Top catalog component'}, 'GPU', {label:'Top catalog component',pn:{tier:'ARTIFACT'}});
@@ -1453,37 +1454,91 @@ const projectBuildProbe = `
   const pageOpen = renderProjectBuild();
   out.push(['an in-progress workspace shows the bench grid with add-slot affordances and empty slots', pageOpen.indexOf('pn-pb-grid') > -1 && pageOpen.indexOf('pn-pb-slot-empty-hint') > -1 && pageOpen.indexOf('data-pb-edit-slot=') > -1]);
   out.push(['planned catalog components receive the same canonical quality badge as owned components', pageOpen.includes('data-pb-slot="GPU" data-pb-quality="COMMON"') && pageOpen.includes('data-pb-quality-badge="COMMON"') && pageOpen.includes('pn-tier-common')]);
+  out.push(['BUILD summary renders actual, planned, and estimated final cost as separate values', pageOpen.includes('data-pb-cost="actual"') && pageOpen.includes('data-pb-cost="planned"') && pageOpen.includes('data-pb-cost="final"') && pageOpen.includes('ACTUAL SPENT') && pageOpen.includes('ESTIMATED FINAL COST')]);
+  out.push(['occupied cards expose their recorded cost and a price-only edit action', pageOpen.includes('data-pb-slot-paid="GPU"') && pageOpen.includes('PLANNED COST') && pageOpen.includes('30.000 RSD') && pageOpen.includes('data-pb-quick-price="GPU"')]);
   out.push(['the bench grid lists exactly the 8 requested primary slots in the requested layout order', PROJECT_BUILD_SLOTS.join(',') === 'MOBO,CPU,RAM,GPU,STORAGE,PSU,CASE,COOLER']);
 
+  const pickerCpu = Actions.addInventory({category:'CPU', manufacturer:'Intel', model:'Core i7-6700', purchaseDate: todayISO(), purchasePrice:500, currency:'RSD', estimatedMarketValue:3000, source:'OTHER', condition:'WORKING', status:'IN_STORAGE'});
+  HardwareCatalog.cpus = [{brand:'Intel',model:'Core i7-6700',overall:35},{brand:'Intel',model:'Core i7-6700K',overall:42},{brand:'Intel',model:'Core i7-6700T',overall:30}];
   const addCpuBtn = __pnEl({ tag:'button', attrs:{'data-pb-edit-slot':'CPU'} });
   pbClick({ target: addCpuBtn, preventDefault(){}, stopPropagation(){} });
-  out.push(['clicking + ADD on an empty catalog-searchable slot (CPU) jumps straight into type-to-search mode, not the vault picker', PBUI.slotKey === 'CPU' && PBUI.slot && PBUI.slot.mode === 'PLANNED']);
+  out.push(['clicking + ADD CPU opens the unified search-first picker', PBUI.slotKey === 'CPU' && PBUI.query === '' && PBUI.results.length === 0]);
   const cpuEditorHtml = renderProjectBuild();
-  out.push(['the CPU editor renders one merged type-to-search field, not a separate name field plus an optional search field', cpuEditorHtml.indexOf('data-pb-catalog-search="CPU"') > -1 && cpuEditorHtml.indexOf('CATALOG SEARCH (OPTIONAL)') === -1]);
+  out.push(['the picker renders one primary search field and no source/specification form', cpuEditorHtml.includes('data-pb-component-search="CPU"') && cpuEditorHtml.includes('SEARCH COMPONENT') && !cpuEditorHtml.includes('data-pb-slot-mode') && !cpuEditorHtml.includes('ESTIMATED COST') && !cpuEditorHtml.includes('<span>NOTES</span>')]);
+
+  const cpuSearchInput = __pnEl({ tag:'input', attrs:{'data-pb-component-search':'CPU'}, value:'i7 6700' });
+  pbInput({ target: cpuSearchInput });
+  out.push(['unified search ranks the matching Vault item before registry-only variants and removes the duplicate registry row', PBUI.results.length === 3 && PBUI.results[0].source === 'VAULT' && PBUI.results[0].inventoryItemId === pickerCpu.id && PBUI.results.slice(1).every(x=>x.source === 'REGISTRY') && PBUI.results.filter(x=>x.label === 'Intel Core i7-6700').length === 1]);
+  const resultHtml = renderProjectBuild();
+  out.push(['picker results clearly label Vault/registry source and the Vault purchase price', resultHtml.includes('data-pb-result-source="vault"') && resultHtml.includes('data-pb-result-source="registry"') && resultHtml.includes('Paid: 500 RSD')]);
+  const registryPick = __pnEl({ tag:'button', attrs:{'data-pb-picker-pick':'1'} });
+  pbClick({ target: registryPick, preventDefault(){}, stopPropagation(){} });
+  const plannedCpu = Store.get('projects',p2.id).slots.CPU;
+  out.push(['selecting a registry result immediately creates a zero-cost planned component', PBUI.slotKey === null && plannedCpu.kind === 'PLANNED' && plannedCpu.catalogType === 'CPU' && plannedCpu.label.includes('i7-6700') && plannedCpu.cost === 0]);
+
+  pbClick({ target: addCpuBtn, preventDefault(){}, stopPropagation(){} });
+  pbInput({ target: cpuSearchInput });
+  const vaultPick = __pnEl({ tag:'button', attrs:{'data-pb-picker-pick':'0'} });
+  pbClick({ target: vaultPick, preventDefault(){}, stopPropagation(){} });
+  out.push(['SWAP reuses the same picker and immediately reserves the selected physical Vault item', Store.get('projects',p2.id).slots.CPU.inventoryItemId === pickerCpu.id && Store.get('inventory',pickerCpu.id).assignedProjectId === p2.id && Store.get('inventory',pickerCpu.id).status === 'IN_BUILD']);
+  const failedSwap = Actions.setProjectSlot(p2.id,'CPU','INVENTORY',{inventoryItemId:cpu.id});
+  out.push(['a failed swap leaves the current component reservation intact', !failedSwap.ok && Store.get('projects',p2.id).slots.CPU.inventoryItemId === pickerCpu.id && Store.get('inventory',pickerCpu.id).assignedProjectId === p2.id]);
 
   const addPsuBtn = __pnEl({ tag:'button', attrs:{'data-pb-edit-slot':'PSU'} });
   pbClick({ target: addPsuBtn, preventDefault(){}, stopPropagation(){} });
-  out.push(['clicking + ADD on PSU (now catalog-searchable) also jumps straight into type-to-search mode', PBUI.slotKey === 'PSU' && PBUI.slot && PBUI.slot.mode === 'PLANNED']);
+  out.push(['clicking + ADD PSU opens the same unified search-first picker', PBUI.slotKey === 'PSU' && PBUI.query === '']);
   const psuEditorHtml = renderProjectBuild();
-  out.push(['the PSU editor now renders the merged catalog-search field, not a plain name field', psuEditorHtml.indexOf('data-pb-catalog-search="PSU"') > -1 && psuEditorHtml.indexOf('data-pb-field="label"') === -1]);
-
-  const addCaseBtn = __pnEl({ tag:'button', attrs:{'data-pb-edit-slot':'CASE'} });
-  pbClick({ target: addCaseBtn, preventDefault(){}, stopPropagation(){} });
-  PBUI.slot.mode = 'EXACT';
-  const caseExactHtml = renderProjectBuild();
-  out.push(['CASE exact-model entry now searches the case catalog live instead of a plain text field', caseExactHtml.indexOf('data-pb-catalog-search="CASE"') > -1]);
-  pbClick({ target: __pnEl({ tag:'button', attrs:{'data-pb-cancel-slot':''} }), preventDefault(){}, stopPropagation(){} });
-
-  const cpuSearchInput = __pnEl({ tag:'input', attrs:{'data-pb-catalog-search':'CPU'}, value:'' });
-  PBUI.slotKey = 'CPU'; PBUI.slot = {mode:'PLANNED', label:'', cost:0, notes:''};
-  HardwareCatalog.cpus = [{ brand:'Intel', model:'Celeron G3900' }];
-  cpuSearchInput.value = 'celeron g3900';
-  pbInput({ target: cpuSearchInput });
-  out.push(['typing in the merged field both narrows catalog suggestions and stores the typed text as the part label', PBUI.slot.label === 'celeron g3900' && PBUI.catalogHits.length === 1 && PBUI.catalogHits[0].model === 'Celeron G3900']);
+  out.push(['PSU uses the same single search field instead of a manual product form', psuEditorHtml.includes('data-pb-component-search="PSU"') && !psuEditorHtml.includes('data-pb-field="label"') && !psuEditorHtml.includes('data-pb-slot-mode')]);
 
   const cancelBtn = __pnEl({ tag:'button', attrs:{'data-pb-cancel-slot':''} });
   pbClick({ target: cancelBtn, preventDefault(){}, stopPropagation(){} });
-  out.push(['canceling the slot editor clears the open editor state', PBUI.slotKey === null && PBUI.slot === null]);
+  out.push(['canceling the picker clears its query and result state', PBUI.slotKey === null && PBUI.query === '' && PBUI.results.length === 0]);
+
+  const editOwnedPrice = __pnEl({ tag:'button', attrs:{'data-pb-quick-price':'CPU'} });
+  pbClick({ target: editOwnedPrice, preventDefault(){}, stopPropagation(){} });
+  const ownedPriceHtml = renderProjectBuild();
+  out.push(['owned component EDIT opens an inline purchase-price field', PBUI.quickPrice && PBUI.quickPrice.slotKey === 'CPU' && PBUI.quickPrice.value === 500 && ownedPriceHtml.includes('data-pb-quick-price-input="CPU"')]);
+  pbInput({target:__pnEl({tag:'input',attrs:{'data-pb-quick-price-input':'CPU'},value:'750'})});
+  pbClick({target:__pnEl({tag:'button',attrs:{'data-pb-quick-price-save':'CPU'}})});
+  out.push(['saving an owned PAID edit updates the physical inventory purchase price', Store.get('inventory',pickerCpu.id).purchasePrice === 750 && PBUI.quickPrice === null]);
+
+  const editPlannedPrice = __pnEl({ tag:'button', attrs:{'data-pb-quick-price':'GPU'} });
+  pbClick({ target: editPlannedPrice, preventDefault(){}, stopPropagation(){} });
+  pbInput({target:__pnEl({tag:'input',attrs:{'data-pb-quick-price-input':'GPU'},value:'28000'})});
+  pbClick({target:__pnEl({tag:'button',attrs:{'data-pb-quick-price-save':'GPU'}})});
+  const pricedProject=Store.get('projects',p2.id),pricedStats=Actions.projectBuildStats(pricedProject),pricedPage=renderProjectBuild();
+  out.push(['saving a planned PAID edit updates only its planned cost', pricedProject.slots.GPU.cost === 28000 && pricedStats.actualCost === 750 && pricedStats.plannedCost === 28000 && pricedStats.estimatedFinalCost === 28750]);
+  out.push(['component cards and BUILD totals expose the edited values directly', pricedPage.includes('data-pb-slot-paid="CPU"') && pricedPage.includes('750 RSD') && pricedPage.includes('data-pb-slot-paid="GPU"') && pricedPage.includes('28.000 RSD') && pricedPage.includes('28.750 RSD')]);
+
+  const caseProject=Actions.addProject({name:'CASE FLOW',startDate:todayISO(),status:'PLANNING',purpose:'FLIP',currency:'RSD'});
+  HardwareCatalog.boards.push({brand:'Test',model:'B550M Case Board',form_factor:'Micro-ATX',overall:40});
+  Actions.setProjectSlot(caseProject.id,'MOBO','PLANNED',{label:'Test B550M Case Board',cost:0,currency:'RSD',catalogType:'MOBO'});
+  state.pbId=caseProject.id;
+  const addCaseBtn=__pnEl({tag:'button',attrs:{'data-pb-edit-slot':'CASE'}});
+  pbClick({target:addCaseBtn});
+  const caseEditor=renderProjectBuild();
+  out.push(['ADD CASE opens a standard-size and Vault selector instead of commercial registry search', caseEditor.includes('data-pb-case-size') && caseEditor.includes('Mini-ITX / SFF') && caseEditor.includes('Micro-ATX Tower') && caseEditor.includes('ATX Mid Tower') && caseEditor.includes('E-ATX Full Tower') && caseEditor.includes('Open Bench / Test Bench') && caseEditor.includes('Other / Custom') && !caseEditor.includes('data-pb-component-search="CASE"') && !caseEditor.includes('data-pb-result-source="registry"')]);
+  pbChange({target:__pnEl({tag:'select',attrs:{'data-pb-case-size':''},value:'atx-mid-tower'})});
+  pbInput({target:__pnEl({tag:'input',attrs:{'data-pb-case-custom':''},value:'Cooler Master TD500 Mesh'})});
+  pbInput({target:__pnEl({tag:'input',attrs:{'data-pb-case-cost':''},value:'4000'})});
+  pbClick({target:__pnEl({tag:'button',attrs:{'data-pb-save-case':''}})});
+  const plannedCaseProject=Store.get('projects',caseProject.id),plannedCase=plannedCaseProject.slots.CASE,plannedCasePage=renderProjectBuild(),plannedCaseStats=Actions.projectBuildStats(plannedCaseProject),plannedCaseCheck=buildCheckModel(plannedCaseProject);
+  out.push(['standard CASE saves optional name, size, form-factor evidence, and planned cost', plannedCase.kind==='PLANNED' && plannedCase.label==='Cooler Master TD500 Mesh' && plannedCase.genericCaseSizeId==='atx-mid-tower' && plannedCase.caseSizeLabel==='ATX Mid Tower' && plannedCase.cost===4000 && plannedCase.caps.formFactors.join(',')==='ITX,MATX,ATX']);
+  out.push(['planned CASE card prioritizes custom name, standard size, and planned cost', plannedCasePage.includes('Cooler Master TD500 Mesh') && plannedCasePage.includes('ATX Mid Tower') && plannedCasePage.includes('PLANNED COST') && plannedCasePage.includes('4.000 RSD') && plannedCasePage.includes('PLANNED — NOT YET OWNED')]);
+  out.push(['standard CASE size feeds the existing motherboard compatibility check', plannedCaseCheck.findings.some(f=>f.id==='MOBO_FORM_FACTOR'&&f.status==='PASS') && plannedCaseStats.actualCost===0 && plannedCaseStats.plannedCost===4000 && plannedCaseStats.estimatedFinalCost===4000]);
+
+  const vaultCase=Actions.addInventory({category:'CASE',manufacturer:'RAIDMAX',model:'VECTOR V219 ATX',purchaseDate:todayISO(),purchasePrice:4899,currency:'RSD',estimatedMarketValue:6000,source:'OTHER',condition:'WORKING',status:'IN_STORAGE'});
+  pbClick({target:addCaseBtn});
+  const caseVaultEditor=renderProjectBuild();
+  out.push(['CASE selector lists exact available Vault cases with inferred size and paid price', caseVaultEditor.includes('data-pb-case-vault="'+vaultCase.id+'"') && caseVaultEditor.includes('RAIDMAX VECTOR V219 ATX') && caseVaultEditor.includes('ATX Mid Tower') && caseVaultEditor.includes('Paid: 4.899 RSD')]);
+  pbClick({target:__pnEl({tag:'button',attrs:{'data-pb-case-vault':vaultCase.id}})});
+  const ownedCaseProject=Store.get('projects',caseProject.id),ownedCasePage=renderProjectBuild(),ownedCaseStats=Actions.projectBuildStats(ownedCaseProject);
+  out.push(['selecting a Vault CASE assigns the exact inventory record without cloning it', ownedCaseProject.slots.CASE.kind==='INVENTORY' && ownedCaseProject.slots.CASE.inventoryItemId===vaultCase.id && Store.get('inventory',vaultCase.id).assignedProjectId===caseProject.id && Store.get('inventory',vaultCase.id).status==='IN_BUILD' && Store.all('inventory').filter(i=>i.id===vaultCase.id).length===1]);
+  out.push(['owned CASE card shows exact model, size, paid value, and Vault status', ownedCasePage.includes('RAIDMAX VECTOR V219 ATX') && ownedCasePage.includes('ATX Mid Tower') && ownedCasePage.includes('4.899 RSD') && ownedCasePage.includes('VAULT · IN BUILD') && ownedCaseStats.actualCost===4899 && ownedCaseStats.plannedCost===0]);
+  pbClick({target:addCaseBtn});
+  pbChange({target:__pnEl({tag:'select',attrs:{'data-pb-case-size':''},value:'matx-tower'})});
+  pbClick({target:__pnEl({tag:'button',attrs:{'data-pb-save-case':''}})});
+  out.push(['swapping a Vault CASE back to a standard size restores the physical case to storage', Store.get('inventory',vaultCase.id).assignedProjectId===null && Store.get('inventory',vaultCase.id).status==='IN_STORAGE' && Store.get('projects',caseProject.id).slots.CASE.genericCaseSizeId==='matx-tower']);
   state.pbId = null;
 
   const projectsPage = renderProjects();

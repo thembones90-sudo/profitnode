@@ -1,8 +1,18 @@
 "use strict";
+const PB_BUILD_CASE_SIZES=[
+  {id:"sff-mini-itx",label:"Mini-ITX / SFF",formFactors:["ITX"]},
+  {id:"matx-mini-tower",label:"Micro-ATX Mini Tower",formFactors:["ITX","MATX"]},
+  {id:"matx-tower",label:"Micro-ATX Tower",formFactors:["ITX","MATX"]},
+  {id:"atx-mid-tower",label:"ATX Mid Tower",formFactors:["ITX","MATX","ATX"]},
+  {id:"atx-full-tower",label:"ATX Full Tower",formFactors:["ITX","MATX","ATX"]},
+  {id:"eatx-super-tower",label:"E-ATX Full Tower",formFactors:["ITX","MATX","ATX","EATX"]},
+  {id:"open-bench",label:"Open Bench / Test Bench",formFactors:["ITX","MATX","ATX","EATX"],unverifiedPhysical:true},
+  {id:"other-custom",label:"Other / Custom",formFactors:[]}
+];
 const PB_CATALOG_SLOTS=["CPU","GPU","MOBO","RAM","STORAGE","PSU","COOLER"];
 const PB_QUALITY_TIERS=["POOR","COMMON","UNCOMMON","RARE","EPIC","LEGENDARY"];
-function pbCaseSizeById(id){return PB_CASE_SIZES.find(c=>c.id===id)||null}
-const PBUI={slotKey:null,slot:null,catalogHits:[],ramHits:[],quickPrice:null,extraDraft:null,notice:null};
+function pbCaseSizeById(id){return PB_BUILD_CASE_SIZES.find(c=>c.id===id)||null}
+const PBUI={slotKey:null,slot:null,query:"",results:[],catalogHits:[],ramHits:[],quickPrice:null,caseDraft:null,extraDraft:null,notice:null};
 
 // ---- RAM module search index (SECTION 10-19 of the assembly rework) ----
 // HardwareCatalog.ramFamilies only carries brand+series (+ real commercial
@@ -138,6 +148,8 @@ function pbVerdictMeta(level){
 }
 function pbNoticeHtml(){const n=PBUI.notice;return n?'<div class="pn-myrig-notice'+("ok"===n.tone?" ok":"")+'">'+escHtml(n.text)+"</div>":""}
 function pbFocusSlotField(k){
+  if(k==="CASE"){const el=document.querySelector("select[data-pb-case-size]");if(el&&el.focus)el.focus();return}
+  if(k!=="RAM"){const el=document.querySelector('[data-pb-component-search="'+k+'"]');if(el&&el.focus){el.focus();if(el.select)el.select()}return}
   if(!PBUI.slot)return
   if(k==="RAM"&&"PLANNED"===PBUI.slot.mode&&!PBUI.slot.ramPicked){const el=document.querySelector("[data-pb-ram-search]");if(el&&el.focus)el.focus();return}
   const sel="VAULT"===PBUI.slot.mode?"select[data-pb-vault-item]":PB_CATALOG_SLOTS.includes(k)||"CASE"===k?'[data-pb-catalog-search="'+k+'"]':'[data-pb-field="label"]'
@@ -147,6 +159,39 @@ function pbFocusSlotField(k){
 function pbAvailableVaultItems(project,category){
   return Store.all("inventory").filter(i=>i.category===category&&(!i.assignedProjectId||i.assignedProjectId===project.id)&&"SOLD"!==i.status)
     .slice().sort((a,b)=>(a.manufacturer+a.model).localeCompare(b.manufacturer+b.model))
+}
+function pbPartLabel(item){return String(((item&&item.brand)||(item&&item.manufacturer)||"")+" "+((item&&item.model)||(item&&item.series)||"")).trim()}
+function pbBuildCaseSize(id){return PB_BUILD_CASE_SIZES.find(x=>x.id===id)||(typeof PB_CASE_SIZES!=="undefined"?PB_CASE_SIZES.find(x=>x.id===id):null)||null}
+function pbCaseClassFromForms(forms){
+  const f=Array.isArray(forms)?forms:[]
+  return f.includes("EATX")?"E-ATX Full Tower":f.includes("ATX")?"ATX Mid Tower":f.includes("MATX")?"Micro-ATX Tower":f.includes("ITX")?"Mini-ITX / SFF":""
+}
+function pbVaultCaseClass(item){
+  let row=null
+  if(typeof pnPartCatalogResolution==="function"){const hit=pnPartCatalogResolution(item);row=hit&&hit.item}
+  const fromCatalog=pbCaseClassFromForms(row&&row.caps&&row.caps.formFactors);if(fromCatalog)return fromCatalog
+  const text=pnNorm(pbPartLabel(item)+" "+String(item&&item.notes||""))
+  return /OPEN BENCH|TEST BENCH|TEST FRAME/.test(text)?"Open Bench / Test Bench":/E ATX|EATX/.test(text)?"E-ATX Full Tower":/MICRO ATX|MATX/.test(text)?"Micro-ATX Tower":/MINI ITX|SFF/.test(text)?"Mini-ITX / SFF":/\bATX\b/.test(text)?"ATX Mid Tower":""
+}
+function pbInventoryUsedElsewhere(project,slotKey,id){
+  return PROJECT_BUILD_SLOTS.some(k=>k!==slotKey&&project.slots&&project.slots[k]&&project.slots[k].inventoryItemId===id)||(project.extras||[]).some(x=>x.inventoryItemId===id)
+}
+function pbComponentResults(project,slotKey,query){
+  const q=pnNorm(query),tokens=q.split(" ").filter(Boolean);if(q.length<2)return[]
+  const category=RIG_SLOT_CATEGORY[slotKey],vault=pbAvailableVaultItems(project,category).filter(item=>!pbInventoryUsedElsewhere(project,slotKey,item.id)).map(item=>({source:"VAULT",label:pbPartLabel(item),inventoryItemId:item.id,item:item})).filter(hit=>pnLabelMatches(pnNorm(hit.label),tokens)).sort((a,b)=>(pnNorm(a.label).startsWith(q)?0:1)-(pnNorm(b.label).startsWith(q)?0:1)||a.label.localeCompare(b.label))
+  const ownedLabels=new Set(vault.map(hit=>pnNorm(hit.label))),registry=(typeof catalogSearch==="function"?catalogSearch(slotKey,query,16):[]).map(item=>({source:"REGISTRY",label:pbPartLabel(item),item:item})).filter(hit=>hit.label&&!ownedLabels.has(pnNorm(hit.label)))
+  return vault.concat(registry).slice(0,16)
+}
+function pbRamCatalogConfig(item){
+  const technology=String(item&&item.technology||"DDR4").toUpperCase(),kits=Array.isArray(item&&item.kits)?item.kits.slice():[]
+  const rank=kit=>(Number(kit.capacity)===32?1000:0)+(Number(kit.sticks)===2?500:0)+(Number(kit.speed)===6000?300:0)+(Number(kit.cas)===30?200:0)+Number(kit.speed||0)/100
+  const kit=kits.sort((a,b)=>rank(b)-rank(a))[0],count=Number(kit&&kit.sticks)||2,total=Number(kit&&kit.capacity)||(technology==="DDR5"?32:16)
+  return{technology:technology,dimmType:String(item&&item.dimm_type||"UDIMM").toUpperCase(),moduleCount:count,perModuleCapacity:total/count,totalCapacity:total,speed:Number(kit&&kit.speed)||(technology==="DDR5"?6000:3200),casLatency:Number(kit&&kit.cas)||(technology==="DDR5"?30:16),rgb:!!(item&&item.rgb),xmp:kit&&kit.xmp==null?null:!!(kit&&kit.xmp),expo:kit&&kit.expo==null?null:!!(kit&&kit.expo),notes:""}
+}
+function pbRegistrySlot(project,slotKey,item){
+  const data={label:pbPartLabel(item),cost:0,currency:project.currency,catalogType:slotKey,catalogKey:typeof catalogKey==="function"?catalogKey(slotKey,item):null}
+  if(slotKey==="RAM")data.ram=pbRamCatalogConfig(item)
+  return data
 }
 function pbComponentQuality(slot,slotKey,resolved){
   const r=resolved||null,label=String(r&&r.label||slot&&slot.label||"").trim();
@@ -201,8 +246,10 @@ function pbSlotCardHtml(project,slotKey,locked){
   const quality=isGenericCase?{key:"UNRATED",sourceTier:"UNRATED",source:"GENERIC CASE SIZE",className:pnTierClass("UNRATED")}:pbComponentQuality(slot,slotKey,r)
   const tierChip=pbQualityChipHtml(quality)
   const owned="INVENTORY"===slot.kind
-  const ownTag=isGenericCase?'<span class="chip chip-blue-outline">PLANNED — MODEL NOT SELECTED</span>':(owned?(r&&r.status?'<span class="chip '+(INVENTORY_STATUS_META[r.status]||{chip:"chip-muted"}).chip+'">VAULT · '+STATUS_LABEL(r.status)+"</span>":""):'<span class="chip chip-blue-outline">PLANNED · NOT YET OWNED</span>')
-  const genericNote=isGenericCase&&slot.genericCaseSizeId?PB_CASE_SIZES.find(c=>c.id===slot.genericCaseSizeId)?.unverifiedPhysical?'<span class="chip chip-amber-outline" title="No GPU/cooler/PSU/radiator clearance data for open bench">⚠ PHYSICAL CONSTRAINTS UNVERIFIED</span>':"":""
+  const ownTag=isGenericCase?'<span class="chip chip-blue-outline">PLANNED — NOT YET OWNED</span>':(owned?(r&&r.status?'<span class="chip '+(INVENTORY_STATUS_META[r.status]||{chip:"chip-muted"}).chip+'">VAULT · '+STATUS_LABEL(r.status)+"</span>":""):'<span class="chip chip-blue-outline">PLANNED — NOT YET OWNED</span>')
+  const caseSize=isGenericCase?pbBuildCaseSize(slot.genericCaseSizeId):null
+  const caseSizeLabel=caseSize?caseSize.label:slotKey==="CASE"&&owned?pbVaultCaseClass(Store.get("inventory",slot.inventoryItemId)):""
+  const genericNote=caseSize&&caseSize.unverifiedPhysical?'<span class="chip chip-amber-outline" title="No GPU/cooler/PSU/radiator clearance data for open bench">⚠ PHYSICAL CONSTRAINTS UNVERIFIED</span>':""
   const vaultLink=owned&&slot.inventoryItemId?'<button type="button" class="pn-pb-vault-link" data-open-entity="inventory" data-id="'+escAttr(slot.inventoryItemId)+'" title="Open in Parts Vault">VAULT ↗</button>':""
   const modelLabel=isGenericCase?slot.label:(r?r.label:"(unnamed part)")
   const paid=pbPaidAmount(project,slot)
@@ -210,16 +257,17 @@ function pbSlotCardHtml(project,slotKey,locked){
   const isQuickEdit=!locked&&PBUI.quickPrice&&PBUI.quickPrice.slotKey===slotKey
   const priceLine=isQuickEdit
     ?'<span class="pn-pb-price-edit"><input type="number" min="0" step="1" data-pb-quick-price-input="'+slotKey+'" value="'+escAttr(PBUI.quickPrice.value)+'" style="width:92px"><button type="button" class="btn btn-sm btn-primary" data-pb-quick-price-save="'+slotKey+'">SAVE</button><button type="button" class="btn btn-sm btn-ghost" data-pb-quick-price-cancel>×</button></span>'
-    :('<span class="pn-pb-price"><b>'+priceLabel+" "+money(paid,project.currency)+"</b>"+(locked?"":'<button type="button" class="pn-pb-price-edit-btn" data-pb-quick-price="'+slotKey+'">EDIT</button>')+"</span>")
+    :('<span class="pn-pb-price" data-pb-slot-paid="'+slotKey+'"><b>'+priceLabel+" "+money(paid,project.currency)+"</b>"+(locked?"":'<button type="button" class="pn-pb-price-edit-btn" data-pb-quick-price="'+slotKey+'">EDIT</button>')+"</span>")
   const ramLine=slotKey==="RAM"?pbRamConfigLine(slot):""
   // Simple (single-group) RAM fits its config text into the same line as
   // the tier chip; a mixed multi-group config is usually longer, so it
   // keeps its own dedicated line below (as before) to avoid crowding.
   const ramSimple=slotKey==="RAM"&&ramLine&&!(slot.ram&&slot.ram.mixed)
   const modelLineHtml='<div class="pn-pb-slot-model-line"><div class="pn-pb-slot-model pn-pb-quality-name '+quality.className+'">'+escHtml(modelLabel)+"</div>"+tierChip+(ramSimple?'<span class="pn-pb-ram-config pn-pb-ram-inline">'+escHtml(ramLine)+"</span>":"")+"</div>"
-  return'<div class="pn-pb-slot"'+acc+' data-pb-slot="'+slotKey+'" data-pb-quality="'+quality.key+'"><div class="pn-pb-slot-head"><span class="pn-cat-label '+categoryColorClass(cat)+'">'+label+"</span>"+vaultLink+(locked?"":'<button type="button" class="btn btn-sm" style="margin-left:auto" data-pb-edit-slot="'+slotKey+'">'+("PLANNED"===slot.kind?"EDIT":"SWAP")+"</button>")+"</div>"+modelLineHtml+(ramLine&&!ramSimple?'<div class="pn-pb-ram-config">'+escHtml(ramLine)+"</div>":"")+'<div class="pn-pb-slot-foot">'+priceLine+ownTag+genericNote+"</div>"+(locked?"":'<button type="button" class="btn btn-sm btn-ghost" style="margin-top:6px" data-pb-remove-slot="'+slotKey+'">REMOVE</button>')+"</div>"
+  const caseSpec=caseSizeLabel&&pnNorm(caseSizeLabel)!==pnNorm(modelLabel)?'<div class="pn-pb-slot-spec">'+escHtml(caseSizeLabel)+"</div>":""
+  return'<div class="pn-pb-slot"'+acc+' data-pb-slot="'+slotKey+'" data-pb-quality="'+quality.key+'"><div class="pn-pb-slot-head"><span class="pn-cat-label '+categoryColorClass(cat)+'">'+label+"</span>"+vaultLink+(locked?"":'<button type="button" class="btn btn-sm" style="margin-left:auto" data-pb-edit-slot="'+slotKey+'">'+("PLANNED"===slot.kind?"EDIT":"SWAP")+"</button>")+"</div>"+modelLineHtml+caseSpec+(ramLine&&!ramSimple?'<div class="pn-pb-ram-config">'+escHtml(ramLine)+"</div>":"")+'<div class="pn-pb-slot-foot">'+priceLine+ownTag+genericNote+"</div>"+(locked?"":'<button type="button" class="btn btn-sm btn-ghost" style="margin-top:6px" data-pb-remove-slot="'+slotKey+'">REMOVE</button>')+"</div>"
 }
-function pbSlotEditorHtml(project){
+function pbComponentSlotEditorHtml(project){
   const k=PBUI.slotKey,d=PBUI.slot||{},cat=RIG_SLOT_CATEGORY[k],isCat=PB_CATALOG_SLOTS.includes(k)
   const vault=pbAvailableVaultItems(project,cat)
   if(k==="CASE"){
@@ -309,6 +357,18 @@ function pbVaultRamHint(item){
   if(capMatch)return capMatch[1]+"GB"
   return""
 }
+function pbCaseEditorHtml(project){
+  const d=PBUI.caseDraft||{},current=project.slots&&project.slots.CASE,vault=pbAvailableVaultItems(project,"CASE").filter(item=>!pbInventoryUsedElsewhere(project,"CASE",item.id))
+  const sizes=PB_BUILD_CASE_SIZES.map(x=>'<option value="'+x.id+'"'+(d.caseSizeId===x.id?' selected':'')+'>'+escHtml(x.label)+'</option>').join("")
+  const vaultRows=vault.length?'<div class="pn-pb-picker-results pn-pb-case-vault">'+vault.map(item=>{const size=pbVaultCaseClass(item);return'<button type="button" class="pn-pb-picker-result" data-pb-case-vault="'+item.id+'"><span class="pn-pb-result-source is-vault">VAULT</span><span class="pn-pb-result-name">'+escHtml(pbPartLabel(item))+(size?'<small>'+escHtml(size)+'</small>':'')+'</span><span class="pn-pb-result-cost">Paid: '+money(item.purchasePrice,item.currency)+"</span></button>"}).join("")+"</div>":'<p class="hint">No available cases in Parts Vault.</p>'
+  return'<div class="panel pn-pb-picker pn-pb-case-picker" data-pb-picker="CASE"><div class="panel-head"><h2>'+(current?'SWAP':'ADD')+' CASE</h2></div><div class="panel-body"><div class="pn-pb-case-plan"><label class="field"><span>CASE SIZE</span><select data-pb-case-size><option value="">— select standard size —</option>'+sizes+'</select></label><label class="field"><span>CUSTOM CASE NAME · OPTIONAL</span><input type="text" data-pb-case-custom value="'+escAttr(d.customName||"")+'" placeholder="e.g. Cooler Master TD500 Mesh"></label><label class="field"><span>PLANNED COST ('+project.currency+')</span><input type="number" min="0" step="1" data-pb-case-cost value="'+escAttr(d.cost||"")+'"></label><button type="button" class="btn btn-primary" data-pb-save-case>ASSIGN PLANNED CASE</button></div><div class="pn-pb-case-divider"><span>OR USE AN OWNED CASE</span></div>'+vaultRows+'<div class="pn-myrig-form-actions"><button type="button" class="btn btn-sm" data-pb-cancel-slot>CANCEL</button></div></div></div>'
+}
+function pbUnifiedSlotEditorHtml(project){
+  const k=PBUI.slotKey,query=PBUI.query||"",results=PBUI.results||[],current=project.slots&&project.slots[k]
+  const rows=results.length?'<div class="pn-pb-picker-results" role="listbox">'+results.map((hit,i)=>'<button type="button" class="pn-pb-picker-result" data-pb-picker-pick="'+i+'" data-pb-result-source="'+hit.source.toLowerCase()+'" role="option"><span class="pn-pb-result-source is-'+hit.source.toLowerCase()+'">'+hit.source+'</span><span class="pn-pb-result-name">'+escHtml(hit.label)+'</span><span class="pn-pb-result-cost">'+(hit.source==="VAULT"?'Paid: '+money(hit.item.purchasePrice,hit.item.currency):'Paid: '+money(0,project.currency))+'</span></button>').join("")+'</div>':query.length>=2?'<p class="hint pn-pb-picker-empty">No matching '+RIG_SLOT_LABELS[k].toLowerCase()+' found in Parts Vault or the PROFITNODE registry.</p>':'<p class="hint pn-pb-picker-empty">Searches Parts Vault and the PROFITNODE hardware registry.</p>'
+  return'<div class="panel pn-pb-picker" data-pb-picker="'+k+'"><div class="panel-head"><h2>'+(current?'SWAP ':'ADD ')+RIG_SLOT_LABELS[k].toUpperCase()+'</h2></div><div class="panel-body"><label class="field"><span>SEARCH COMPONENT</span><input type="text" data-pb-component-search="'+k+'" value="'+escAttr(query)+'" placeholder="Start typing part name..." autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="'+(results.length?'true':'false')+'"></label>'+rows+'<div class="pn-myrig-form-actions"><button type="button" class="btn btn-sm" data-pb-cancel-slot>CANCEL</button></div></div></div>'
+}
+function pbSlotEditorHtml(project){return PBUI.slotKey==="CASE"?pbCaseEditorHtml(project):PBUI.slotKey==="RAM"?pbComponentSlotEditorHtml(project):pbUnifiedSlotEditorHtml(project)}
 function pbExtraFormHtml(project){
   const d=PBUI.extraDraft||{},vault=Store.all("inventory").filter(i=>(!i.assignedProjectId||i.assignedProjectId===project.id)&&"SOLD"!==i.status).slice().sort((a,b)=>(a.manufacturer+a.model).localeCompare(b.manufacturer+b.model))
   return'<div class="panel pn-myrig-edit" style="margin-top:8px"><div class="panel-head"><h2>ADD EXTRA / OPTIONAL PART</h2></div><div class="panel-body"><div class="pn-myrig-fgrid">'
@@ -373,7 +433,7 @@ function renderProjectBuild(){
   const p=pbProject()
   if(!p)return pageHeader("BUILD WORKSPACE","","")+'<div class="content"><div class="panel"><div class="panel-body"><p class="hint">This project could not be found — it may have been deleted.</p><button type="button" class="btn" data-pb-back style="margin-top:10px">BACK TO PROJECTS</button></div></div></div>'
   const purp=PROJECT_PURPOSES.includes(p.purpose)?p.purpose:"FLIP",locked="COMPLETED"===p.status
-  const stats=Actions.projectBuildStats(p),invested=Actions.projectTotalInvestment(p),planned=stats.plannedCost
+  const stats=Actions.projectBuildStats(p),invested=stats.actualCost,planned=stats.plannedCost,finalCost=stats.estimatedFinalCost
   const grid=PROJECT_BUILD_SLOTS.map(k=>pbSlotCardHtml(p,k,locked)).join("")
   const tierLine=locked&&p.finalTier?'<div class="pn-myrig-meta-item">FINAL TIER: '+escHtml(p.finalTier)+"</div>":""
   const hero='<div class="panel pn-pb-hero"><div class="pn-pb-eyebrow">BUILD WORKSPACE</div><h1 class="pn-pb-name">'+escHtml(p.name)+'</h1><div class="pn-myrig-meta"><span class="chip '+PROJECT_STATUS_META[p.status].chip+'">'+STATUS_LABEL(p.status)+'</span><span class="chip '+PROJECT_PURPOSE_META[purp].chip+'">'+PROJECT_PURPOSE_LABEL[purp]+"</span>"+tierLine+'</div><div class="pn-pb-hero-actions"><button type="button" class="btn btn-sm" data-pb-back>← BACK TO PROJECTS</button><button type="button" class="btn btn-sm" data-pb-edit-details>EDIT DETAILS</button>'+(locked?'<span class="chip chip-green-outline">BUILD LOCKED</span>':'<button type="button" class="btn btn-sm btn-primary" data-pb-mark-complete>MARK BUILD COMPLETE</button>')+"</div></div>"
@@ -381,16 +441,17 @@ function renderProjectBuild(){
   // instead of the bespoke pn-myrig-vstats/pn-myrig-vstat classes this
   // page used to reference — those were never actually defined anywhere,
   // so this row was rendering as unstyled stacked text, not a tile row.
-  const statsRow='<div class="kpi-grid" style="margin:8px 0">'
-    +'<div class="kpi"><div class="kpi-label">BUILD COST</div><div class="kpi-value">'+money(invested,p.currency)+'</div><div class="kpi-sub">parts on hand + additional</div></div>'
-    +'<div class="kpi"><div class="kpi-label">PLANNED COST</div><div class="kpi-value">'+(planned?money(planned,p.currency):"—")+'</div><div class="kpi-sub">not yet purchased</div></div>'
+  const statsRow='<div class="kpi-grid pn-pb-stats" style="margin:8px 0">'
+    +'<div class="kpi" data-pb-cost="actual"><div class="kpi-label">ACTUAL SPENT</div><div class="kpi-value">'+money(invested,p.currency)+'</div><div class="kpi-sub">parts on hand + additional</div></div>'
+    +'<div class="kpi" data-pb-cost="planned"><div class="kpi-label">PLANNED COST</div><div class="kpi-value">'+(planned?money(planned,p.currency):"—")+'</div><div class="kpi-sub">not yet purchased</div></div>'
+    +'<div class="kpi" data-pb-cost="final"><div class="kpi-label">ESTIMATED FINAL COST</div><div class="kpi-value">'+money(finalCost,p.currency)+'</div><div class="kpi-sub">actual spent + planned</div></div>'
     +'<div class="kpi"><div class="kpi-label">EST. VALUE</div><div class="kpi-value">'+(p.estimatedMarketValue?money(p.estimatedMarketValue,p.currency):"—")+'</div><div class="kpi-sub">manual estimate</div></div>'
     +'<div class="kpi"><div class="kpi-label">COMPLETION</div><div class="kpi-value">'+stats.completionPct+'%</div><div class="kpi-sub">'+stats.slotsFilled+" / "+stats.slotsTotal+' slots</div></div>'
     +"</div>"
   return pageHeader("BUILD WORKSPACE",p.name,"")+'<div class="content pn-pb-page">'+pbNoticeHtml()+hero+statsRow+'<div class="panel" data-pb-loadout style="margin-top:8px"><div class="panel-head"><h2>COMPONENT LOADOUT</h2></div><div class="panel-body"><div class="pn-pb-grid">'+grid+"</div></div></div>"+(PBUI.slotKey?pbSlotEditorHtml(p):"")+pbCostBreakdownHtml(p)+pbExtrasHtml(p,locked)+pbCompatHtml(p)+"</div>"
 }
 function pbClick(e){
-  if(e.target.closest("[data-pb-back]"))return state.route="projects",state.pbId=null,PBUI.slotKey=null,PBUI.slot=null,PBUI.extraDraft=null,PBUI.quickPrice=null,PBUI.notice=null,void render()
+  if(e.target.closest("[data-pb-back]"))return state.route="projects",state.pbId=null,PBUI.slotKey=null,PBUI.slot=null,PBUI.query="",PBUI.results=[],PBUI.caseDraft=null,PBUI.extraDraft=null,PBUI.quickPrice=null,PBUI.notice=null,void render()
   if(e.target.closest("[data-pb-edit-details]")){const p=pbProject();return p?void openForm("project",p.id):void 0}
 
   // ---- quick price edit (SECTION 2) ----
@@ -414,10 +475,10 @@ function pbClick(e){
     return pbSetNotice("ok","Price updated."),void render()}
 
   const es=e.target.closest("[data-pb-edit-slot]");if(es){const p=pbProject();if(!p)return;const k=es.dataset.pbEditSlot,cur=p.slots&&p.slots[k]||null
-    PBUI.slotKey=k;PBUI.catalogHits=[];PBUI.ramHits=[];PBUI.quickPrice=null
-    if(k==="CASE"&&cur&&cur.genericCaseSizeId){
-      PBUI.slot={mode:"GENERIC",caseSizeId:cur.genericCaseSizeId,label:cur.label||"",cost:cur.cost||0,notes:cur.notes||""}}
-    else{
+    PBUI.slotKey=k;PBUI.query="";PBUI.results=[];PBUI.catalogHits=[];PBUI.ramHits=[];PBUI.quickPrice=null
+    if(k==="CASE"){const size=cur&&cur.genericCaseSizeId?pbBuildCaseSize(cur.genericCaseSizeId):null
+      PBUI.slot=null;PBUI.caseDraft={caseSizeId:size?size.id:"",customName:cur&&size&&pnNorm(cur.label)!==pnNorm(size.label)?cur.label:"",cost:cur&&"PLANNED"===cur.kind?Number(cur.cost)||0:0}}
+    else if(k==="RAM"){PBUI.caseDraft=null
       const draft=cur?("INVENTORY"===cur.kind?{mode:"VAULT",inventoryItemId:cur.inventoryItemId}:{mode:"PLANNED",label:cur.label||"",cost:cur.cost||0,notes:cur.notes||"",ram:cur.ram||null}):{mode:"PLANNED",inventoryItemId:"",label:"",cost:0,notes:"",ram:null}
       if(k==="RAM"&&draft.ram){
         // Re-editing an existing RAM slot restores its full group
@@ -431,8 +492,21 @@ function pbClick(e){
         draft.ramPicked=null
       }
       PBUI.slot=draft}
+    else PBUI.slot=null,PBUI.caseDraft=null
     render();return void pbFocusSlotField(k)}
-  if(e.target.closest("[data-pb-cancel-slot]"))return PBUI.slotKey=null,PBUI.slot=null,void render()
+  if(e.target.closest("[data-pb-cancel-slot]"))return PBUI.slotKey=null,PBUI.slot=null,PBUI.query="",PBUI.results=[],PBUI.caseDraft=null,void render()
+  const caseVault=e.target.closest("[data-pb-case-vault]");if(caseVault){const p=pbProject();if(!p)return;const res=Actions.setProjectSlot(p.id,"CASE","INVENTORY",{inventoryItemId:caseVault.dataset.pbCaseVault})
+    if(res.ok){PBUI.slotKey=null;PBUI.caseDraft=null}
+    return pbSetNotice(res.ok?"ok":"err",res.ok?"Vault case assigned.":res.error),void render()}
+  if(e.target.closest("[data-pb-save-case]")){const p=pbProject(),d=PBUI.caseDraft||{},size=pbBuildCaseSize(d.caseSizeId);if(!p)return
+    if(!size)return pbSetNotice("err","Select a standard case size."),void render()
+    const custom=String(d.customName||"").trim(),cost=Math.max(0,Math.round(Number(d.cost)||0)),res=Actions.setProjectSlot(p.id,"CASE","PLANNED",{label:custom||size.label,cost:cost,currency:p.currency,catalogType:"CASE",genericCaseSizeId:size.id,caseSizeLabel:size.label,caseCustomName:custom,source:"BUILD_GENERIC",caps:{formFactors:(size.formFactors||[]).slice()}})
+    if(res.ok){PBUI.slotKey=null;PBUI.caseDraft=null}
+    return pbSetNotice(res.ok?"ok":"err",res.ok?"Planned case assigned.":res.error),void render()}
+  const pick=e.target.closest("[data-pb-picker-pick]");if(pick){const p=pbProject(),k=PBUI.slotKey,hit=(PBUI.results||[])[Number(pick.dataset.pbPickerPick)];if(!p||!k||!hit)return
+    const res=hit.source==="VAULT"?Actions.setProjectSlot(p.id,k,"INVENTORY",{inventoryItemId:hit.inventoryItemId}):Actions.setProjectSlot(p.id,k,"PLANNED",pbRegistrySlot(p,k,hit.item))
+    if(res.ok){PBUI.slotKey=null;PBUI.query="";PBUI.results=[]}
+    return pbSetNotice(res.ok?"ok":"err",res.ok?(hit.source==="VAULT"?"Vault component assigned.":"Registry component planned."):res.error),void render()}
 
   // ---- RAM module/quantity picking (SECTION 11-13) ----
   const ramPick=e.target.closest("[data-pb-ram-pick]");if(ramPick&&PBUI.slot){
@@ -486,8 +560,6 @@ function pbClick(e){
   const rs=e.target.closest("[data-pb-remove-slot]");if(rs){if("1"!==rs.dataset.armed)return rs.dataset.armed="1",rs.textContent="CONFIRM REMOVE?",void 0
     const p=pbProject();if(!p)return;const res=Actions.clearProjectSlot(p.id,rs.dataset.pbRemoveSlot)
     return pbSetNotice(res.ok?"ok":"err",res.ok?"Component removed.":res.error),void render()}
-  if(e.target.closest("[data-pb-catalog-pick]")){const btn=e.target.closest("[data-pb-catalog-pick]"),idx=+btn.dataset.pbCatalogPick,hit=(PBUI.catalogHits||[])[idx]
-    if(hit&&PBUI.slot){PBUI.slot.label=hit.brand+" "+hit.model;PBUI.catalogHits=[];return void render()}}
   if(e.target.closest("[data-pb-extra-new]"))return PBUI.extraDraft={label:"",cost:0,notes:"",inventoryItemId:null},void render()
   if(e.target.closest("[data-pb-extra-cancel]"))return PBUI.extraDraft=null,void render()
   if(e.target.closest("[data-pb-extra-save]")){const p=pbProject();if(!p)return;const d=PBUI.extraDraft||{},res=Actions.addProjectExtra(p.id,d)
@@ -499,7 +571,7 @@ function pbClick(e){
     const p=pbProject();if(!p)return;const res=Actions.markProjectBuildComplete(p.id)
     return pbSetNotice(res.ok?"ok":"err",res.ok?"Build marked complete.":res.error),void render()}
 }
-function pbInput(e){
+function pbSecondaryInput(e){
   const t=e.target
   if(t.matches&&t.matches("[data-pb-quick-price-input]")&&PBUI.quickPrice)return void(PBUI.quickPrice.value=t.value)
   if(t.matches&&t.matches("[data-pb-ram-search]")){const val=t.value||""
@@ -522,9 +594,20 @@ function pbInput(e){
       return void render()}
     return void(PBUI.extraDraft[f]=t.value)}
 }
+function pbInput(e){
+  const t=e.target
+  if(t.matches&&t.matches("[data-pb-case-custom]")&&PBUI.caseDraft)return void(PBUI.caseDraft.customName=t.value)
+  if(t.matches&&t.matches("[data-pb-case-cost]")&&PBUI.caseDraft)return void(PBUI.caseDraft.cost=t.value)
+  if(t.matches&&t.matches("[data-pb-component-search]")){const val=t.value||"",k=t.dataset.pbComponentSearch,p=pbProject()
+    PBUI.query=val;PBUI.results=p?pbComponentResults(p,k,val):[];render();const next=document.querySelector('[data-pb-component-search="'+k+'"]')
+    if(next){next.focus();if(next.setSelectionRange)next.setSelectionRange(next.value.length,next.value.length)}return}
+  if(t.matches&&t.matches("[data-pb-price-input]"))return void(PBUI.priceValue=t.value)
+  return pbSecondaryInput(e)
+}
 function pbChange(e){
   const m=e.target.closest("select[data-pb-slot-mode]");if(m&&PBUI.slot){PBUI.slot.mode=m.value;PBUI.catalogHits=[];PBUI.ramHits=[];render();return void pbFocusSlotField(PBUI.slotKey)}
   const vi=e.target.closest("select[data-pb-vault-item]");if(vi&&PBUI.slot){PBUI.slot.inventoryItemId=vi.value;return void render()}
+  const cs=e.target.closest("select[data-pb-case-size]");if(cs&&PBUI.caseDraft)return void(PBUI.caseDraft.caseSizeId=cs.value)
   const ef=e.target.closest("select[data-pb-extra-field]");if(ef)return void pbInput(e)
 }
 // Escape backs out of the search-results dropdown first (so a stray
@@ -534,12 +617,12 @@ function pbChange(e){
 // clicking CANCEL.
 function pbKeydown(e){
   if(e.key!=="Escape"||!PBUI.slotKey)return
-  if((PBUI.ramHits&&PBUI.ramHits.length)||(PBUI.catalogHits&&PBUI.catalogHits.length)){
-    PBUI.ramHits=[];PBUI.catalogHits=[]
+  if((PBUI.results&&PBUI.results.length)||(PBUI.ramHits&&PBUI.ramHits.length)||(PBUI.catalogHits&&PBUI.catalogHits.length)){
+    PBUI.results=[];PBUI.ramHits=[];PBUI.catalogHits=[]
     e.preventDefault()
     return void render()
   }
-  PBUI.slotKey=null;PBUI.slot=null;PBUI.quickPrice=null
+  PBUI.slotKey=null;PBUI.slot=null;PBUI.query="";PBUI.results=[];PBUI.caseDraft=null;PBUI.quickPrice=null
   e.preventDefault()
   render()
 }
@@ -550,6 +633,11 @@ document.addEventListener("keydown",pbKeydown)
 if(typeof document!=="undefined"&&document.addEventListener){
   const s=document.createElement("style")
   s.textContent=".pn-pb-hero{border:1px solid var(--border-strong);border-radius:var(--radius);padding:12px 14px;background:linear-gradient(135deg,rgba(160,180,200,.06),rgba(160,180,200,.02) 60%)}.pn-pb-eyebrow{font:9px var(--mono);letter-spacing:.24em;color:#9fb4c8;margin-bottom:4px}.pn-pb-name{font-size:20px;line-height:1.15;font-weight:900;margin:0 0 6px}.pn-pb-hero-actions{margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}.pn-pb-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}.pn-pb-slot{border:1px solid var(--border);border-left:3px solid var(--pb-acc,#8b8495);background:var(--surface-2);border-radius:var(--radius);padding:8px 10px;display:flex;flex-direction:column;gap:4px}.pn-pb-slot.is-empty{flex-direction:row;align-items:center;gap:8px;padding:6px 10px;background:transparent;border-left-color:var(--border-strong);opacity:.75;align-self:start}.pn-pb-slot-empty-hint{font:800 9px var(--mono);letter-spacing:.1em;color:var(--text-muted);margin-right:auto}.pn-pb-slot-head,.pn-pb-slot-model-line{display:flex;align-items:center;gap:6px}.pn-pb-slot-model-line{flex-wrap:wrap}.pn-pb-slot-model{font-weight:800;font-size:12px;line-height:1.25}.pn-pb-quality-name{color:var(--tier-color,#a39cac)}.pn-pb-slot[data-pb-quality=\"LEGENDARY\"] .pn-pb-slot-model{text-shadow:0 0 9px rgba(255,128,0,.3)}.pn-pb-quality{display:inline-flex;align-items:center;padding:1px 5px;border:1px solid var(--tier-border);border-radius:3px;background:var(--tier-wash);color:var(--tier-color);font:800 7.5px var(--mono);letter-spacing:.08em;line-height:1.2;white-space:nowrap}.pn-tier-unrated{--tier-color:#77717f;--tier-border:rgba(119,113,127,.42);--tier-wash:rgba(119,113,127,.09)}.pn-pb-ram-config{font:800 9.5px var(--mono);letter-spacing:.04em;color:#32c6a6}.pn-pb-ram-config.pn-pb-ram-inline{margin-left:auto}.pn-pb-slot-foot{display:flex;align-items:center;gap:6px;font:9px var(--mono);color:var(--text-muted);margin-top:auto;flex-wrap:wrap}.pn-pb-price{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;color:var(--text)}.pn-pb-price-edit{display:inline-flex;align-items:center;gap:6px}.pn-pb-price-edit-btn{font:8px var(--mono);letter-spacing:.1em;color:#9fb4c8;border:1px solid var(--border-strong);padding:1px 6px;border-radius:6px;background:transparent;cursor:pointer}.pn-pb-price-edit-btn:hover{color:var(--text);border-color:#9fb4c8}.pn-pb-vault-link{font:8px var(--mono);letter-spacing:.12em;color:#9fb4c8;border:1px solid var(--border-strong);padding:1px 5px;border-radius:6px;background:transparent;cursor:pointer}.pn-pb-vault-link:hover{color:var(--text);border-color:#9fb4c8}.pn-pb-extra-list{display:flex;flex-direction:column;gap:4px}.pn-pb-extra-row{display:flex;align-items:center;gap:8px;border:1px solid var(--border);background:var(--surface-2);border-radius:var(--radius);padding:6px 8px;flex-wrap:wrap}.pn-pb-extra-name{flex:1;font-weight:700;font-size:11.5px}.pn-pb-cost-cols{display:grid;grid-template-columns:1fr 1fr;gap:10px}.pn-pb-cost-group h3{font:800 9.5px var(--mono);letter-spacing:.1em;color:var(--text-muted);margin:0 0 4px}.pn-pb-cost-row{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;padding:2px 0;border-bottom:1px dashed var(--border)}.pn-pb-cost-totals{display:flex;gap:8px;flex-wrap:wrap}.pn-pb-cost-total{flex:1;min-width:130px;display:flex;flex-direction:column;gap:3px;border:1px solid var(--border);border-radius:var(--radius);padding:6px 9px;font:800 8.5px var(--mono);letter-spacing:.08em;color:var(--text-muted)}.pn-pb-cost-total b{font-size:13px;letter-spacing:.02em;color:var(--text)}.pn-pb-cost-final{border-color:var(--border-strong);background:rgba(160,180,200,.05)}.pn-pb-cost-final b{font-size:14px}.pn-pb-cost-details{margin-top:8px}.pn-pb-cost-details summary{cursor:pointer;font:800 9px var(--mono);letter-spacing:.1em;color:#9fb4c8;padding:4px 0}.pn-pb-cost-details summary:hover{color:var(--text)}.pn-pb-cost-details[open] summary{margin-bottom:6px}.pn-pb-page .panel-head{padding:6px 10px}.pn-pb-page .panel-head h2{font-size:11px}.pn-pb-page .panel-body{padding:8px 10px}.pn-pb-page label.field{margin-bottom:5px}.pn-pb-page input,.pn-pb-page select,.pn-pb-page textarea{padding:5px 7px;font-size:12px}.pn-pb-page .pn-myrig-fgrid{gap:6px}.pn-pb-page .pn-myrig-form-actions{margin-top:8px;gap:6px}.pn-pb-page .pn-myrig-notice{margin-bottom:8px;padding:6px 8px}.pn-pb-page .btn:not(.btn-sm){padding:7px 12px;font-size:11px}.pn-pb-page .kpi{padding:8px 10px 7px}.pn-pb-page .kpi-value{font-size:16px}.pn-pb-page .myrig-catalog-results{padding:3px}@media(max-width:760px){.pn-pb-grid{grid-template-columns:1fr}.pn-pb-cost-cols{grid-template-columns:1fr}}"
+  const compactStyles=s.textContent
+  s.textContent=".pn-pb-hero{border:1px solid var(--border-strong);border-radius:var(--radius);padding:18px;background:linear-gradient(135deg,rgba(160,180,200,.06),rgba(160,180,200,.02) 60%)}.pn-pb-eyebrow{font:9px var(--mono);letter-spacing:.24em;color:#9fb4c8;margin-bottom:6px}.pn-pb-name{font-size:32px;line-height:1.1;font-weight:900;margin:0 0 10px}.pn-pb-hero-actions{margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}.pn-pb-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.pn-pb-slot{border:1px solid var(--border);border-left:3px solid var(--pb-acc,#8b8495);background:var(--surface-2);border-radius:var(--radius);padding:10px 12px;display:flex;flex-direction:column;gap:5px}.pn-pb-slot.is-empty{background:transparent;border-left-color:var(--border-strong);opacity:.75}.pn-pb-slot-head,.pn-pb-slot-model-line{display:flex;align-items:center;gap:8px}.pn-pb-slot-model-line{flex-wrap:wrap}.pn-pb-slot-model{font-weight:800;font-size:13px;line-height:1.25}.pn-pb-quality-name{color:var(--tier-color,#a39cac)}.pn-pb-slot[data-pb-quality=\"LEGENDARY\"] .pn-pb-slot-model{text-shadow:0 0 9px rgba(255,128,0,.3)}.pn-pb-quality{display:inline-flex;align-items:center;padding:2px 6px;border:1px solid var(--tier-border);border-radius:3px;background:var(--tier-wash);color:var(--tier-color);font:800 8px var(--mono);letter-spacing:.08em;line-height:1.2;white-space:nowrap}.pn-tier-unrated{--tier-color:#77717f;--tier-border:rgba(119,113,127,.42);--tier-wash:rgba(119,113,127,.09)}.pn-pb-slot-foot{display:flex;align-items:center;gap:8px;font:9px var(--mono);color:var(--text-muted);margin-top:auto;flex-wrap:wrap}.pn-pb-vault-link{font:8px var(--mono);letter-spacing:.12em;color:#9fb4c8;border:1px solid var(--border-strong);padding:1px 5px;border-radius:6px;background:transparent;cursor:pointer}.pn-pb-vault-link:hover{color:var(--text);border-color:#9fb4c8}.pn-pb-extra-list{display:flex;flex-direction:column;gap:6px}.pn-pb-extra-row{display:flex;align-items:center;gap:10px;border:1px solid var(--border);background:var(--surface-2);border-radius:var(--radius);padding:8px 10px;flex-wrap:wrap}.pn-pb-extra-name{flex:1;font-weight:700;font-size:12px}@media(max-width:760px){.pn-pb-grid{grid-template-columns:1fr}}"
+  s.textContent+=".pn-pb-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}.pn-pb-paid{display:flex;align-items:center;gap:7px;margin:5px 0;padding:7px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}.pn-pb-paid span{font:8px var(--mono);letter-spacing:.14em;color:var(--text-muted)}.pn-pb-paid b{font:800 13px var(--mono);color:var(--text)}.pn-pb-paid .btn{margin-left:auto}.pn-pb-picker,.pn-pb-price-editor{margin-top:12px}.pn-pb-picker .field,.pn-pb-price-editor .field{max-width:760px}.pn-pb-picker-results{max-width:760px;max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);margin-top:8px}.pn-pb-picker-result{display:grid;grid-template-columns:76px minmax(0,1fr) auto;align-items:center;gap:10px;width:100%;min-width:0;padding:9px 10px;border:0;border-bottom:1px solid var(--border);background:var(--surface-2);color:var(--text);text-align:left;cursor:pointer}.pn-pb-picker-result:last-child{border-bottom:0}.pn-pb-picker-result:hover,.pn-pb-picker-result:focus{background:var(--surface-3);outline:1px solid var(--amber)}.pn-pb-result-source{padding:2px 5px;border:1px solid var(--border-strong);font:800 8px var(--mono);letter-spacing:.08em;text-align:center}.pn-pb-result-source.is-vault{color:var(--green);border-color:var(--green-dim)}.pn-pb-result-source.is-registry{color:#9fb4c8}.pn-pb-result-name{min-width:0;font-weight:800;overflow-wrap:anywhere}.pn-pb-result-cost{font:9px var(--mono);color:var(--text-muted);white-space:nowrap}.pn-pb-picker-empty{margin:8px 0 0}.pn-pb-price-field{display:flex;align-items:center;gap:8px}.pn-pb-price-field input{max-width:220px}.pn-pb-price-field b{font:10px var(--mono);color:var(--text-muted)}@media(max-width:1180px){.pn-pb-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:760px){.pn-pb-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.pn-pb-slot-head{flex-wrap:wrap}.pn-pb-picker-result{grid-template-columns:70px minmax(0,1fr)}.pn-pb-result-cost{grid-column:2;white-space:normal}}@media(max-width:480px){.pn-pb-stats{grid-template-columns:1fr}}"
+  s.textContent+=".pn-pb-slot-spec{font:10px var(--mono);color:var(--text-muted);letter-spacing:.04em}.pn-pb-case-plan{display:grid;grid-template-columns:minmax(220px,1fr) minmax(220px,1fr) minmax(150px,.5fr) auto;gap:10px;align-items:end;max-width:980px}.pn-pb-case-plan .field{max-width:none}.pn-pb-case-divider{display:flex;align-items:center;gap:10px;max-width:980px;margin:18px 0 8px;color:var(--text-muted);font:8px var(--mono);letter-spacing:.14em}.pn-pb-case-divider:before,.pn-pb-case-divider:after{content:\"\";height:1px;background:var(--border);flex:1}.pn-pb-result-name small{display:block;margin-top:3px;color:var(--text-muted);font:9px var(--mono);font-weight:400}@media(max-width:900px){.pn-pb-case-plan{grid-template-columns:1fr 1fr}.pn-pb-case-plan .btn{align-self:end}}@media(max-width:600px){.pn-pb-case-plan{grid-template-columns:1fr}}"
+  s.textContent+=compactStyles
   document.head.appendChild(s)
   if(typeof ROUTES!=="undefined"&&!window.__PN_PROJECT_BUILD_REGISTERED){
     ROUTES.push({key:"projectbuild",label:"Build Workspace",hidden:!0,parent:"projects",render:renderProjectBuild})
