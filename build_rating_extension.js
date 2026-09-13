@@ -272,7 +272,7 @@ function pbRatingRowHtml(k,hooks,label,score,conf){
   const confKey=PB_CONF_ORDER[conf]!==undefined?conf:"UNVERIFIED";
   const bar=rated?score:0;
   const num=rated?score+"/100 · "+tier.key:"UNRATED";
-  return'<div class="pn-pb-rating-item"><div class="pn-pb-rating-row '+cls+'" data-pb-cat-conf="'+confKey+'" data-pb-cat-score="'+k+'" data-pb-cat-value="'+(rated?score:"n/a")+'" data-pb-cat-tier="'+tierKey+'">'+hooks+'<span>'+label+'</span><span class="pn-pb-rating-bar"><i style="width:'+bar+'%"></i></span><b>'+num+'</b></div><div class="pn-pb-rating-conf '+confKey.toLowerCase()+'">'+escHtml(PB_CONF_LABEL[confKey])+"</div></div>";
+  return'<div class="pn-pb-rating-item"><div class="pn-pb-rating-row '+cls+'" data-pb-cat-conf="'+confKey+'" data-pb-cat-score="'+k+'" data-pb-cat-value="'+(rated?score:"n/a")+'" data-pb-cat-tier="'+tierKey+'"'+hooks+'><span>'+label+'</span><span class="pn-pb-rating-bar"><i style="width:'+bar+'%"></i></span><b>'+num+'</b></div><div class="pn-pb-rating-conf '+confKey.toLowerCase()+'">'+escHtml(PB_CONF_LABEL[confKey])+"</div></div>";
 }
 function buildRatingPanelHtml(project){
   const d=buildRatingModelDisplayed(project),label=d.locked?(d.snap?"FINAL":"FINAL · LIVE"):"PROJECTED";

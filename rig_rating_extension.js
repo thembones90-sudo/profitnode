@@ -23,7 +23,7 @@ function rigRatingChipHtml(score){
 function rigRatingPanelHtml(rig){
   const d=rigRatingModelDisplayed(rig),label=d.locked?(d.snap?"FINAL":"FINAL · LIVE"):"PROJECTED";
   const overallTier=pbScoreToTier(d.m.finalScore),overallClass=typeof pnTierClass==="function"?pnTierClass(overallTier.key):"";
-  const rows=PB_BUILD_CATEGORIES.map(k=>pbRatingRowHtml(k,'data-rig-rating-cat="'+k+'" ',PB_CAT_LABELS[k],d.m.categories[k],d.m.confidences&&d.m.confidences[k])).join("");
+  const rows=PB_BUILD_CATEGORIES.map(k=>pbRatingRowHtml(k,' data-rig-rating-cat="'+k+'"',PB_CAT_LABELS[k],d.m.categories[k],d.m.confidences&&d.m.confidences[k])).join("");
   return'<div class="panel pn-pb-rating" data-pb-rating-engine="'+(d.m.engine||"build-rating-v1")+'" style="margin-top:8px"><div class="panel-head"><h2>BUILD RATING</h2><span class="chip chip-muted">'+label+'</span></div><div class="panel-body"><div class="pn-pb-rating-overall '+overallClass+'" data-rig-rating-tier="'+overallTier.key+'"><div class="pn-pb-rating-score">'+rigRatingChipHtml(d.m.finalScore)+'</div><p class="pn-pb-rating-verdict">'+escHtml(d.m.verdict)+'</p></div><div class="pn-pb-rating-cats">'+rows+"</div></div></div>";
 }
 function rigRatingCells(rig){
