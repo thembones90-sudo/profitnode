@@ -1,6 +1,6 @@
 "use strict";
 window.__PN_SCRIPTS = [
-  "app_core.js?v=render-debounce-v1",
+  "app_core.js?v=profit-reconcile-catalog-cache-v1",
   "cpu_revaluation_extension.js?v=v3-stack-20260912b",
   "gpu_revaluation_extension.js?v=v3-stack-20260912b",
   "motherboard_revaluation_extension.js?v=v3-stack-20260912b",
@@ -18,7 +18,7 @@ window.__PN_SCRIPTS = [
   "roulette_extension.js?v=roulette-loss-reason-v1",
   "roulette_ui_extension.js?v=rig-assembly-nav-v1",
   "treasury_extension.js?v=treasury-core-sources-v2",
-  "road_to_extension.js?v=command-banner-removed-v1",
+  "road_to_extension.js?v=pulse-finite-v1",
   "my_rig_extension.js?v=myrig-leviathan-canonical-v1",
   "sidebar_cleanup_extension.js?v=product-refinement-v3",
   "mail_extension.js?v=mail-card-polish-v1",
