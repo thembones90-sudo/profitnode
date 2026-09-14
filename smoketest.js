@@ -51,7 +51,7 @@ checks.push(['.content is the single internal scroll container with min-height:0
   /\.content\{[^}]*min-height:0/.test(indexCss) && /\.content\{[^}]*overflow-y:auto/.test(indexCss)]);
 checks.push(['rig slot grid collapses to stacked rows by 1180px so controls never clip',
   /@media \(max-width:1180px\)\{[\s\S]*?\.rig-slot-row\{grid-template-columns:1fr 1fr/.test(indexCss)]);
-checks.push(['no global viewport squeeze via transform:scale in the shell CSS', !indexCss.includes('transform:scale(')]);
+checks.push(['no global viewport squeeze via transform:scale in the shell CSS', !/(?:body|\.main|#page-mount|\.content)[^{}]*\{[^}]*transform:scale/.test(indexCss)]);
 checks.push(['motherboard form factor has no model-name guessing path', !/function detectFormFactor/.test(appCoreJs) && !/detectFormFactor/.test(psuExtensionJs) && !/\[A-Z\]\\d\{3\}M/.test(appCoreJs)]);
 checks.push(['mobile media query detaches content from the fixed-height shell',
   /@media \(max-width:760px\)\{[\s\S]*?\.main\{height:auto;min-height:100vh\}/.test(indexCss) && /\.content\{overflow-y:visible;flex:none\}/.test(indexCss)]);

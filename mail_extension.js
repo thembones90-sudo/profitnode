@@ -771,7 +771,7 @@ function mailCard(m){
   const row=(label,val)=>'<div class="pn-mail-card-row"><span>'+label+"</span>"+val+"</div>";
 const codAmt=Number(m.codAmount);
   const codRow=codAmt>0?
-    '<div class="pn-mail-cod-row"><span>'+(m.direction==="incoming"?"COD / TO PAY":"COD TO COLLECT")+"</span><b>"+formatMoney(codAmt)+"</b></div>":"";
+    '<div class="pn-mail-cod-row"><span>'+(m.direction==="incoming"?"COD / TO PAY":"COD TO COLLECT")+"</span><b>"+money(codAmt,m.currency||"RSD")+"</b></div>":"";
   const metaRows=
     row("CARRIER","<b>"+escHtml(m.carrier||"—")+"</b>")+
     (m.trackingNumber||mailSafeUrl(m.trackingUrl)?'<div class="pn-mail-card-row pn-mail-track"><span>TRACKING</span>'+
@@ -779,7 +779,7 @@ const codAmt=Number(m.codAmount);
       (mailSafeUrl(m.trackingUrl)?'<button type="button" class="btn btn-sm btn-ghost" data-mail-track="'+m.id+'" title="'+(m.trackingNumber?"Copies the tracking number, then opens the carrier's tracker":"Opens the carrier's tracker")+'">TRACK ONLINE \u2197</button>':"")+
       "</div>":"");
   const subRows=
-    row("SHIPPING","<b>"+formatMoney(m.shippingCost||0)+"</b>")+
+    row("SHIPPING","<b>"+money(m.shippingCost||0,m.currency||"RSD")+"</b>")+
     row("SENT","<b>"+(m.dateSent?fmtDate(m.dateSent):"—")+"</b>")+
     (m.deadlineAt?'<div class="pn-mail-card-row pn-mail-deadline-row pn-mail-action-deadline'+actionClass+'"><span>ACTION DEADLINE</span><b>'+escHtml(mailDeadlineLabel(m.deadlineAt))+"</b></div>":"")+
     (m.pickupAvailableFrom?'<div class="pn-mail-card-row pn-mail-deadline-row"><span>PICKUP FROM</span><b>'+escHtml(mailDeadlineLabel(m.pickupAvailableFrom))+"</b></div>":"")+
