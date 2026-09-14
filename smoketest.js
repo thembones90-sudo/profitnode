@@ -87,7 +87,7 @@ checks.push(['road-to route present', routeKeys.includes('roadto')]);
 checks.push(['mail route present', routeKeys.includes('mail')]);
 checks.push(['backup route still present', routeKeys.includes('backup')]);
 const expectedSeq = [
-  ['dashboard','COMMAND'], ['treasury','TREASURY'], ['analytics','INTEL'], ['rigbuild','RIG ASSEMBLY'], ['myrig','MY RIG'],
+  ['dashboard','COMMAND'], ['treasury','WAR CHEST'], ['analytics','INTEL'], ['rigbuild','RIG ASSEMBLY'], ['myrig','MY RIG'],
   ['projects','BUILDS'], ['inventory','PARTS VAULT'], ['repairs','REPAIR BAY'],
   ['roadto','ROAD TO'], ['sales','LEDGER'], ['mail','MAIL'], ['history','ARCHIVE'],
   ['roulette','THE ROULETTE'], ['backup','BLACKBOX'], ['projectbuild','Build Workspace']
@@ -170,19 +170,40 @@ const treasuryProbe = env.run(sandbox, `(() => {
       {name:'GPU sale',amount:50,currency:'EUR',converted:false},
       {name:'Already cash',amount:80,currency:'EUR',converted:true}
     ],
-    incomes:[{source:'Salary',amount:30,currency:'EUR',confidence:'HIGH'}],snapshots:[]
+    incomes:[{source:'Salary',amount:30,currency:'EUR',confidence:'HIGH'}],snapshots:[],
+    flows:[1,2,3,4,5,6].map(i=>({id:'flow-'+i,kind:i===1?'SALE':'ACQUISITION',amount:i*10,currency:'EUR',signedDelta:i===1?10:-i*10,createdAt:'2026-09-0'+i+'T10:00:00Z'}))
   };
   const calc = pnTreasuryCalculate(sample);
   const core = pnTreasuryCoreDraft({balances:[{label:'Payoneer',amount:123,currency:'EUR',include:true},{label:'Payoneer',amount:999,currency:'USD',include:true}]});
   Store.load().treasury = normalizeTreasury(sample); Store.persist();
   const persisted = JSON.parse(localStorage.getItem('profitnode_ledger_v1')).treasury;
+  const page = renderTreasury();
+  state.treasuryFlowFilter = 'SALES';
+  const salesOnly = pnTreasuryActivityRows(Store.load().treasury);
+  state.treasuryFlowFilter = 'ALL'; state.treasuryLedgerExpanded = true;
+  const expandedLedger = pnTreasuryActivityRows(Store.load().treasury);
+  state.treasuryLedgerExpanded = false;
+  state.treasuryDraft = pnTreasuryClone();
+  const drawer = renderTreasury();
+  state.treasuryDraft = null;
   return {
     blankOk:Array.isArray(blank.balances)&&Array.isArray(blank.snapshots),
     liquid:calc.liquid, obligations:calc.obligations, fortress:calc.fortress,
     pending:calc.pending, afterPending:calc.afterPending, afterSalary:calc.afterSalary,
     persisted:!!persisted&&persisted.settings.baseCurrency==='EUR',
     backup:inspectBackupFile({treasury:sample}).treasury===0,
-    routeHtml:/WAR CHEST|War Chest/.test(renderTreasury()) && /RECOUNT THE HOARD/.test(renderTreasury()),
+    routeHtml:/WAR CHEST|War Chest/.test(page) && /RECOUNT THE HOARD/.test(page),
+    sourceCards:(page.match(/data-wc-source=/g)||[]).length,
+    sourceIcons:/payoneer\.svg/.test(page) && /preply\.svg/.test(page) && /fiverr\.ico/.test(page) && /cash\.svg/.test(page),
+    usdNative:pnTreasuryNativeMoney(123.4,'USD')==='$123.40',
+    noDuplicateHoard:!/>Current Hoard</.test(page),
+    movements:/NEXT MOVEMENT/.test(page) && /Obligations/.test(page) && /Pending Conversion/.test(page) && /Projected Hoard/.test(page),
+    ledgerControls:/data-treasury-flow-filter="ALL"/.test(page) && /data-treasury-ledger-toggle/.test(page),
+    ledgerRows:(page.match(/pn-wc-ledger-row /g)||[]).length,
+    ledgerFilter:(salesOnly.match(/pn-wc-ledger-row /g)||[]).length===1 && /Component Sold/.test(salesOnly) && !/Armory Acquisition/.test(salesOnly),
+    ledgerExpanded:(expandedLedger.match(/pn-wc-ledger-row /g)||[]).length===6,
+    drawer:/pn-wc-drawer-shell/.test(drawer) && /role="dialog"/.test(drawer),
+    freshness:/LAST RECOUNTED/.test(page),
     coreLabels:core.balances.slice(0,5).map(b=>b.label).join('|'),
     coreCount:core.balances.filter(b=>b.sourceKey).length,
     payoneerCarry:core.balances[0].amount===123 && core.balances[0].currency==='EUR',
@@ -198,6 +219,16 @@ checks.push(['treasury persists inside the canonical ledger backup', treasuryPro
 checks.push(['TREASURY route renders compact rebalance entry point', treasuryProbe.routeHtml]);
 checks.push(['rebalance draft always contains five canonical balance sources once', treasuryProbe.coreCount === 5 && treasuryProbe.coreLabels === 'Payoneer|Preply|Fiverr|Cash (RSD)|Cash (EUR)']);
 checks.push(['canonical sources preserve prior amounts/currency and cash defaults', treasuryProbe.payoneerCarry && treasuryProbe.cashCurrencies]);
+checks.push(['WAR CHEST renders all five canonical reserve source cards', treasuryProbe.sourceCards === 5]);
+checks.push(['WAR CHEST source cards use local Payoneer, Preply, Fiverr, and cash assets', treasuryProbe.sourceIcons]);
+checks.push(['WAR CHEST keeps USD source balances in native dollar notation', treasuryProbe.usdNative]);
+checks.push(['WAR CHEST replaces the duplicate Current Hoard card with the source breakdown', treasuryProbe.noDuplicateHoard]);
+checks.push(['WAR CHEST consolidates forecast data into the compact movement strip', treasuryProbe.movements]);
+checks.push(['WAR CHEST ledger exposes filters and a bounded latest-five control', treasuryProbe.ledgerControls]);
+checks.push(['WAR CHEST ledger defaults to the latest five movements', treasuryProbe.ledgerRows === 5]);
+checks.push(['WAR CHEST ledger filters and full-ledger expansion preserve their exact scopes', treasuryProbe.ledgerFilter && treasuryProbe.ledgerExpanded]);
+checks.push(['RECOUNT THE HOARD renders as a focused modal drawer', treasuryProbe.drawer]);
+checks.push(['WAR CHEST prominently reports last recount freshness', treasuryProbe.freshness]);
 
 // --- Functional probe (Store/Actions + extensions wiring) ---
 const probe = `

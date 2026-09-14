@@ -154,6 +154,18 @@ async function main() {
     check("COMMAND headers and capped profit glow stay inside narrow surfaces",commandNarrow.headsInside&&commandNarrow.headersFit&&commandNarrow.ambientWidth>0&&commandNarrow.ambientWidth<=560&&commandNarrow.ambientWidth<=commandNarrow.profitWidth,JSON.stringify(commandNarrow));
     await cdp.send("Emulation.setDeviceMetricsOverride",{width:1920,height:1080,deviceScaleFactor:1,mobile:false});
 
+    await evaluate(`document.querySelector('[data-route="treasury"]').click()`);await delay(250);
+    const warChest=await evaluate(`(()=>{const content=document.querySelector('.pn-treasury'),sources=Array.from(document.querySelectorAll('[data-wc-source]')),icons=sources.map(x=>x.querySelector('img')),movement=document.querySelector('.pn-wc-movement-grid');return{title:document.querySelector('h1').textContent,sources:sources.length,iconsLoaded:icons.every(x=>x.complete&&x.naturalWidth>0),currentHoard:document.body.textContent.includes('CURRENT HOARD'),fresh:document.body.textContent.includes('LAST RECOUNTED'),movementCols:getComputedStyle(movement).gridTemplateColumns.split(' ').length,overflow:document.documentElement.scrollWidth>document.documentElement.clientWidth,ledgerRows:document.querySelectorAll('.pn-wc-ledger-row').length}})()`);
+    check("WAR CHEST loads all five local source marks in a clean 1920px reserve row",String(warChest.title).toUpperCase()==='WAR CHEST'&&warChest.sources===5&&warChest.iconsLoaded&&!warChest.currentHoard&&warChest.movementCols===4&&!warChest.overflow,JSON.stringify(warChest));
+    check("WAR CHEST keeps freshness visible and the ledger bounded to five rows",warChest.fresh&&warChest.ledgerRows<=5,JSON.stringify(warChest));
+    await evaluate(`document.querySelector('[data-treasury-new]').click()`);await delay(100);
+    const recountDrawer=await evaluate(`(()=>{const shell=document.querySelector('.pn-wc-drawer-shell'),drawer=document.querySelector('.pn-treasury-editor');return{shell:!!shell,dialog:shell&&shell.getAttribute('role'),height:drawer&&Math.round(drawer.getBoundingClientRect().height),right:drawer&&Math.round(drawer.getBoundingClientRect().right),viewport:innerWidth}})()`);
+    check("RECOUNT THE HOARD opens as a full-height focused drawer",recountDrawer.shell&&recountDrawer.dialog==='dialog'&&recountDrawer.height===1080&&recountDrawer.right===recountDrawer.viewport,JSON.stringify(recountDrawer));
+    await evaluate(`document.querySelector('[data-treasury-cancel]').click()`);
+    const warChestShot=await cdp.send("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
+    fs.writeFileSync(path.join(os.tmpdir(),"profitnode-war-chest-1920.png"),Buffer.from(warChestShot.data,"base64"));
+    check("WAR CHEST renders a valid 1920x1080 frame",!!warChestShot.data&&warChestShot.data.length>10000);
+
     await evaluate(`document.querySelector('[data-route="inventory"]').click();document.querySelector('[data-open-form="inventory"]').click()`);
     let modal=await evaluate(`(()=>{const health=document.querySelector('.pn-storage-only');return {open:!!document.querySelector('form[data-entity-form="inventory"]'),healthHidden:health.hidden,healthDisplay:getComputedStyle(health).display,inspector:!!document.querySelector('[data-pn-tier-inspector]')}})()`);
     check("new inventory opens with the tier inspector",modal.open&&modal.inspector);

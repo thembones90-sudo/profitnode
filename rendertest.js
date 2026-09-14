@@ -66,7 +66,7 @@ const probe = `
   // --- NAV LABELS (terminal naming — replaces old 'RIG BUILD' assertion) ---
   render();
   const shellHtml = renderShell();
-  const navLabels = ['COMMAND','TREASURY','INTEL','RIG ASSEMBLY','MY RIG','BUILDS','PARTS VAULT','REPAIR BAY','ROAD TO','LEDGER','ARCHIVE','THE ROULETTE','BLACKBOX'];
+  const navLabels = ['COMMAND','WAR CHEST','INTEL','RIG ASSEMBLY','MY RIG','BUILDS','PARTS VAULT','REPAIR BAY','ROAD TO','LEDGER','ARCHIVE','THE ROULETTE','BLACKBOX'];
   out.push(['nav shows terminal labels', navLabels.every(l => shellHtml.includes(l))]);
   out.push(['nav no longer shows legacy labels', !shellHtml.includes('RIG BUILD') && !shellHtml.includes('BUILD PLANNER') && !shellHtml.includes('>DASHBOARD<')]);
   out.push(['nav includes the roulette button', shellHtml.includes('data-route="roulette"')]);
@@ -85,7 +85,7 @@ const probe = `
   // --- TREASURY (isolated personal position) ---
   state.route = 'treasury';
   const treasuryHtml = renderShell();
-  out.push(['treasury route renders six strategic cards', (treasuryHtml.match(/pn-treasury-card/g)||[]).length >= 6 && treasuryHtml.includes('FORTRESS RESERVE')]);
+  out.push(['WAR CHEST renders the fortress, five reserves and compact forecast', treasuryHtml.includes('FORTRESS RESERVE') && (treasuryHtml.match(/data-wc-source=/g)||[]).length === 5 && treasuryHtml.includes('FORECAST VECTOR')]);
   out.push(['treasury exposes one compact rebalance entry point', treasuryHtml.includes('data-treasury-new') && treasuryHtml.includes('RECOUNT THE HOARD')]);
   state.treasuryDraft = pnTreasuryClone();
   const treasuryEditHtml = renderTreasury();
