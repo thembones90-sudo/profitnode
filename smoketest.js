@@ -197,20 +197,22 @@ const treasuryProbe = env.run(sandbox, `(() => {
     sourceIcons:/payoneer\.svg/.test(page) && /preply\.svg/.test(page) && /fiverr\.ico/.test(page) && /cash\.svg/.test(page),
     usdNative:pnTreasuryNativeMoney(123.4,'USD')==='$123.40',
     noDuplicateHoard:!/>Current Hoard</.test(page),
-    movements:/NEXT MOVEMENT/.test(page) && /Obligations/.test(page) && /Pending Conversion/.test(page) && /Projected Hoard/.test(page),
-    ledgerControls:/data-treasury-flow-filter="ALL"/.test(page) && /data-treasury-ledger-toggle/.test(page),
+    movements:/>FORECAST</.test(page) && !/FORECAST VECTOR|NEXT MOVEMENT/.test(page) && /Obligations/.test(page) && /Pending Conversion/.test(page) && /Projected Hoard/.test(page),
+    ledgerControls:/data-treasury-flow-filter="ALL"/.test(page) && /data-treasury-flow-filter="SALES"/.test(page) && /data-treasury-flow-filter="SPENDING"/.test(page) && !/data-treasury-flow-filter="INCOME"/.test(page) && !/data-treasury-flow-filter="ADJUSTMENTS"/.test(page) && /data-treasury-ledger-toggle/.test(page),
     ledgerRows:(page.match(/pn-wc-ledger-row /g)||[]).length,
     ledgerFilter:(salesOnly.match(/pn-wc-ledger-row /g)||[]).length===1 && /Component Sold/.test(salesOnly) && !/Armory Acquisition/.test(salesOnly),
     ledgerExpanded:(expandedLedger.match(/pn-wc-ledger-row /g)||[]).length===6,
     drawer:/pn-wc-drawer-shell/.test(drawer) && /role="dialog"/.test(drawer),
-    freshness:/LAST RECOUNTED/.test(page),
+    freshness:/LAST RECOUNTED/.test(page) && !/PLANNING FX/.test(page),
     reserveBands:[pnTreasuryFloor(499.99).band,pnTreasuryFloor(500).band,pnTreasuryFloor(799.99).band,pnTreasuryFloor(800).band].join('|'),
     reserveHero:/data-wc-band="BLOOD"/.test(pnTreasuryHero({fortress:499},{settings:{}},pnTreasuryFloor(499))) && /data-wc-band="YELLOW"/.test(pnTreasuryHero({fortress:500},{settings:{}},pnTreasuryFloor(500))) && /data-wc-band="GREEN"/.test(pnTreasuryHero({fortress:800},{settings:{}},pnTreasuryFloor(800))),
-    reserveIntel:/NEXT GATE/.test(page) && /PROTECTED/.test(page) && /DEPLOYABLE/.test(page) && /RUNWAY/.test(page) && /SURPLUS PROTOCOL/.test(page),
+    reserveIntel:/NEXT GATE/.test(page) && /PROTECTED/.test(page) && /DEPLOYABLE/.test(page) && !/RUNWAY/.test(page) && !/SURPLUS PROTOCOL/.test(page),
     nextGates:pnTreasuryNextGate(420).includes('TO SAFETY') && pnTreasuryNextGate(650).includes('TO GREEN') && pnTreasuryNextGate(900)==='GREEN SECURED',
     runway:pnTreasuryRunway({settings:{},obligations:[{amount:100,currency:'EUR',status:'PENDING',recurring:true}]},{fortress:650})==='6.5 MONTHS',
-    protocol:/€100\.00/.test(pnTreasurySurplusProtocol({fortress:1000})) && /€60\.00/.test(pnTreasurySurplusProtocol({fortress:1000})) && /€40\.00/.test(pnTreasurySurplusProtocol({fortress:1000})),
-    reserveDelta:/SAFETY DEFICIT/.test(pnTreasuryHero({fortress:400},{settings:{},obligations:[]},pnTreasuryFloor(400))) && /SAFETY BUFFER/.test(pnTreasuryHero({fortress:650},{settings:{},obligations:[]},pnTreasuryFloor(650))) && /DEPLOYABLE/.test(pnTreasuryHero({fortress:900},{settings:{},obligations:[]},pnTreasuryFloor(900))),
+    protocol:pnTreasurySurplusProtocol({fortress:650})==='' && /€100\.00/.test(pnTreasurySurplusProtocol({fortress:1000})) && /€60\.00/.test(pnTreasurySurplusProtocol({fortress:1000})) && /€40\.00/.test(pnTreasurySurplusProtocol({fortress:1000})),
+    recurringRunway:/RUNWAY/.test(pnTreasuryHero({fortress:650},{settings:{},obligations:[{amount:100,currency:'EUR',status:'PENDING',recurring:true}]},pnTreasuryFloor(650))),
+    emptyLedger:/NO MOVEMENTS/.test(pnTreasuryActivityPanel({flows:[]})) && !/data-treasury-flow-filter/.test(pnTreasuryActivityPanel({flows:[]})) && !/pn-treasury-empty/.test(pnTreasuryActivityPanel({flows:[]})),
+    cashEurCompact:!/<small>/.test((pnTreasurySourceCards(core).match(/data-wc-source="CASH_EUR"[\\s\\S]*?<\\/article>/)||[''])[0]),
     coreLabels:core.balances.slice(0,5).map(b=>b.label).join('|'),
     coreCount:core.balances.filter(b=>b.sourceKey).length,
     payoneerCarry:core.balances[0].amount===123 && core.balances[0].currency==='EUR',
@@ -237,9 +239,9 @@ checks.push(['WAR CHEST ledger filters and full-ledger expansion preserve their 
 checks.push(['RECOUNT THE HOARD renders as a focused modal drawer', treasuryProbe.drawer]);
 checks.push(['WAR CHEST prominently reports last recount freshness', treasuryProbe.freshness]);
 checks.push(['Fortress Reserve boundaries are BLOOD below €500, YELLOW through €799.99, and GREEN from €800', treasuryProbe.reserveBands === 'BLOOD|YELLOW|YELLOW|GREEN' && treasuryProbe.reserveHero]);
-checks.push(['Fortress Reserve exposes next gate, protected capital, deployable surplus, and runway intelligence', treasuryProbe.reserveIntel && treasuryProbe.nextGates && treasuryProbe.runway]);
+checks.push(['Fortress Reserve keeps core intelligence compact and shows runway only when recurring dues exist', treasuryProbe.reserveIntel && treasuryProbe.nextGates && treasuryProbe.runway && treasuryProbe.recurringRunway]);
 checks.push(['Surplus protocol advises a 50/30/20 split only above the protected €800 reserve', treasuryProbe.protocol]);
-checks.push(['Fortress hero distinguishes safety deficit, yellow buffer, and truly deployable green surplus', treasuryProbe.reserveDelta]);
+checks.push(['WAR CHEST empty ledger and native EUR reserve avoid redundant controls and duplicate equivalents', treasuryProbe.emptyLedger && treasuryProbe.cashEurCompact]);
 
 // --- Functional probe (Store/Actions + extensions wiring) ---
 const probe = `

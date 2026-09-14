@@ -85,7 +85,7 @@ const probe = `
   // --- TREASURY (isolated personal position) ---
   state.route = 'treasury';
   const treasuryHtml = renderShell();
-  out.push(['WAR CHEST renders the fortress, five reserves and compact forecast', treasuryHtml.includes('FORTRESS RESERVE') && (treasuryHtml.match(/data-wc-source=/g)||[]).length === 5 && treasuryHtml.includes('FORECAST VECTOR')]);
+  out.push(['WAR CHEST renders the fortress, five reserves and compact forecast', treasuryHtml.includes('FORTRESS RESERVE') && (treasuryHtml.match(/data-wc-source=/g)||[]).length === 5 && treasuryHtml.includes('>FORECAST<') && !treasuryHtml.includes('FORECAST VECTOR')]);
   out.push(['treasury exposes one compact rebalance entry point', treasuryHtml.includes('data-treasury-new') && treasuryHtml.includes('RECOUNT THE HOARD')]);
   state.treasuryDraft = pnTreasuryClone();
   const treasuryEditHtml = renderTreasury();
