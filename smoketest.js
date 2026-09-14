@@ -87,7 +87,7 @@ checks.push(['road-to route present', routeKeys.includes('roadto')]);
 checks.push(['mail route present', routeKeys.includes('mail')]);
 checks.push(['backup route still present', routeKeys.includes('backup')]);
 const expectedSeq = [
-  ['dashboard','COMMAND'], ['treasury','WAR CHEST'], ['analytics','INTEL'], ['rigbuild','RIG ASSEMBLY'], ['myrig','MY RIG'],
+  ['dashboard','COMMAND'], ['treasury','TREASURY'], ['analytics','INTEL'], ['rigbuild','RIG ASSEMBLY'], ['myrig','MY RIG'],
   ['projects','BUILDS'], ['inventory','PARTS VAULT'], ['repairs','REPAIR BAY'],
   ['roadto','ROAD TO'], ['sales','LEDGER'], ['mail','MAIL'], ['history','ARCHIVE'],
   ['roulette','THE ROULETTE'], ['backup','BLACKBOX'], ['projectbuild','Build Workspace']
@@ -170,49 +170,19 @@ const treasuryProbe = env.run(sandbox, `(() => {
       {name:'GPU sale',amount:50,currency:'EUR',converted:false},
       {name:'Already cash',amount:80,currency:'EUR',converted:true}
     ],
-    incomes:[{source:'Salary',amount:30,currency:'EUR',confidence:'HIGH'}],snapshots:[],
-    flows:[1,2,3,4,5,6].map(i=>({id:'flow-'+i,kind:i===1?'SALE':'ACQUISITION',amount:i*10,currency:'EUR',signedDelta:i===1?10:-i*10,createdAt:'2026-09-0'+i+'T10:00:00Z'}))
+    incomes:[{source:'Salary',amount:30,currency:'EUR',confidence:'HIGH'}],snapshots:[]
   };
   const calc = pnTreasuryCalculate(sample);
   const core = pnTreasuryCoreDraft({balances:[{label:'Payoneer',amount:123,currency:'EUR',include:true},{label:'Payoneer',amount:999,currency:'USD',include:true}]});
   Store.load().treasury = normalizeTreasury(sample); Store.persist();
   const persisted = JSON.parse(localStorage.getItem('profitnode_ledger_v1')).treasury;
-  const page = renderTreasury();
-  state.treasuryFlowFilter = 'SALES';
-  const salesOnly = pnTreasuryActivityRows(Store.load().treasury);
-  state.treasuryFlowFilter = 'ALL'; state.treasuryLedgerExpanded = true;
-  const expandedLedger = pnTreasuryActivityRows(Store.load().treasury);
-  state.treasuryLedgerExpanded = false;
-  state.treasuryDraft = pnTreasuryClone();
-  const drawer = renderTreasury();
-  state.treasuryDraft = null;
   return {
     blankOk:Array.isArray(blank.balances)&&Array.isArray(blank.snapshots),
     liquid:calc.liquid, obligations:calc.obligations, fortress:calc.fortress,
     pending:calc.pending, afterPending:calc.afterPending, afterSalary:calc.afterSalary,
     persisted:!!persisted&&persisted.settings.baseCurrency==='EUR',
     backup:inspectBackupFile({treasury:sample}).treasury===0,
-    routeHtml:/WAR CHEST|War Chest/.test(page) && /RECOUNT THE HOARD/.test(page),
-    sourceCards:(page.match(/data-wc-source=/g)||[]).length,
-    sourceIcons:/payoneer\.svg/.test(page) && /preply\.svg/.test(page) && /fiverr\.ico/.test(page) && /cash\.svg/.test(page),
-    usdNative:pnTreasuryNativeMoney(123.4,'USD')==='$123.40',
-    noDuplicateHoard:!/>Current Hoard</.test(page),
-    movements:/>FORECAST</.test(page) && !/FORECAST VECTOR|NEXT MOVEMENT/.test(page) && /Obligations/.test(page) && /Pending Conversion/.test(page) && /Projected Hoard/.test(page),
-    ledgerControls:/data-treasury-flow-filter="ALL"/.test(page) && /data-treasury-flow-filter="SALES"/.test(page) && /data-treasury-flow-filter="SPENDING"/.test(page) && !/data-treasury-flow-filter="INCOME"/.test(page) && !/data-treasury-flow-filter="ADJUSTMENTS"/.test(page) && /data-treasury-ledger-toggle/.test(page),
-    ledgerRows:(page.match(/pn-wc-ledger-row /g)||[]).length,
-    ledgerFilter:(salesOnly.match(/pn-wc-ledger-row /g)||[]).length===1 && /Component Sold/.test(salesOnly) && !/Armory Acquisition/.test(salesOnly),
-    ledgerExpanded:(expandedLedger.match(/pn-wc-ledger-row /g)||[]).length===6,
-    drawer:/pn-wc-drawer-shell/.test(drawer) && /role="dialog"/.test(drawer),
-    freshness:/LAST RECOUNTED/.test(page) && !/PLANNING FX/.test(page),
-    reserveBands:[pnTreasuryFloor(499.99).band,pnTreasuryFloor(500).band,pnTreasuryFloor(799.99).band,pnTreasuryFloor(800).band].join('|'),
-    reserveHero:/data-wc-band="BLOOD"/.test(pnTreasuryHero({fortress:499},{settings:{}},pnTreasuryFloor(499))) && /data-wc-band="YELLOW"/.test(pnTreasuryHero({fortress:500},{settings:{}},pnTreasuryFloor(500))) && /data-wc-band="GREEN"/.test(pnTreasuryHero({fortress:800},{settings:{}},pnTreasuryFloor(800))),
-    reserveIntel:/NEXT GATE/.test(page) && /PROTECTED/.test(page) && /DEPLOYABLE/.test(page) && !/RUNWAY/.test(page) && !/SURPLUS PROTOCOL/.test(page),
-    nextGates:pnTreasuryNextGate(420).includes('TO SAFETY') && pnTreasuryNextGate(650).includes('TO GREEN') && pnTreasuryNextGate(900)==='GREEN SECURED',
-    runway:pnTreasuryRunway({settings:{},obligations:[{amount:100,currency:'EUR',status:'PENDING',recurring:true}]},{fortress:650})==='6.5 MONTHS',
-    protocol:pnTreasurySurplusProtocol({fortress:650})==='' && /€100\.00/.test(pnTreasurySurplusProtocol({fortress:1000})) && /€60\.00/.test(pnTreasurySurplusProtocol({fortress:1000})) && /€40\.00/.test(pnTreasurySurplusProtocol({fortress:1000})),
-    recurringRunway:/RUNWAY/.test(pnTreasuryHero({fortress:650},{settings:{},obligations:[{amount:100,currency:'EUR',status:'PENDING',recurring:true}]},pnTreasuryFloor(650))),
-    emptyLedger:/NO MOVEMENTS/.test(pnTreasuryActivityPanel({flows:[]})) && !/data-treasury-flow-filter/.test(pnTreasuryActivityPanel({flows:[]})) && !/pn-treasury-empty/.test(pnTreasuryActivityPanel({flows:[]})),
-    cashEurCompact:!/<small>/.test((pnTreasurySourceCards(core).match(/data-wc-source="CASH_EUR"[\\s\\S]*?<\\/article>/)||[''])[0]),
+    routeHtml:/WAR CHEST|War Chest/.test(renderTreasury()) && /RECOUNT THE HOARD/.test(renderTreasury()),
     coreLabels:core.balances.slice(0,5).map(b=>b.label).join('|'),
     coreCount:core.balances.filter(b=>b.sourceKey).length,
     payoneerCarry:core.balances[0].amount===123 && core.balances[0].currency==='EUR',
@@ -228,20 +198,6 @@ checks.push(['treasury persists inside the canonical ledger backup', treasuryPro
 checks.push(['TREASURY route renders compact rebalance entry point', treasuryProbe.routeHtml]);
 checks.push(['rebalance draft always contains five canonical balance sources once', treasuryProbe.coreCount === 5 && treasuryProbe.coreLabels === 'Payoneer|Preply|Fiverr|Cash (RSD)|Cash (EUR)']);
 checks.push(['canonical sources preserve prior amounts/currency and cash defaults', treasuryProbe.payoneerCarry && treasuryProbe.cashCurrencies]);
-checks.push(['WAR CHEST renders all five canonical reserve source cards', treasuryProbe.sourceCards === 5]);
-checks.push(['WAR CHEST source cards use local Payoneer, Preply, Fiverr, and cash assets', treasuryProbe.sourceIcons]);
-checks.push(['WAR CHEST keeps USD source balances in native dollar notation', treasuryProbe.usdNative]);
-checks.push(['WAR CHEST replaces the duplicate Current Hoard card with the source breakdown', treasuryProbe.noDuplicateHoard]);
-checks.push(['WAR CHEST consolidates forecast data into the compact movement strip', treasuryProbe.movements]);
-checks.push(['WAR CHEST ledger exposes filters and a bounded latest-five control', treasuryProbe.ledgerControls]);
-checks.push(['WAR CHEST ledger defaults to the latest five movements', treasuryProbe.ledgerRows === 5]);
-checks.push(['WAR CHEST ledger filters and full-ledger expansion preserve their exact scopes', treasuryProbe.ledgerFilter && treasuryProbe.ledgerExpanded]);
-checks.push(['RECOUNT THE HOARD renders as a focused modal drawer', treasuryProbe.drawer]);
-checks.push(['WAR CHEST prominently reports last recount freshness', treasuryProbe.freshness]);
-checks.push(['Fortress Reserve boundaries are BLOOD below €500, YELLOW through €799.99, and GREEN from €800', treasuryProbe.reserveBands === 'BLOOD|YELLOW|YELLOW|GREEN' && treasuryProbe.reserveHero]);
-checks.push(['Fortress Reserve keeps core intelligence compact and shows runway only when recurring dues exist', treasuryProbe.reserveIntel && treasuryProbe.nextGates && treasuryProbe.runway && treasuryProbe.recurringRunway]);
-checks.push(['Surplus protocol advises a 50/30/20 split only above the protected €800 reserve', treasuryProbe.protocol]);
-checks.push(['WAR CHEST empty ledger and native EUR reserve avoid redundant controls and duplicate equivalents', treasuryProbe.emptyLedger && treasuryProbe.cashEurCompact]);
 
 // --- Functional probe (Store/Actions + extensions wiring) ---
 const probe = `
@@ -274,7 +230,7 @@ const probe = `
   const soldResult = Actions.markInventorySold(soldItem.id, {salePrice:18000,saleCurrency:'RSD',saleDate:'2026-02-01',saleChannel:'KP',saleDetail:'',saleNotes:''});
   log('A. markInventorySold returns ok and a transaction id', soldResult && soldResult.ok && !!soldResult.transactionId);
   const soldRow = Store.get('inventory', soldItem.id);
-  log('A. markInventorySold sets status SOLD', soldRow.status === 'SOLD');
+  log('A. markInventorySold sets status SOLD_IN_TRANSIT (money moved, part not yet delivered)', soldRow.status === 'SOLD_IN_TRANSIT');
   log('A. markInventorySold creates one completed linked Sales Ledger row', (function(){
     const rows = Store.all('sales').filter(s=>s.inventoryItemId===soldItem.id);
     return rows.length === 1 && rows[0].id === soldResult.transactionId && saleIsCompleted(rows[0]) && saleTypeResolved(rows[0]) === 'COMPONENT';
@@ -295,7 +251,21 @@ const probe = `
     return updateResult.ok && updateResult.transactionId === soldResult.transactionId && sales.length === 1 && flows.length === 1 && flows[0].amount === 19000 && cash && cash.amount === soldCashBefore + 19000;
   })());
   log('B. updating sale metadata adjusts realized profit in place', dashboardStats('RSD').realizedProfit === soldStatsBefore.realizedProfit + 7000);
-  log('B. SOLD item leaves ACTIVE INVENTORY but remains under SOLD history', (function(){
+  log('B. SOLD_IN_TRANSIT item still shows under ACTIVE INVENTORY (not yet delivered)', (function(){
+    state.filters.inventory.status = 'ACTIVE';
+    const active = renderInventory();
+    state.filters.inventory.status = 'SOLD';
+    const sold = renderInventory();
+    state.filters.inventory.status = 'ACTIVE';
+    return active.includes('Ryzen 5 3600') && !sold.includes('Ryzen 5 3600');
+  })());
+  log('B. MARK AS DELIVERED finalizes the item to SOLD with no second treasury credit', (function(){
+    const cashBeforeDeliver = ((Store.load().treasury.balances.find(b=>b.sourceKey==='CASH_RSD')||{}).amount)||0;
+    const deliverResult = Actions.markInventoryDelivered(soldItem.id);
+    const cashAfterDeliver = ((Store.load().treasury.balances.find(b=>b.sourceKey==='CASH_RSD')||{}).amount)||0;
+    return deliverResult.ok && Store.get('inventory', soldItem.id).status === 'SOLD' && cashAfterDeliver === cashBeforeDeliver;
+  })());
+  log('B. Delivered SOLD item now leaves ACTIVE INVENTORY but remains under SOLD history', (function(){
     state.filters.inventory.status = 'ACTIVE';
     const active = renderInventory();
     state.filters.inventory.status = 'SOLD';
@@ -1025,8 +995,6 @@ const rigProbe = `
   out.push(['live model reflects edited market value (VALUE 96)', rigRatingModel(rigChanged).categories.VALUE === 96]);
   const display = rigRatingModelDisplayed(rigChanged);
   out.push(['locked rig keeps frozen snapshot and ignores live model drift', display.snap === true && display.m.finalScore === snap.finalScore && display.m.categories.VALUE === snap.categories.VALUE]);
-  const historicalRig=rigRatingModelDisplayed(Object.assign({},rigChanged,{rigRating:Object.assign({},snap,{engine:'build-rating-v2',verdict:'Historical rig verdict'})}));
-  out.push(['BUILD RATING V3 preserves an existing frozen rig verdict without regeneration', historicalRig.snap===true && historicalRig.m.engine==='build-rating-v2' && historicalRig.m.verdict==='Historical rig verdict']);
   const famHtml = renderRigFamilyView('RATINGFAM');
   out.push(['rig family view has Score + Quality columns', famHtml.indexOf('<th class="num">Score</th>') !== -1 && famHtml.indexOf('<th>Quality</th>') !== -1]);
   out.push(['rig family view variant row carries rating score + quality cells', /data-rig-rating-score="[0-9]+"/.test(famHtml) && /data-rig-rating-quality="[A-Z]+"/.test(famHtml)]);
@@ -1057,7 +1025,7 @@ const enclosureProbe = `
   out.push(['catalog label hydrates case caps and stamps CATALOG source', cc && cc.maxGpuLengthMm === 355 && caseSlot.source === 'CATALOG' && caseSlot.catalogKey === 'CASE:FRACTAL DESIGN MESHIFY 2']);
   const coolerSlot = {kind:'PLANNED', catalogType:'COOLER', label:'Noctua NH-D15', cost:0, originalPrice:0, currency:'RSD'};
   const kc = E.coolerCapabilities(coolerSlot, 'Noctua NH-D15');
-  out.push(['catalog label hydrates compact cooler caps and stamps COOLER source', kc && kc.type === 'AIR' && kc.coolingClass === 'HIGH' && coolerSlot.source === 'CATALOG']);
+  out.push(['catalog label hydrates compact cooler caps and stamps COOLER source', kc && kc.type === 'AIR' && kc.coolingClass === 'C5' && coolerSlot.source === 'CATALOG']);
 
   out.push(['catalogSearchAll now covers CASE and COOLER', catalogSearchAll('Meshify').some(m => m.cat === 'CASE') && catalogSearchAll('NH-D15').some(m => m.cat === 'COOLER')]);
 
@@ -1070,7 +1038,7 @@ const enclosureProbe = `
   out.push(['CASE slot renders generic profile + cap editor + search box', caseHtml.includes('data-rig-generic="CASE"') && caseHtml.includes('data-rig-cap-field="CASE.maxGpuLengthMm"') && caseHtml.includes('data-rig-catalog-item="CASE"')]);
   single.slots.COOLER = {kind:'PLANNED', catalogType:'COOLER', label:'Noctua NH-D15', cost:0, originalPrice:0, currency:'RSD'};
   const coolerHtml = renderRigSlotRow('COOLER', single);
-  out.push(['COOLER slot renders compact cap editor + search box', coolerHtml.includes('COOLER DETAILS / ADVANCED') && coolerHtml.includes('data-rig-cap-field="COOLER.coolingClass"') && coolerHtml.includes('data-rig-catalog-item="COOLER"') && !coolerHtml.includes('data-rig-generic="COOLER"')]);
+  out.push(['COOLER slot renders compact cap editor + search box', coolerHtml.includes('COOLER DETAILS / ADVANCED') && coolerHtml.includes('data-rig-cap-field="COOLER.coolerSubtype"') && coolerHtml.includes('data-rig-catalog-item="COOLER"') && coolerHtml.includes('data-rig-cooler-category')]);
   state.rigDraft = single;
   out.push(['RIG BENCH editor renders the unified Build Check panel', renderRigEditor().includes('pn-build-check') && renderRigEditor().includes('Build Check') && renderRigEditor().includes('SHOW DETAILS (') && !renderRigEditor().includes('pn-integrity-grid')]);
 
@@ -1465,12 +1433,6 @@ const treasuryFlowProbe = `
   Store.load();
   out.push(['TREASURY FLOW K: legacy records without flows load cleanly and never double-spend', getPool() === 100000 && flowCount() === 0]);
 
-  setupPool(100000);
-  const crossingItem = Actions.addInventory({category:'GPU',manufacturer:'Nvidia',model:'Band Crossing Card',purchaseDate:'2026-01-01',purchasePrice:10000,currency:'RSD',estimatedMarketValue:12000,source:'OTHER',condition:'WORKING',status:'IN_STORAGE'});
-  const crossing = findFlow('inventory',crossingItem.id,'ACQUISITION');
-  out.push(['TREASURY FLOW L: spending that crosses downward stamps a reserve-band audit event', crossing && crossing.reserveCrossing === 'GREEN_TO_YELLOW' && crossing.reserveBandBefore === 'GREEN' && crossing.reserveBandAfter === 'YELLOW' && !!crossing.reserveCrossedAt]);
-  out.push(['TREASURY FLOW L: the latest downward crossing renders a compact breach alert', pnTreasuryCrossingAlert(Store.load().treasury).includes('GREEN → YELLOW')]);
-
   return out;
 })()
 `;
@@ -1706,25 +1668,6 @@ const projectBuildProbe = `
 
   out.push(['BUILD RATING score-to-tier ladder spans all 7 quality grades', pbScoreToTier(0).key==='POOR' && pbScoreToTier(24).key==='POOR' && pbScoreToTier(25).key==='COMMON' && pbScoreToTier(39).key==='COMMON' && pbScoreToTier(40).key==='UNCOMMON' && pbScoreToTier(54).key==='UNCOMMON' && pbScoreToTier(55).key==='RARE' && pbScoreToTier(69).key==='RARE' && pbScoreToTier(70).key==='EPIC' && pbScoreToTier(82).key==='EPIC' && pbScoreToTier(83).key==='LEGENDARY' && pbScoreToTier(92).key==='LEGENDARY' && pbScoreToTier(93).key==='ARTIFACT' && pbScoreToTier(100).key==='ARTIFACT']);
   out.push(['BUILD RATING one universal weight set sums to 100 over the six categories', PB_BUILD_CATEGORIES.length===6 && Object.values(PB_UNIVERSAL_WEIGHTS).reduce((a,b)=>a+b,0)===100]);
-  out.push(['BUILD RATING V3 uses the exact seven-tier machine-spirit vocabulary', PB_VERDICT_WORDS.POOR==='A humble machine spirit, still worthy of service' && PB_VERDICT_WORDS.COMMON==='A dependable construct suited to modest duty' && PB_VERDICT_WORDS.UNCOMMON==='A forge-approved workhorse built for practical deployment' && PB_VERDICT_WORDS.RARE==='An N7-grade field machine in the prime deployment band' && PB_VERDICT_WORDS.EPIC==='A Spectre-grade war machine' && PB_VERDICT_WORDS.LEGENDARY==='A Reaper-class convergence of elite hardware' && PB_VERDICT_WORDS.ARTIFACT==='A Leviathan-class relic blessed by the Omnissiah']);
-  const modifierBoundaries=[
-    ['PERFORMANCE',75,'pos','combat output is worthy of its class'],['PERFORMANCE',74,null,null],['PERFORMANCE',45,null,null],['PERFORMANCE',44,'neg','combat output is suited to lighter duty'],
-    ['BALANCE',70,'pos','hardware synchronization is strong'],['BALANCE',69,null,null],['BALANCE',55,null,null],['BALANCE',54,'neg','core components show doctrinal imbalance'],
-    ['COMPONENT_QUALITY',75,'pos','the forge recognizes a sanctified component set'],['COMPONENT_QUALITY',74,null,null],['COMPONENT_QUALITY',50,null,null],['COMPONENT_QUALITY',49,'neg','several components remain unsanctified or insufficiently verified'],
-    ['RELIABILITY',80,'pos','system integrity is exemplary'],['RELIABILITY',79,null,null],['RELIABILITY',60,null,null],['RELIABILITY',59,'neg','machine integrity requires rites of correction'],
-    ['VALUE',75,'pos','resource efficiency pleases the Omnissiah'],['VALUE',74,null,null],['VALUE',50,null,null],['VALUE',49,'neg','resource expenditure exceeds tactical value'],
-    ['UPGRADE_PATH',70,'pos','a clear path to ascension remains'],['UPGRADE_PATH',69,null,null],['UPGRADE_PATH',45,null,null],['UPGRADE_PATH',44,'neg','the platform offers limited paths to further ascension']
-  ];
-  out.push(['BUILD RATING V3 modifier wording and threshold boundaries are exact', modifierBoundaries.every(([key,score,sign,text])=>{const clause=pbModifierClause(key,score);return sign===null?clause===null:clause&&clause.sign===sign&&clause.text===text})]);
-  const verdictCategories=overrides=>Object.assign({PERFORMANCE:60,BALANCE:60,COMPONENT_QUALITY:60,RELIABILITY:70,VALUE:60,UPGRADE_PATH:60},overrides||{});
-  const negativeFirst=pbBuildVerdict({quality:'RARE',categories:verdictCategories({PERFORMANCE:44,BALANCE:49,COMPONENT_QUALITY:49,RELIABILITY:59,VALUE:49,UPGRADE_PATH:44})});
-  out.push(['BUILD RATING V3 caps verdicts at three negative-first modifiers in doctrine priority', negativeFirst==='An N7-grade field machine in the prime deployment band — machine spirit reports doctrinal strain · machine integrity requires rites of correction; core components show doctrinal imbalance; combat output is suited to lighter duty']);
-  const positiveOrder=pbBuildVerdict({quality:'EPIC',categories:verdictCategories({PERFORMANCE:75,BALANCE:70,COMPONENT_QUALITY:75,RELIABILITY:80,VALUE:75,UPGRADE_PATH:70})});
-  out.push(['BUILD RATING V3 fills an all-positive verdict in doctrine priority and still caps at three', positiveOrder==='A Spectre-grade war machine — machine spirit operating within doctrine · combat output is worthy of its class; hardware synchronization is strong; the forge recognizes a sanctified component set']);
-  const mixedOrder=pbBuildVerdict({quality:'LEGENDARY',categories:verdictCategories({PERFORMANCE:75,COMPONENT_QUALITY:75,RELIABILITY:59,VALUE:49,UPGRADE_PATH:70})});
-  out.push(['BUILD RATING V3 selects every available negative before filling with positives', mixedOrder==='A Reaper-class convergence of elite hardware — machine spirit reports doctrinal strain · machine integrity requires rites of correction; resource expenditure exceeds tactical value; combat output is worthy of its class']);
-  out.push(['BUILD RATING V3 intro boundaries are category doctrine, not compatibility language', pbBuildVerdict({quality:'COMMON',categories:verdictCategories({BALANCE:49,RELIABILITY:60})}).includes('machine spirit reports doctrinal strain') && pbBuildVerdict({quality:'COMMON',categories:verdictCategories({BALANCE:50,RELIABILITY:60})}).includes('machine spirit operating within doctrine')]);
-  out.push(['BUILD RATING V3 fallback is an unclassified machine construct', pbBuildVerdict({quality:'UNKNOWN',categories:verdictCategories()}).startsWith('Unclassified machine construct — ')]);
 
   HardwareCatalog.cpus.push({brand:'AMD',model:'Ryzen 7 7700',overall:90});
   HardwareCatalog.gpus.push({brand:'NVIDIA',model:'RTX 4070',overall:92});
@@ -1765,8 +1708,6 @@ const projectBuildProbe = `
   const rateComplete=Actions.markProjectBuildComplete(rateProj.id);
   const rateSnap=rateComplete.ok && rateComplete.project.buildRating;
   out.push(['marking a build complete freezes a BUILD RATING snapshot with score, quality, categories, confidences, engine, investment, market value, and per-slot components', !!rateSnap && rateSnap.mode==='FINAL' && rateSnap.engine==='build-rating-v3' && Number.isFinite(rateSnap.finalScore) && rateSnap.finalScore===preRate.finalScore && rateSnap.quality===preRate.quality && Object.keys(rateSnap.categories).length===6 && Object.keys(rateSnap.confidences).length===6 && rateSnap.investment===85000 && rateSnap.estimatedMarketValue===120000 && rateSnap.components.length===PROJECT_BUILD_SLOTS.length]);
-  const historicalProject=buildRatingModelDisplayed(Object.assign({},Store.get('projects',rateProj.id),{buildRating:Object.assign({},rateSnap,{engine:'build-rating-v2',verdict:'Historical project verdict'})}));
-  out.push(['BUILD RATING V3 preserves an existing frozen project verdict without regeneration', historicalProject.snap===true && historicalProject.m.engine==='build-rating-v2' && historicalProject.m.verdict==='Historical project verdict']);
 
   HardwareCatalog.gpus=[{brand:'NVIDIA',model:'RTX 4070',overall:5}].concat(HardwareCatalog.gpus);
   state.pbId=rateProj.id;

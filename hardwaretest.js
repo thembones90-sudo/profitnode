@@ -331,7 +331,7 @@ const results = env.run(sandbox, `(() => {
   HardwareCatalog.cases = canonicalCases.cases;
   HardwareCatalog.coolers = canonicalCoolers.coolers;
   out.push(['canonical case catalog is loaded with 24 entries', HardwareCatalog.cases.length === 24]);
-  out.push(['canonical cooler catalog is loaded with 30 entries', HardwareCatalog.coolers.length === 30]);
+  out.push(['canonical cooler catalog is loaded with 44 entries', HardwareCatalog.coolers.length === 44]);
   out.push(['case catalog searches brand + model', catalogSearch('CASE','Lancool 216').some(e => e.brand === 'Lian Li' && e.model === 'Lancool 216')]);
   out.push(['cooler catalog searches brand + model', catalogSearch('COOLER','NH-D15').some(e => e.brand === 'Noctua' && e.caps.type === 'DUAL TOWER')]);
   out.push(['cooler and case names receive restrained category-aware tiers', pnPartNameTier({category:'COOLING',manufacturer:'Noctua',model:'NH-D15'}).key==='LEGENDARY'&&pnPartNameTier({category:'CASE',manufacturer:'Lian Li',model:'Lancool 216'}).key==='RARE'&&pnPartNameHtml({category:'COOLING',manufacturer:'Noctua',model:'NH-D15'}).includes('pn-part-name-subtle')]);
@@ -346,7 +346,7 @@ const results = env.run(sandbox, `(() => {
   const coolerSlotHtml = renderRigSlotRow('COOLER',encRig);
   out.push(['COOLER slot renders the compact final component editor', coolerSlotHtml.includes('COOLER DETAILS / ADVANCED') && coolerSlotHtml.includes('data-rig-cap-field="COOLER.coolingClass"') && coolerSlotHtml.includes('data-rig-catalog-item="COOLER"') && coolerSlotHtml.includes('FIT:')]);
   out.push(['COOLER UI omits nonessential technical fields', !/TDP class|Fan count|Noise class|RAM clearance|Heatpipe|Pump speed/i.test(coolerSlotHtml)]);
-  out.push(['legacy cooler catalog values normalize to AIR and BASIC/MID/HIGH', (function(){const c=normalizeCoolerCaps({type:'DUAL TOWER',coolingClass:'EXTREME'});return c.type==='AIR'&&c.coolingClass==='HIGH'})()]);
+  out.push(['legacy cooler catalog values normalize to AIR and C1-C5', (function(){const c=normalizeCoolerCaps({type:'DUAL TOWER',coolingClass:'EXTREME'});return c.type==='AIR'&&c.coolingClass==='C5'})()]);
 
   const stockSpec=[["AMD Stock Cooler",30,"COMMON"],["Wraith Stealth",28,"COMMON"],["Wraith Spire",42,"UNCOMMON"],["Wraith Spire RGB",44,"UNCOMMON"],["Wraith Max",57,"RARE"],["Wraith Prism",60,"RARE"],["Intel Stock Cooler",22,"POOR"],["Laminar RS1",24,"POOR"],["Laminar RM1",32,"COMMON"],["Laminar RH1",52,"UNCOMMON"]];
   const coolerByModel=m=>HardwareCatalog.coolers.find(e=>e.model===m);
@@ -354,7 +354,7 @@ const results = env.run(sandbox, `(() => {
   out.push(['stock cooler scores resolve through COOLER-specific thresholds, never CPU/GPU ones', catalogTier('COOLER',{model:'x',pn_score:28})===1&&cpuGearTier({model:'x',pn_score:28})===0&&catalogTier('COOLER',{model:'x',pn_score:42})===2&&motherboardGearTier({model:'x',pn_score:42})===1&&catalogTier('COOLER',{model:'x',pn_score:57})===3&&motherboardGearTier({model:'x',pn_score:57})===2]);
   out.push(['stock origin never forces POOR — Wraith Prism and Wraith Max rate RARE', catalogTier('COOLER',coolerByModel('Wraith Prism'))===3&&catalogTier('COOLER',coolerByModel('Wraith Max'))===3&&catalogTier('COOLER',coolerByModel('Wraith Stealth'))===1]);
   out.push(['boxed cooler scores follow the AMD and Intel capability ladders', coolerByModel('Wraith Prism').pn_score>coolerByModel('Wraith Max').pn_score&&coolerByModel('Wraith Max').pn_score>coolerByModel('Wraith Spire RGB').pn_score&&coolerByModel('Wraith Spire RGB').pn_score>=coolerByModel('Wraith Spire').pn_score&&coolerByModel('Wraith Spire').pn_score>coolerByModel('AMD Stock Cooler').pn_score&&coolerByModel('AMD Stock Cooler').pn_score>coolerByModel('Wraith Stealth').pn_score&&coolerByModel('Laminar RH1').pn_score>coolerByModel('Laminar RM1').pn_score&&coolerByModel('Laminar RM1').pn_score>coolerByModel('Laminar RS1').pn_score&&coolerByModel('Laminar RS1').pn_score>coolerByModel('Intel Stock Cooler').pn_score]);
-  out.push(['stock-class search terms surface the boxed cooler family', ["stock","wraith","stealth","spire","prism","max","laminar","rs1","rm1","rh1","amd stock","intel stock"].every(t=>catalogSearch('COOLER',t).length>=1)&&catalogSearch('COOLER','stock').length===10]);
+  out.push(['stock-class search terms surface the boxed cooler family', ["stock","wraith","stealth","spire","prism","max","laminar","rs1","rm1","rh1","amd stock","intel stock"].every(t=>catalogSearch('COOLER',t).length>=1)&&catalogSearch('COOLER','stock',20).length===13]);
   out.push(['scored boxed coolers render a tier pill and glow in the rig slot row', (function(){const r=goodRig();r.slots.COOLER={kind:'CATALOG',catalogType:'COOLER',label:'AMD Wraith Prism',cost:0,originalPrice:0,currency:'RSD'};const h=renderRigSlotRow('COOLER',r);return h.includes('pn-tier-rare')&&h.includes('Tier')&&h.includes('FIT:')})()]);
   out.push(['uncataloged coolers stay UNRATED with no tier pill', (function(){const r=goodRig();r.slots.COOLER={kind:'CATALOG',catalogType:'COOLER',label:'Arctic Liquid Freezer III 240',cost:0,originalPrice:0,currency:'RSD'};const h=renderRigSlotRow('COOLER',r);return !(/\bTier\b/.test(h))})()]);
 
@@ -387,7 +387,7 @@ const results = env.run(sandbox, `(() => {
   out.push(['EXCELLENT build has every present check PASS or informational', perfectIt.checks.every(c => c.status === 'PASS' || c.status === 'INFO') && perfectIt.checks.filter(c => c.status === 'WARN' || c.status === 'FAIL').length === 0]);
   const socketFail=goodRig();socketFail.slots.COOLER.caps.sockets=['LGA1700'];
   out.push(['incompatible cooler socket is a confirmed FAIL', rigIntegrity(socketFail).checks.some(c=>c.id==='CPU_SOCKET'&&c.status==='FAIL')]);
-  const weakCooler=goodRig();weakCooler.slots.CPU=cat2('CPU','AMD Ryzen 7 5800X3D');weakCooler.slots.COOLER.caps.coolingClass='BASIC';
+  const weakCooler=goodRig();weakCooler.slots.CPU=cat2('CPU','AMD Ryzen 7 5800X3D');weakCooler.slots.COOLER.caps.coolerSubtype='LOW_PROFILE';
   out.push(['obviously inadequate cooler is a WARNING, not a compatibility FAIL', rigIntegrity(weakCooler).checks.some(c=>c.id==='COOLER_SUFFICIENCY'&&c.status==='WARN')]);
   const noRequiredCooler=goodRig();noRequiredCooler.slots.CPU=cat2('CPU','AMD Ryzen 7 5800X3D');noRequiredCooler.slots.COOLER=null;
   out.push(['missing cooler for a CPU that requires one is a confirmed FAIL', rigIntegrity(noRequiredCooler).checks.some(c=>c.id==='MISSING_COOLER'&&c.status==='FAIL')&&buildCheckModel(noRequiredCooler).verdict==='FAIL']);
@@ -395,11 +395,11 @@ const results = env.run(sandbox, `(() => {
   out.push(['adequate bundled stock cooling is accepted without an aftermarket cooler', rigIntegrity(bundledStock).checks.some(c=>c.id==='MISSING_COOLER'&&c.status==='PASS')]);
   const tallAir=goodRig();tallAir.slots.COOLER.caps.heightMm=220;
   out.push(['air cooler over the case height limit is a confirmed FAIL', rigIntegrity(tallAir).checks.some(c=>c.id==='COOLER_HEIGHT'&&c.status==='FAIL')]);
-  const badAio=goodRig();badAio.slots.CASE.caps={formFactors:['MATX','ATX'],maxGpuLengthMm:400,maxCoolerHeightMm:180,psuSupport:'ATX',radiator:{front:'240',top:'240',rear:'120'},airflow:'GOOD'};badAio.slots.COOLER.caps={type:'AIO',radiator:'360',heightMm:null,sockets:['AM4'],coolingClass:'HIGH'};
+  const badAio=goodRig();badAio.slots.CASE.caps={formFactors:['MATX','ATX'],maxGpuLengthMm:400,maxCoolerHeightMm:180,psuSupport:'ATX',radiator:{front:'240',top:'240',rear:'120'},airflow:'GOOD'};badAio.slots.COOLER.caps={type:'AIO',radiator:'360',heightMm:null,sockets:['AM4'],coolerSubtype:'AIO_360'};
   out.push(['unsupported AIO radiator size is a confirmed FAIL', rigIntegrity(badAio).checks.some(c=>c.id==='RADIATOR_FIT'&&c.status==='FAIL')]);
-  const stronger=goodRig();stronger.slots.CPU=cat2('CPU','AMD Ryzen 3 3100');stronger.slots.COOLER.caps.coolingClass='HIGH';
+  const stronger=goodRig();stronger.slots.CPU=cat2('CPU','AMD Ryzen 3 3100');stronger.slots.COOLER.caps.coolerSubtype='LARGE_SINGLE_TOWER';
   out.push(['stronger cooling than required passes without warning', rigIntegrity(stronger).checks.some(c=>c.id==='COOLER_SUFFICIENCY'&&c.status==='PASS')&&!rigIntegrity(stronger).checks.some(c=>c.id==='COOLER_SUFFICIENCY'&&c.status==='WARN')]);
-  const coolerTierA=goodRig(),coolerTierB=goodRig();coolerTierA.slots.COOLER.caps.coolingClass='BASIC';coolerTierB.slots.COOLER.caps.coolingClass='HIGH';
+  const coolerTierA=goodRig(),coolerTierB=goodRig();coolerTierA.slots.COOLER.caps.coolingClass='C1';coolerTierB.slots.COOLER.caps.coolingClass='C5';
   out.push(['cooler strength cannot promote rig performance or Gear Tier', rigHardwareProfile(coolerTierA).performance===rigHardwareProfile(coolerTierB).performance&&rigHardwareProfile(coolerTierA).tier===rigHardwareProfile(coolerTierB).tier]);
   const oversized = goodRig();
   oversized.slots.GPU = cat2('GPU','NVIDIA RTX 3080 10GB 500mm');

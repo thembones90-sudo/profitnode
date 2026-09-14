@@ -19,9 +19,20 @@ const PN_ENCLOSURE_AIRFLOW = ["POOR","FAIR","GOOD","EXCELLENT"];
 const PN_ENCLOSURE_BUILD_QUALITY = ["BASIC","SOLID","GOOD","PREMIUM"];
 const PN_ENCLOSURE_SIDE_PANEL = ["steel","acrylic","tempered glass","mesh"];
 const PN_ENCLOSURE_RADIATOR = ["none","120","140","240","280","360","420"];
-const PN_ENCLOSURE_COOLER_TYPE = ["STOCK","AIR","AIO"];
-const PN_ENCLOSURE_COOLING_CLASS = ["BASIC","MID","HIGH"];
-const PN_COOLING_RANK = {BASIC:0,MID:1,HIGH:2};
+const PN_ENCLOSURE_COOLER_TYPE = ["STOCK_AMD","STOCK_INTEL","STOCK_OEM","LOW_PROFILE","TOWER_92","TOWER_120","LARGE_SINGLE_TOWER","DUAL_TOWER","AIO_120","AIO_240","AIO_280","AIO_360","AIO_420","CUSTOM_LOOP"];
+const PN_COOLER_TYPE_LABELS = {
+  STOCK_AMD:"AMD Stock", STOCK_INTEL:"Intel Stock", STOCK_OEM:"Other OEM",
+  LOW_PROFILE:"Low Profile", TOWER_92:"92 mm Tower", TOWER_120:"120 mm Tower",
+  LARGE_SINGLE_TOWER:"Large Single Tower", DUAL_TOWER:"Dual Tower",
+  AIO_120:"120 mm AIO", AIO_240:"240 mm AIO", AIO_280:"280 mm AIO",
+  AIO_360:"360 mm AIO", AIO_420:"420 mm AIO", CUSTOM_LOOP:"Custom Loop"
+};
+const PN_ENCLOSURE_COOLING_CLASS = ["C1","C2","C3","C4","C5"];
+const PN_COOLING_CLASS_LABELS = {
+  C1:"C1 — Basic", C2:"C2 — Standard", C3:"C3 — Performance",
+  C4:"C4 — High Performance", C5:"C5 — Extreme"
+};
+const PN_COOLING_RANK = {C1:0,C2:1,C3:2,C4:3,C5:4};
 const COOLER_TIER_THRESHOLDS = [{tier:"POOR",max:27},{tier:"COMMON",max:41},{tier:"UNCOMMON",max:56},{tier:"RARE",max:74},{tier:"EPIC",max:87},{tier:"LEGENDARY",max:96},{tier:"ARTIFACT",max:100}];
 
 function coolerGearTier(e){
@@ -51,16 +62,20 @@ const PB_CASE_SIZES=[
 ];
 
 const PN_GENERIC_COOLERS = [
-  {id:"generic-stock",label:"Stock / Bundled Cooler",caps:{type:"STOCK",radiator:null,heightMm:70,sockets:[],coolingClass:"LIGHT",fanCount:1,noiseClass:"LOUD",tdpClass:"LIGHT",ramClearance:"NO",notes:"Bundled units only suit low-heat CPUs."}},
-  {id:"generic-low-profile",label:"Low-Profile Cooler",caps:{type:"LOW PROFILE",radiator:null,heightMm:55,sockets:[],coolingClass:"LIGHT",fanCount:1,noiseClass:"NORMAL",tdpClass:"LIGHT",ramClearance:"NO",notes:""}},
-  {id:"generic-120-mm-tower",label:"Standard 120 mm Tower Cooler",caps:{type:"SINGLE TOWER",radiator:null,heightMm:155,sockets:[],coolingClass:"STANDARD",fanCount:1,noiseClass:"NORMAL",tdpClass:"STANDARD",ramClearance:"NO",notes:""}},
-  {id:"generic-strong-tower",label:"Strong Tower Cooler",caps:{type:"SINGLE TOWER",radiator:null,heightMm:158,sockets:[],coolingClass:"STRONG",fanCount:1,noiseClass:"NORMAL",tdpClass:"STRONG",ramClearance:"NO",notes:""}},
-  {id:"generic-dual-tower",label:"Dual-Tower Air Cooler",caps:{type:"DUAL TOWER",radiator:null,heightMm:160,sockets:[],coolingClass:"STRONG",fanCount:2,noiseClass:"NORMAL",tdpClass:"STRONG",ramClearance:"UNKNOWN",notes:"Tall dual-tower coolers commonly overhang the first DIMM slots."}},
-  {id:"generic-dual-tower-extreme",label:"Dual-Tower Extreme Air Cooler",caps:{type:"DUAL TOWER",radiator:null,heightMm:165,sockets:[],coolingClass:"EXTREME",fanCount:2,noiseClass:"NORMAL",tdpClass:"EXTREME",ramClearance:"UNKNOWN",notes:"NH-D15-class performance without a liquid loop."}},
-  {id:"generic-aio-120",label:"120 mm AIO Liquid Cooler",caps:{type:"AIO",radiator:"120",heightMm:null,sockets:[],coolingClass:"LIGHT",fanCount:1,noiseClass:"NORMAL",tdpClass:"LIGHT",ramClearance:"NO",notes:""}},
-  {id:"generic-aio-240",label:"240 mm AIO Liquid Cooler",caps:{type:"AIO",radiator:"240",heightMm:null,sockets:[],coolingClass:"STRONG",fanCount:2,noiseClass:"NORMAL",tdpClass:"STRONG",ramClearance:"NO",notes:""}},
-  {id:"generic-aio-280",label:"280 mm AIO Liquid Cooler",caps:{type:"AIO",radiator:"280",heightMm:null,sockets:[],coolingClass:"EXTREME",fanCount:2,noiseClass:"NORMAL",tdpClass:"EXTREME",ramClearance:"NO",notes:""}},
-  {id:"generic-aio-360",label:"360 mm AIO Liquid Cooler",caps:{type:"AIO",radiator:"360",heightMm:null,sockets:[],coolingClass:"EXTREME",fanCount:3,noiseClass:"NORMAL",tdpClass:"EXTREME",ramClearance:"NO",notes:""}}
+  {id:"generic-stock-amd",label:"Generic AMD Stock Cooler",coolerSubtype:"STOCK_AMD",caps:{type:"STOCK",radiator:null,heightMm:70,sockets:["AM4","AM5"],coolingClass:"C1",fanCount:1,noiseClass:"NORMAL",tdpClass:"LIGHT",ramClearance:"NO",notes:"Generic fallback for any AMD bundled cooler when exact model is unknown."}},
+  {id:"generic-stock-intel",label:"Generic Intel Stock Cooler",coolerSubtype:"STOCK_INTEL",caps:{type:"STOCK",radiator:null,heightMm:45,sockets:["LGA1200","LGA1700"],coolingClass:"C1",fanCount:1,noiseClass:"LOUD",tdpClass:"LIGHT",ramClearance:"NO",notes:"Generic fallback for any Intel bundled cooler when exact model is unknown."}},
+  {id:"generic-stock-oem",label:"Generic OEM Stock Cooler",coolerSubtype:"STOCK_OEM",caps:{type:"STOCK",radiator:null,heightMm:50,sockets:[],coolingClass:"C1",fanCount:1,noiseClass:"LOUD",tdpClass:"LIGHT",ramClearance:"NO",notes:"Generic fallback for unknown OEM/prebuilt stock coolers."}},
+  {id:"generic-low-profile",label:"Generic Low Profile Cooler",coolerSubtype:"LOW_PROFILE",caps:{type:"LOW PROFILE",radiator:null,heightMm:55,sockets:["AM4","AM5","LGA115X","LGA1200","LGA1700"],coolingClass:"C1",fanCount:1,noiseClass:"NORMAL",tdpClass:"LIGHT",ramClearance:"NO",notes:"Generic low-profile cooler for SFF/HTPC builds."}},
+  {id:"generic-tower-92",label:"Generic 92 mm Tower Cooler",coolerSubtype:"TOWER_92",caps:{type:"SINGLE TOWER",radiator:null,heightMm:130,sockets:["AM4","AM5","LGA115X","LGA1200","LGA1700"],coolingClass:"C2",fanCount:1,noiseClass:"NORMAL",tdpClass:"STANDARD",ramClearance:"NO",notes:"Generic 92mm tower cooler."}},
+  {id:"generic-tower-120",label:"Generic 120 mm Single Tower Cooler",coolerSubtype:"TOWER_120",caps:{type:"SINGLE TOWER",radiator:null,heightMm:155,sockets:["AM4","AM5","LGA115X","LGA1200","LGA1700"],coolingClass:"C2",fanCount:1,noiseClass:"NORMAL",tdpClass:"STANDARD",ramClearance:"NO",notes:"Generic 120mm single tower air cooler."}},
+  {id:"generic-large-single-tower",label:"Generic Large Single Tower Cooler",coolerSubtype:"LARGE_SINGLE_TOWER",caps:{type:"SINGLE TOWER",radiator:null,heightMm:158,sockets:["AM4","AM5","LGA115X","LGA1200","LGA1700"],coolingClass:"C3",fanCount:1,noiseClass:"NORMAL",tdpClass:"STRONG",ramClearance:"NO",notes:"Generic large single tower air cooler (NH-U12 class)."}},
+  {id:"generic-dual-tower",label:"Generic Dual Tower Cooler",coolerSubtype:"DUAL_TOWER",caps:{type:"DUAL TOWER",radiator:null,heightMm:160,sockets:["AM4","AM5","LGA115X","LGA1200","LGA1700"],coolingClass:"C3",fanCount:2,noiseClass:"NORMAL",tdpClass:"STRONG",ramClearance:"UNKNOWN",notes:"Generic dual tower air cooler."}},
+  {id:"generic-aio-120",label:"Generic 120 mm AIO",coolerSubtype:"AIO_120",caps:{type:"AIO",radiator:"120",heightMm:null,sockets:["AM4","AM5","LGA115X","LGA1200","LGA1700"],coolingClass:"C1",fanCount:1,noiseClass:"NORMAL",tdpClass:"LIGHT",ramClearance:"NO",notes:"Generic 120mm AIO liquid cooler."}},
+  {id:"generic-aio-240",label:"Generic 240 mm AIO",coolerSubtype:"AIO_240",caps:{type:"AIO",radiator:"240",heightMm:null,sockets:["AM4","AM5","LGA115X","LGA1200","LGA1700"],coolingClass:"C3",fanCount:2,noiseClass:"NORMAL",tdpClass:"STRONG",ramClearance:"NO",notes:"Generic 240mm AIO liquid cooler."}},
+  {id:"generic-aio-280",label:"Generic 280 mm AIO",coolerSubtype:"AIO_280",caps:{type:"AIO",radiator:"280",heightMm:null,sockets:["AM4","AM5","LGA115X","LGA1200","LGA1700"],coolingClass:"C4",fanCount:2,noiseClass:"NORMAL",tdpClass:"EXTREME",ramClearance:"NO",notes:"Generic 280mm AIO liquid cooler."}},
+  {id:"generic-aio-360",label:"Generic 360 mm AIO",coolerSubtype:"AIO_360",caps:{type:"AIO",radiator:"360",heightMm:null,sockets:["AM4","AM5","LGA115X","LGA1200","LGA1700"],coolingClass:"C5",fanCount:3,noiseClass:"NORMAL",tdpClass:"EXTREME",ramClearance:"NO",notes:"Generic 360mm AIO liquid cooler."}},
+  {id:"generic-aio-420",label:"Generic 420 mm AIO",coolerSubtype:"AIO_420",caps:{type:"AIO",radiator:"420",heightMm:null,sockets:["AM4","AM5","LGA115X","LGA1200","LGA1700"],coolingClass:"C5",fanCount:3,noiseClass:"NORMAL",tdpClass:"EXTREME",ramClearance:"NO",notes:"Generic 420mm AIO liquid cooler."}},
+  {id:"generic-custom-loop",label:"Generic Custom Loop",coolerSubtype:"CUSTOM_LOOP",caps:{type:"AIO",radiator:"420",heightMm:null,sockets:["AM4","AM5","LGA115X","LGA1200","LGA1700"],coolingClass:"C5",fanCount:3,noiseClass:"QUIET",tdpClass:"EXTREME",ramClearance:"NO",notes:"Custom open-loop liquid cooling."}}
 ];
 
 function caseGenericById(id){ return PN_GENERIC_CASES.find(p=>p.id===id)||null; }
@@ -88,12 +103,44 @@ function normalizeCoolerCaps(raw){
   raw = raw || {};
   const rawType=String(raw.type||"").toUpperCase();
   const rawClass=String(raw.coolingClass||raw.tdpClass||"").toUpperCase();
+  const rad=raw.radiator;
+  let sub=String(raw.coolerSubtype||"").toUpperCase();
+  if(!sub){
+    if(rawType==="STOCK"){
+      if(rawClass==="LIGHT") sub="STOCK_OEM";
+      else if(rawClass==="STANDARD") sub="STOCK_AMD";
+      else if(rawClass==="STRONG") sub="STOCK_AMD";
+    }else if(rawType==="AIO"){
+      if(rad==="420") sub="AIO_420";
+      else if(rad==="360") sub="AIO_360";
+      else if(rad==="280") sub="AIO_280";
+      else if(rad==="240") sub="AIO_240";
+      else if(rad==="120") sub="AIO_120";
+    }else if(rawType==="DUAL TOWER"){
+      sub="DUAL_TOWER";
+    }else if(rawType==="SINGLE TOWER"){
+      if(rawClass==="STRONG"||rawClass==="EXTREME") sub="LARGE_SINGLE_TOWER";
+      else if(rawClass==="STANDARD") sub="TOWER_120";
+      else sub="TOWER_92";
+    }else if(rawType==="LOW PROFILE"){
+      sub="LOW_PROFILE";
+    }
+  }
+  let coolingClass;
+  if(sub==="AIO_420"||sub==="AIO_360"||sub==="AIO_280"||(sub==="DUAL_TOWER"&&rawClass==="EXTREME")) coolingClass="C5";
+  else if(sub==="AIO_240"||(sub==="DUAL_TOWER"&&rawClass==="STRONG")||sub==="LARGE_SINGLE_TOWER") coolingClass="C4";
+  else if(sub==="AIO_120"||sub==="TOWER_120"||sub==="TOWER_92"||rawClass==="STANDARD") coolingClass="C2";
+  else if(rawClass==="LIGHT"||sub==="LOW_PROFILE"||sub==="STOCK_AMD"||sub==="STOCK_INTEL"||sub==="STOCK_OEM") coolingClass="C1";
+  else if(rawClass==="STRONG") coolingClass="C3";
+  else if(rawClass==="EXTREME") coolingClass="C4";
+  else coolingClass=null;
   return {
     type:rawType==="STOCK"?"STOCK":rawType==="AIO"?"AIO":rawType?"AIR":null,
+    coolerSubtype:sub||null,
     radiator:raw.radiator||null,
     heightMm:raw.heightMm==null||raw.heightMm===""?null:Number(raw.heightMm),
     sockets:Array.isArray(raw.sockets)?raw.sockets.map(s=>String(s).trim().toUpperCase()).filter(Boolean):stringToSockets(raw.sockets),
-    coolingClass:["LIGHT","BASIC"].includes(rawClass)?"BASIC":["STANDARD","STRONG","MID"].includes(rawClass)?"MID":["EXTREME","HIGH"].includes(rawClass)?"HIGH":null
+    coolingClass:coolingClass
   };
 }
 
@@ -231,10 +278,11 @@ function caseCapsText(caps){
 function coolerCapsText(caps){
   if(!caps||isEmptyCoolerCaps(caps)) return "No capabilities recorded";
   const bits=[];
-  if(caps.type) bits.push(caps.type);
+  if(caps.coolerSubtype) bits.push(PN_COOLER_TYPE_LABELS[caps.coolerSubtype]||caps.coolerSubtype);
+  else if(caps.type) bits.push(caps.type);
   if(caps.type==="AIO"&&caps.radiator) bits.push(caps.radiator+"mm rad");
   else if(caps.heightMm) bits.push(caps.heightMm+"mm");
-  if(caps.coolingClass) bits.push(caps.coolingClass);
+  if(caps.coolingClass) bits.push(PN_COOLING_CLASS_LABELS[caps.coolingClass]||caps.coolingClass);
   if(caps.sockets&&caps.sockets.length) bits.push(caps.sockets.join("/"));
   return bits.join(" · ");
 }
@@ -245,10 +293,12 @@ function cpuThermalDemand(cpuResolved){
   if(!cpuResolved) return "UNKNOWN";
   const t=pnNorm(cpuResolved.label||"");
   if(!t) return "UNKNOWN";
-  if(/X3D\b/.test(t)||/RYZEN\s?[79]\b/.test(t)||/I[79]\b/.test(t)) return "HIGH";
-  if(/RYZEN\s?5\b/.test(t)||/I5\b/.test(t)) return "MID";
-  if(/RYZEN\s?3\b/.test(t)||/I3\b/.test(t)||/ATHLON|PENTIUM|CELERON/.test(t)) return "BASIC";
-  return "UNKNOWN";
+  if(/X3D\b/.test(t)||/RYZEN\s?[79]\b/.test(t)||/I[79]\b/.test(t)||/THREADRIPPER/.test(t)) return "C5";
+  if(/RYZEN\s?5\b/.test(t)||/I5\b/.test(t)||/R9\b/.test(t)||/CORE\s?I9/.test(t)) return "C4";
+  if(/RYZEN\s?5\b.*X\b/.test(t)||/R7\b/.test(t)||/CORE\s?I7/.test(t)) return "C4";
+  if(/RYZEN\s?5\b/.test(t)||/I5\b/.test(t)) return "C3";
+  if(/RYZEN\s?3\b/.test(t)||/I3\b/.test(t)||/ATHLON|PENTIUM|CELERON/.test(t)) return "C2";
+  return "C1";
 }
 
 function cpuRequiresSeparateCooler(cpuResolved){
@@ -658,13 +708,13 @@ function renderCaseCapsEditor(caps){
 
 function renderCoolerCapsEditor(caps){
   const opt=(list,current)=>{
-    return '<option value="">—</option>'+list.map(o=>'<option value="'+o.replace(/"/g,"&quot;")+'"'+(String(current||"")===o?" selected":"")+'>'+escHtml(o)+'</option>').join("");
+    return '<option value="">—</option>'+list.map(o=>'<option value="'+o.replace(/"/g,'"')+'"'+(String(current||"")===o?' selected':'')+'>'+escHtml(o)+'</option>').join("");
   };
   const isAio=isAioCaps(caps),isAir=caps.type==="AIR";
   return '<details class="pn-cap-details pn-cooler-details">'+
     '<summary>COOLER DETAILS / ADVANCED</summary>'+
     '<div class="pn-cap-grid">'+
-      '<label><span>Type</span><select data-rig-cap-field="COOLER.type">'+opt(PN_ENCLOSURE_COOLER_TYPE,caps.type)+'</select></label>'+
+      '<label><span>Cooler subtype</span><select data-rig-cap-field="COOLER.coolerSubtype">'+opt(PN_ENCLOSURE_COOLER_TYPE,caps.coolerSubtype)+'</select></label>'+
       '<label><span>Supported sockets</span><input type="text" placeholder="* AM4, LGA1700" data-rig-cap-field="COOLER.sockets" value="'+escAttr((caps.sockets||[]).join(", "))+'"></label>'+
       '<label><span>Cooling class</span><select data-rig-cap-field="COOLER.coolingClass">'+opt(PN_ENCLOSURE_COOLING_CLASS,caps.coolingClass)+'</select></label>'+
       (isAir?'<label><span>Air cooler height mm</span><input type="number" min="0" placeholder="?" data-rig-cap-field="COOLER.heightMm" value="'+escAttr(caps.heightMm==null?"":caps.heightMm)+'"></label>':"")+
@@ -700,8 +750,10 @@ function renderCoolerMeta(caps,confidence,rig,entry){
   const size=caps.type==="AIO"?(caps.radiator?caps.radiator+"mm rad":"AIO"):(caps.heightMm?caps.heightMm+"mm":"Height ?");
   const fit=coolerFitStatus(rig),fitClass=fit==="PASS"?"is-pass":fit==="FAIL"?"is-fail":fit==="WARNING"?"is-warn":"is-unverified";
   const tier=entry&&catalogTier("COOLER",entry);
+  const subtype=caps.coolerSubtype?PN_COOLER_TYPE_LABELS[caps.coolerSubtype]||caps.coolerSubtype:(caps.type||"?");
+  const coolClass=caps.coolingClass?PN_COOLING_CLASS_LABELS[caps.coolingClass]||caps.coolingClass:"?";
   return '<div class="rig-catalog-meta">'+
-    '<span class="pn-cooler-summary">'+escHtml((caps.type||"?")+" · "+sock+" · "+(caps.coolingClass||"?")+" · "+size)+(confidence==="LOW"?' <span style="color:var(--amber)">· approx spec</span>':"")+'</span>'+
+    '<span class="pn-cooler-summary">'+escHtml(subtype+" · "+sock+" · "+coolClass+" · "+size)+(confidence==="LOW"?' <span style="color:var(--amber)">· approx spec</span>':"")+'</span>'+
     '<span class="pn-cooler-fit '+fitClass+'">FIT: '+fit+'</span>'+
     (tier!=null?'<span class="pn-meta-pill pn-tier-pill '+pnTierClass(tier)+'"><span>Tier</span><b>'+escHtml(pnTierLabel(pnTier(tier)))+'</b></span>':"")+
     '</div>';
@@ -740,20 +792,30 @@ function renderCoolerPlannedDetail(slot,rig){
   const entry=coolerEntryFor(slot);
   const label=slot&&slot.label||"";
   const results=entry?[]:catalogSearch("COOLER",label);
-  const searchBox='<div class="rig-catalog-fields"><input type="text" placeholder="Type 2+ characters to search Cooler… or type a custom model" data-rig-catalog-item="COOLER" value="'+escAttr(label)+'" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="'+(results.length?"true":"false")+'">'+
-    (results.length?'<div class="rig-catalog-results" role="listbox">'+results.map(item=>{
+  const currentSubtype=slot.coolerSubtype||(caps&&caps.coolerSubtype)||"";
+  const categoryOpts=PN_ENCLOSURE_COOLER_TYPE.map(t=>'<option value="'+t+'"'+(currentSubtype===t?' selected':'')+'>'+escHtml(PN_COOLER_TYPE_LABELS[t]||t)+'</option>').join("");
+  const catFilter='<div class="rig-catalog-filter"><label><span>Category</span><select data-rig-cooler-category="'+(slot.coolerSubtype||"")+'">'+'<option value="">— Select cooler type —</option>'+categoryOpts+'</select></label></div>';
+  const filteredResults=results.filter(item=>{
+    const itemCaps=normalizeCoolerCaps(item.caps||{});
+    return !currentSubtype || itemCaps.coolerSubtype===currentSubtype;
+  });
+  const searchBox='<div class="rig-catalog-fields">'+catFilter+
+    '<input type="text" placeholder="Type 2+ characters to search Cooler… or type a custom model" data-rig-catalog-item="COOLER" value="'+escAttr(label)+'" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="'+(filteredResults.length?"true":"false")+'">'+
+    (filteredResults.length?'<div class="rig-catalog-results" role="listbox">'+filteredResults.map(item=>{
       const value=item.brand+" "+item.model;
       const itemCaps=normalizeCoolerCaps(item.caps||{});
-      const lead=(itemCaps.type||"COOLER")+" · "+(itemCaps.coolingClass||"UNVERIFIED");
+      const lead=(itemCaps.coolerSubtype?PN_COOLER_TYPE_LABELS[itemCaps.coolerSubtype]:itemCaps.type||"COOLER")+" · "+(itemCaps.coolingClass||"UNVERIFIED");
       const itemTier=catalogTier("COOLER",item);
       return '<button type="button" class="rig-catalog-option" role="option" data-rig-catalog-choice="COOLER" data-rig-catalog-value="'+escAttr(value)+'">'+
         '<span class="rig-option-name">'+escHtml(value)+'</span>'+
         '<span class="pn-result-badges"><span class="pn-result-rating">'+escHtml(lead)+'</span>'+(itemTier!=null?'<span class="pn-result-tier '+pnTierClass(itemTier)+'">Tier <b>'+escHtml(pnTier(itemTier))+'</b></span>':"")+'</span></button>';
     }).join("")+'</div>':"")+'</div>';
+  const genericEntry=currentSubtype?PN_GENERIC_COOLERS.find(g=>g.coolerSubtype===currentSubtype):null;
+  const genericHtml=genericEntry?'<div class="rig-catalog-generic"><label><span>Generic profile</span><select data-rig-generic="COOLER" title="Fill a generic capability profile when you don\'t have the exact model"><option value="">— Generic profile for '+escHtml(PN_COOLER_TYPE_LABELS[currentSubtype])+' —</option><option value="'+genericEntry.id+'" selected>'+escHtml(genericEntry.label)+'</option></select></label></div>':'';
   const metaHtml=(caps&&!isEmptyCoolerCaps(caps))
     ?renderCoolerMeta(caps,entry&&entry.confidence,rig,entry)
     :'<div class="rig-catalog-meta rig-catalog-help">'+escHtml(enclosureHelpText("COOLER",label))+'</div>';
-  return searchBox+metaHtml+renderCoolerCapsEditor(caps||normalizeCoolerCaps({}));
+  return searchBox+genericHtml+metaHtml+renderCoolerCapsEditor(caps||normalizeCoolerCaps({}));
 }
 
 const PNEnclosureCoreRenderRigSlotRow=renderRigSlotRow;
@@ -828,6 +890,15 @@ document.addEventListener("click",function(e){
 });
 
 document.addEventListener("change",function(e){
+  const catSel=e.target.closest("select[data-rig-cooler-category]");
+  if(catSel&&state&&state.rigDraft){
+    const k=catSel.dataset.rigCoolerCategory||"COOLER";
+    let slot=state.rigDraft.slots[k];
+    if(!slot) slot=state.rigDraft.slots[k]={kind:"PLANNED",catalogType:k,cost:0,originalPrice:0,currency:state.rigDraft.currency};
+    slot.coolerSubtype=catSel.value||null;
+    slot.genericId=null;
+    return void render();
+  }
   const gen=e.target.closest("select[data-rig-generic]");
   if(gen&&state&&state.rigDraft){
     const k=gen.dataset.rigGeneric;
