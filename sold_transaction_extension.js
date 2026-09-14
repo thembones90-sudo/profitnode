@@ -1,12 +1,16 @@
 "use strict";
 /*
-  PROFITNODE SOLD-as-transaction v1
+  PROFITNODE SOLD-as-transaction v2
 
   Core rule: SOLD is a financial event, not a free status edit.
-  - Direct status="SOLD" via Actions.updateInventory is rejected.
-  - Status dropdown in the inventory edit form no longer contains SOLD.
+  - Direct status="SOLD"/"SOLD_IN_TRANSIT" via Actions.updateInventory is rejected.
+  - Status dropdown in the inventory edit form no longer contains SOLD or SOLD_IN_TRANSIT.
   - MARK AS SOLD opens a modal requiring final sale price, currency, date, channel, etc.
-  - Confirming creates one completed Sales Ledger row and credits Treasury once.
+  - Confirming creates one completed Sales Ledger row and credits Treasury once, and sets
+    the item's status to SOLD_IN_TRANSIT — the money has moved, but the part is still
+    physically with the seller, awaiting shipment to the buyer.
+  - MARK AS DELIVERED flips SOLD_IN_TRANSIT -> SOLD once the part has shipped/arrived.
+    This is a pure status change: no second financial event, no re-credit.
   - Legacy SOLD items without a completed Sales Ledger row show "SALE DATA INCOMPLETE"
     and can be completed or migrated once.
 */
@@ -14,12 +18,24 @@
 (function(){
   const SALE_CHANNELS = ["KP","Facebook Marketplace","Viber","Flea Market","Direct","Other"];
 
+  // ---- register the new interim status ----
+  if (typeof INVENTORY_STATUSES !== "undefined" && INVENTORY_STATUSES.indexOf("SOLD_IN_TRANSIT") === -1){
+    INVENTORY_STATUSES.push("SOLD_IN_TRANSIT");
+  }
+  if (typeof INVENTORY_STATUS_META !== "undefined" && !INVENTORY_STATUS_META.SOLD_IN_TRANSIT){
+    INVENTORY_STATUS_META.SOLD_IN_TRANSIT = {chip:"chip-amber-outline"};
+  }
+
   function inventorySaleTransactionId(item){
     return item && (item.saleTransactionId || item.sale_transaction_id || null);
   }
 
   function inventoryIsSold(item){
-    return item && item.status === "SOLD";
+    return item && (item.status === "SOLD" || item.status === "SOLD_IN_TRANSIT");
+  }
+
+  function inventoryAwaitingDelivery(item){
+    return item && item.status === "SOLD_IN_TRANSIT";
   }
 
   function inventorySaleIncomplete(item){
@@ -142,7 +158,7 @@
     if (!sale) return {ok:!1, error:"Sale could not be recorded."};
     removeInventorySaleFlow(ensureTreasury(), id);
     Store.update("inventory", id, {
-      status: "SOLD",
+      status: item.status === "SOLD" ? "SOLD" : "SOLD_IN_TRANSIT",
       salePrice: price,
       saleCurrency: currency,
       saleDate: date,
@@ -153,6 +169,16 @@
     });
     Store.persist();
     return {ok:!0, id, transactionId: sale.id, saleId: sale.id, message:existingSale?"Sale updated.":"Sale completed."};
+  };
+
+  // ---- public action: the sold part has shipped/arrived; close it out ----
+  Actions.markInventoryDelivered = function(id){
+    const item = Store.get("inventory", id);
+    if (!item) return {ok:!1, error:"Item not found."};
+    if (item.status !== "SOLD_IN_TRANSIT") return {ok:!1, error:"Item is not awaiting delivery."};
+    Store.update("inventory", id, {status:"SOLD"});
+    Store.persist();
+    return {ok:!0, id};
   };
 
   Store.all("inventory").filter(item =>
@@ -172,25 +198,25 @@
     }
   });
 
-  // ---- block direct status=SOLD through generic update ----
+  // ---- block direct status=SOLD/SOLD_IN_TRANSIT through generic update ----
   const origUpdateInventory = Actions.updateInventory;
   Actions.updateInventory = function(id, data){
     const item = Store.get("inventory", id);
-    if (item && data && data.status === "SOLD" && item.status !== "SOLD"){
-      console.warn("Blocked direct status=SOLD on " + id + "; use Actions.markInventorySold()");
+    if (item && data && (data.status === "SOLD" || data.status === "SOLD_IN_TRANSIT") && item.status !== data.status){
+      console.warn("Blocked direct status=" + data.status + " on " + id + "; use Actions.markInventorySold()/markInventoryDelivered()");
       return item;
     }
     return origUpdateInventory.call(this, id, data);
   };
 
-  // ---- remove SOLD from the inventory edit form status dropdown ----
+  // ---- remove SOLD/SOLD_IN_TRANSIT from the inventory edit form status dropdown ----
   if (typeof FORM_SCHEMAS !== "undefined" && FORM_SCHEMAS.inventory){
     const origInventorySchema = FORM_SCHEMAS.inventory;
     FORM_SCHEMAS.inventory = function(rec){
       const schema = origInventorySchema(rec);
       const statusField = schema.fields.find(f => f.key === "status");
       if (statusField && Array.isArray(statusField.options)){
-        statusField.options = statusField.options.filter(s => s !== "SOLD");
+        statusField.options = statusField.options.filter(s => s !== "SOLD" && s !== "SOLD_IN_TRANSIT");
       }
       return schema;
     };
@@ -270,10 +296,12 @@
       let extra = "";
       if (inventoryIsSold(item)){
         const incomplete = inventorySaleIncomplete(item);
+        const awaitingDelivery = inventoryAwaitingDelivery(item);
         const sale = inventorySaleRecord(item);
         const profit = sale ? saleDerived(sale).profit : Calc.profit(item.salePrice, item.purchasePrice);
         extra = '<div style="flex:1 1 100%;padding:8px 0;font-size:12px">' +
           (incomplete ? '<span class="chip chip-red-outline">SALE DATA INCOMPLETE</span> ' : "") +
+          (awaitingDelivery ? '<span class="chip chip-amber-outline">AWAITING DELIVERY</span> ' : "") +
           (item.salePrice ? '<b>SOLD FOR: ' + money(item.salePrice, item.saleCurrency || item.currency) + '</b> · ' + escHtml(item.saleDate || "") : "") +
           (item.saleChannel ? ' · ' + escHtml(item.saleChannel) : "") +
           (incomplete ? '' : ' · Realized profit: ' + money(profit, item.saleCurrency || item.currency)) +
@@ -282,6 +310,9 @@
           extra += '<button type="button" class="btn btn-primary" data-complete-sale-data="' + escAttr(id) + '">COMPLETE SALE DATA</button>';
         } else if (sale){
           extra += '<button type="button" class="btn" data-view-inventory-sale="' + escAttr(sale.id) + '">VIEW SALE</button>';
+        }
+        if (awaitingDelivery){
+          extra += '<button type="button" class="btn btn-primary" data-mark-inventory-delivered="' + escAttr(id) + '">MARK AS DELIVERED</button>';
         }
       } else {
         extra = '<button type="button" class="btn btn-primary" data-mark-inventory-sold="' + escAttr(id) + '">MARK AS SOLD</button>';
@@ -342,13 +373,72 @@
     if (mark){ openInventorySaleModal(mark.dataset.markInventorySold); return; }
     const complete = e.target.closest("[data-complete-sale-data]");
     if (complete){ openInventorySaleModal(complete.dataset.completeSaleData); return; }
+    const delivered = e.target.closest("[data-mark-inventory-delivered]");
+    if (delivered){
+      e.preventDefault();
+      e.stopPropagation();
+      const result = Actions.markInventoryDelivered(delivered.dataset.markInventoryDelivered);
+      if (result.ok){
+        if (state.modal && state.modal.entityType === "inventory") state.modal = null;
+        render();
+      } else {
+        alert(result.error || "Could not mark as delivered");
+      }
+      return;
+    }
   });
 
   const style = document.createElement("style");
   style.textContent = ".pn-inventory-sale-notice{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 14px;padding:11px 13px;border:1px solid var(--green-dim);border-radius:var(--radius);background:var(--green-wash);box-shadow:inset 3px 0 0 var(--green)}.pn-inventory-sale-notice-copy{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;min-width:0}.pn-inventory-sale-notice-copy>b{font:800 10px var(--mono);letter-spacing:.14em;color:var(--green)}.pn-inventory-sale-notice-copy>span{font:11px var(--mono);color:var(--text-dim)}.pn-inventory-sale-notice-actions{display:flex;gap:7px;flex:0 0 auto}.pn-sale-loss-warning{display:flex;align-items:flex-start;gap:10px;margin-top:4px;padding:10px 12px;border:1px solid var(--red-dim);border-radius:var(--radius);background:var(--red-wash);color:var(--red);font:11px var(--mono);line-height:1.45}.pn-sale-loss-warning>b{letter-spacing:.12em;white-space:nowrap}.pn-sale-loss-warning[hidden]{display:none}.pn-inventory-counts{display:inline-flex;align-items:center;gap:6px;margin-left:auto}.pn-inventory-counts .chip b{margin-left:4px;color:var(--text)}@media(max-width:1180px){.pn-inventory-counts{order:3;width:100%;margin-left:0}}@media(max-width:760px){.pn-inventory-sale-notice{align-items:flex-start;flex-direction:column}.pn-inventory-sale-notice-actions{width:100%;flex-wrap:wrap}}";
   document.head.appendChild(style);
 
+  // ---- keep SOLD_IN_TRANSIT items out of new builds/rigs, same as SOLD ----
+  function soldInTransitBlock(item){
+    return item && item.status === "SOLD_IN_TRANSIT" ?
+      {ok:!1, error:(item.manufacturer||"")+" "+(item.model||"")+" is already marked SOLD (awaiting delivery)."} : null;
+  }
+
+  if (typeof Actions.setProjectSlot === "function"){
+    const origSetProjectSlot = Actions.setProjectSlot.bind(Actions);
+    Actions.setProjectSlot = function(projectId, slotKey, kind, data){
+      if (kind === "INVENTORY" && data && data.inventoryItemId){
+        const blocked = soldInTransitBlock(Store.get("inventory", data.inventoryItemId));
+        if (blocked) return blocked;
+      }
+      return origSetProjectSlot(projectId, slotKey, kind, data);
+    };
+  }
+
+  if (typeof Actions.addProjectExtra === "function"){
+    const origAddProjectExtra = Actions.addProjectExtra.bind(Actions);
+    Actions.addProjectExtra = function(projectId, extra){
+      if (extra && extra.inventoryItemId){
+        const blocked = soldInTransitBlock(Store.get("inventory", extra.inventoryItemId));
+        if (blocked) return blocked;
+      }
+      return origAddProjectExtra(projectId, extra);
+    };
+  }
+
+  if (typeof Actions.assembleRig === "function"){
+    const origAssembleRig = Actions.assembleRig.bind(Actions);
+    Actions.assembleRig = function(rigId){
+      const rig = Store.get("rigs", rigId);
+      if (rig){
+        for (const slotKey of RIG_SLOTS){
+          const slot = rig.slots && rig.slots[slotKey];
+          if (slot && slot.kind === "INVENTORY"){
+            const blocked = soldInTransitBlock(Store.get("inventory", slot.inventoryItemId));
+            if (blocked) return blocked;
+          }
+        }
+      }
+      return origAssembleRig(rigId);
+    };
+  }
+
   // ---- expose helpers ----
   window.__pnInventorySaleChannels = function(){ return SALE_CHANNELS.slice(); };
   window.__pnInventorySaleIncomplete = inventorySaleIncomplete;
+  window.__pnInventoryAwaitingDelivery = inventoryAwaitingDelivery;
 })();
