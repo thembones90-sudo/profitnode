@@ -17,6 +17,24 @@ const PN_PART_NAME_RULES = Object.freeze({
   STORAGE:{scores:[30,45,60,75,88,97]}
 });
 
+// Categories without their own score thresholds (RAM, COOLING, CASE) fall back to this
+// band so every part — catalog-backed or heuristic-only — gets a consistent 1-100 rating.
+const PN_PART_NAME_DEFAULT_SCORES = [30,45,60,75,88,97];
+
+// Turns a resolved 1-7 tier into a representative 1-100 rating, using the same threshold
+// band that tier was drawn from. Deliberately the tier's band midpoint rather than a raw
+// catalog score: several categories only consult their catalog score in some branches
+// (e.g. STORAGE prefers type/capacity heuristics and only falls back to a catalog score,
+// then adjusts further for drive health), so no single "real" number exists to surface —
+// and a raw score can also fall right at a tier boundary, which reads as contradicting the
+// tier badge next to it. The midpoint always agrees with the tier shown.
+function pnPartNameRating(tier,category){
+  const thresholds=(PN_PART_NAME_RULES[category]&&PN_PART_NAME_RULES[category].scores)||PN_PART_NAME_DEFAULT_SCORES;
+  const lower=tier<=1?0:thresholds[tier-2];
+  const upper=tier>=7?100:thresholds[tier-1];
+  return Math.max(1,Math.min(100,Math.round((lower+upper)/2)));
+}
+
 function pnPartTierCategory(category){
   const key=String(category||"OTHER").toUpperCase();
   return key==="MOBO"?"MOTHERBOARD":key==="COOLER"?"COOLING":key;
@@ -183,17 +201,17 @@ function pnPartNameTier(item){
   const category=pnPartTierCategory(item&&item.category),resolution=pnPartCatalogResolution(item||{}),catalog=resolution.item,text=pnPartText(item,catalog);
   let tier=category==="CPU"?pnCpuNameTier(text,catalog):category==="GPU"?pnGpuNameTier(text,catalog):category==="MOTHERBOARD"?pnMotherboardNameTier(text,catalog):category==="RAM"?pnRamNameTier(text):category==="PSU"?pnPsuNameTier(text,catalog):category==="STORAGE"?pnStorageNameTier(item,text,catalog):category==="COOLING"?pnCoolerNameTier(text,catalog):category==="CASE"?pnCaseNameTier(text,catalog):4;
   tier=Math.max(1,Math.min(7,Number(tier)||4));
-  return Object.assign({tier:tier,source:catalog?"catalog":"heuristic",category:category,matchConfidence:resolution.confidence,reason:catalog?"Canonical "+category.toLowerCase()+" evidence · "+resolution.reason:resolution.reason},PN_PART_NAME_TIERS[tier]);
+  return Object.assign({tier:tier,rating:pnPartNameRating(tier,category),source:catalog?"catalog":"heuristic",category:category,matchConfidence:resolution.confidence,reason:catalog?"Canonical "+category.toLowerCase()+" evidence · "+resolution.reason:resolution.reason},PN_PART_NAME_TIERS[tier]);
 }
 
 function pnPartNameHtml(item){
   const visual=pnPartNameTier(item),category=pnPartTierCategory(item&&item.category),name=((item&&item.manufacturer)||"")+(((item&&item.manufacturer)&&(item&&item.model))?" ":"")+((item&&item.model)||"");
-  return '<span class="pn-part-name '+visual.className+(category==="COOLING"||category==="CASE"?' pn-part-name-subtle':'')+'" data-pn-part-tier="'+visual.key+'" title="PROFITNODE visual tier: '+visual.key+' — '+visual.label+'">'+escHtml(name)+'</span>';
+  return '<span class="pn-part-name '+visual.className+(category==="COOLING"||category==="CASE"?' pn-part-name-subtle':'')+'" data-pn-part-tier="'+visual.key+'" title="PROFITNODE visual tier: '+visual.key+' — '+visual.label+' · Rating '+visual.rating+'/100">'+escHtml(name)+'</span>';
 }
 
 function pnPartTierReadHtml(item){
   const visual=pnPartNameTier(item||{}),hasName=item&&(item.manufacturer||item.model);
-  return hasName?'<span class="pn-part-tier-swatch '+visual.className+'">'+visual.key+' · '+escHtml(visual.label)+'</span><span>'+escHtml(visual.reason)+' · '+escHtml(visual.matchConfidence)+'</span>':'<span>Enter a part name to calculate its category-relative tier.</span>';
+  return hasName?'<span class="pn-part-tier-swatch '+visual.className+'">'+visual.key+' · '+escHtml(visual.label)+' · '+visual.rating+'/100</span><span>'+escHtml(visual.reason)+' · '+escHtml(visual.matchConfidence)+'</span>':'<span>Enter a part name to calculate its category-relative tier.</span>';
 }
 
 function pnPartTierExplanationHtml(item){
