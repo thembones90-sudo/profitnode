@@ -204,6 +204,13 @@ const treasuryProbe = env.run(sandbox, `(() => {
     ledgerExpanded:(expandedLedger.match(/pn-wc-ledger-row /g)||[]).length===6,
     drawer:/pn-wc-drawer-shell/.test(drawer) && /role="dialog"/.test(drawer),
     freshness:/LAST RECOUNTED/.test(page),
+    reserveBands:[pnTreasuryFloor(499.99).band,pnTreasuryFloor(500).band,pnTreasuryFloor(799.99).band,pnTreasuryFloor(800).band].join('|'),
+    reserveHero:/data-wc-band="BLOOD"/.test(pnTreasuryHero({fortress:499},{settings:{}},pnTreasuryFloor(499))) && /data-wc-band="YELLOW"/.test(pnTreasuryHero({fortress:500},{settings:{}},pnTreasuryFloor(500))) && /data-wc-band="GREEN"/.test(pnTreasuryHero({fortress:800},{settings:{}},pnTreasuryFloor(800))),
+    reserveIntel:/NEXT GATE/.test(page) && /PROTECTED/.test(page) && /DEPLOYABLE/.test(page) && /RUNWAY/.test(page) && /SURPLUS PROTOCOL/.test(page),
+    nextGates:pnTreasuryNextGate(420).includes('TO SAFETY') && pnTreasuryNextGate(650).includes('TO GREEN') && pnTreasuryNextGate(900)==='GREEN SECURED',
+    runway:pnTreasuryRunway({settings:{},obligations:[{amount:100,currency:'EUR',status:'PENDING',recurring:true}]},{fortress:650})==='6.5 MONTHS',
+    protocol:/€100\.00/.test(pnTreasurySurplusProtocol({fortress:1000})) && /€60\.00/.test(pnTreasurySurplusProtocol({fortress:1000})) && /€40\.00/.test(pnTreasurySurplusProtocol({fortress:1000})),
+    reserveDelta:/SAFETY DEFICIT/.test(pnTreasuryHero({fortress:400},{settings:{},obligations:[]},pnTreasuryFloor(400))) && /SAFETY BUFFER/.test(pnTreasuryHero({fortress:650},{settings:{},obligations:[]},pnTreasuryFloor(650))) && /DEPLOYABLE/.test(pnTreasuryHero({fortress:900},{settings:{},obligations:[]},pnTreasuryFloor(900))),
     coreLabels:core.balances.slice(0,5).map(b=>b.label).join('|'),
     coreCount:core.balances.filter(b=>b.sourceKey).length,
     payoneerCarry:core.balances[0].amount===123 && core.balances[0].currency==='EUR',
@@ -229,6 +236,10 @@ checks.push(['WAR CHEST ledger defaults to the latest five movements', treasuryP
 checks.push(['WAR CHEST ledger filters and full-ledger expansion preserve their exact scopes', treasuryProbe.ledgerFilter && treasuryProbe.ledgerExpanded]);
 checks.push(['RECOUNT THE HOARD renders as a focused modal drawer', treasuryProbe.drawer]);
 checks.push(['WAR CHEST prominently reports last recount freshness', treasuryProbe.freshness]);
+checks.push(['Fortress Reserve boundaries are BLOOD below €500, YELLOW through €799.99, and GREEN from €800', treasuryProbe.reserveBands === 'BLOOD|YELLOW|YELLOW|GREEN' && treasuryProbe.reserveHero]);
+checks.push(['Fortress Reserve exposes next gate, protected capital, deployable surplus, and runway intelligence', treasuryProbe.reserveIntel && treasuryProbe.nextGates && treasuryProbe.runway]);
+checks.push(['Surplus protocol advises a 50/30/20 split only above the protected €800 reserve', treasuryProbe.protocol]);
+checks.push(['Fortress hero distinguishes safety deficit, yellow buffer, and truly deployable green surplus', treasuryProbe.reserveDelta]);
 
 // --- Functional probe (Store/Actions + extensions wiring) ---
 const probe = `
@@ -1451,6 +1462,12 @@ const treasuryFlowProbe = `
   Store._data = null;
   Store.load();
   out.push(['TREASURY FLOW K: legacy records without flows load cleanly and never double-spend', getPool() === 100000 && flowCount() === 0]);
+
+  setupPool(100000);
+  const crossingItem = Actions.addInventory({category:'GPU',manufacturer:'Nvidia',model:'Band Crossing Card',purchaseDate:'2026-01-01',purchasePrice:10000,currency:'RSD',estimatedMarketValue:12000,source:'OTHER',condition:'WORKING',status:'IN_STORAGE'});
+  const crossing = findFlow('inventory',crossingItem.id,'ACQUISITION');
+  out.push(['TREASURY FLOW L: spending that crosses downward stamps a reserve-band audit event', crossing && crossing.reserveCrossing === 'GREEN_TO_YELLOW' && crossing.reserveBandBefore === 'GREEN' && crossing.reserveBandAfter === 'YELLOW' && !!crossing.reserveCrossedAt]);
+  out.push(['TREASURY FLOW L: the latest downward crossing renders a compact breach alert', pnTreasuryCrossingAlert(Store.load().treasury).includes('GREEN → YELLOW')]);
 
   return out;
 })()

@@ -40,6 +40,28 @@ function findTreasuryFlow(treasury, refType, refId, kind){
   return t.flows.find(f => f.refType === refType && f.refId === refId && f.kind === kind) || null;
 }
 
+function treasurySignedEur(amount, currency, settings){
+  const value = Number(amount) || 0;
+  const rate = String(currency || "RSD").toUpperCase() === "USD" ? Number(settings.usdToEur) || 0 : String(currency || "RSD").toUpperCase() === "RSD" ? Number(settings.rsdToEur) || 0 : 1;
+  return value * rate;
+}
+
+function stampTreasuryReserveCrossing(flow, beforeAmount, afterAmount){
+  if (!flow || typeof pnTreasuryFloor !== "function") return;
+  const before = pnTreasuryFloor(beforeAmount).band, after = pnTreasuryFloor(afterAmount).band;
+  if ((PN_WC_BAND_RANK[after] || 0) < (PN_WC_BAND_RANK[before] || 0)){
+    flow.reserveBandBefore = before;
+    flow.reserveBandAfter = after;
+    flow.reserveCrossing = before + "_TO_" + after;
+    flow.reserveCrossedAt = nowISO();
+  } else {
+    delete flow.reserveBandBefore;
+    delete flow.reserveBandAfter;
+    delete flow.reserveCrossing;
+    delete flow.reserveCrossedAt;
+  }
+}
+
 function applyTreasuryChange(treasury, refType, refId, kind, amount, currency, note){
   const t = treasury || {flows:[]};
   const amt = Number(amount);
@@ -47,15 +69,19 @@ function applyTreasuryChange(treasury, refType, refId, kind, amount, currency, n
   const cur = currency || "RSD";
   const signed = (kind === "SALE" ? 1 : -1) * amt;
   const existing = findTreasuryFlow(t, refType, refId, kind);
+  const currentFortress = typeof pnTreasuryCalculate === "function" ? pnTreasuryCalculate(t).fortress : 0;
+  const baselineFortress = currentFortress - (existing ? treasurySignedEur(existing.signedDelta, existing.currency, t.settings || {}) : 0);
   const delta = signed - (existing ? (existing.signedDelta || 0) : 0);
+  let flow;
   if (existing){
+    flow = existing;
     existing.amount = amt;
     existing.signedDelta = signed;
     existing.currency = cur;
     if (note) existing.note = note;
     existing.updatedAt = nowISO();
   } else {
-    t.flows.push({
+    flow = {
       id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()),
       refType: refType,
       refId: refId,
@@ -65,9 +91,12 @@ function applyTreasuryChange(treasury, refType, refId, kind, amount, currency, n
       signedDelta: signed,
       note: note || "",
       createdAt: nowISO()
-    });
+    };
+    t.flows.push(flow);
   }
-  return applyPoolDelta(t, cur, delta);
+  const applied = applyPoolDelta(t, cur, delta);
+  if (typeof pnTreasuryCalculate === "function") stampTreasuryReserveCrossing(flow, baselineFortress, pnTreasuryCalculate(t).fortress);
+  return applied;
 }
 
 function removeTreasuryFlow(treasury, refType, refId, kind){
