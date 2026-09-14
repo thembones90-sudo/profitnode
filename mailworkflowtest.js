@@ -413,6 +413,43 @@ const results = env.run(sandbox, `
     Actions.removeMail(m.id);
   })();
 
+  // AA. New-shipment default status is IN TRANSIT (you already have a tracking code, so someone already shipped
+  // it) rather than PREPARING, and toggling direction on a still-blank draft keeps that default sensible.
+  (function(){
+    reset();
+    log('AA: mailDefaultRecord() defaults to IN TRANSIT', mailDefaultRecord().status === 'in_transit');
+
+    state.mailDraft = null;
+    const addBtn = document.createElement('button');
+    addBtn.setAttribute('data-mail-add', '');
+    const addEv = { target:addBtn, closest(sel){ return addBtn.closest(sel); } };
+    (window.__pnDocListeners.click || []).forEach(fn=>fn(addEv));
+    log('AA: + ADD SHIPMENT opens a blank draft defaulted to IN TRANSIT', state.mailDraft && state.mailDraft.status === 'in_transit');
+
+    const dirSelect = document.createElement('select');
+    dirSelect.setAttribute('data-mail-path', 'direction');
+    dirSelect.value = 'outgoing';
+    const changeEv = { target:dirSelect, closest(sel){ return dirSelect.closest(sel); } };
+    (window.__pnDocListeners.change || []).forEach(fn=>fn(changeEv));
+    log('AA: switching a blank draft to OUTGOING flips the auto default to PREPARING', state.mailDraft.status === 'preparing');
+
+    dirSelect.value = 'incoming';
+    (window.__pnDocListeners.change || []).forEach(fn=>fn(changeEv));
+    log('AA: switching back to INCOMING flips the auto default back to IN TRANSIT', state.mailDraft.status === 'in_transit');
+
+    // A deliberately-set status on an EXISTING record must never be clobbered by a direction toggle.
+    const existing = Actions.addMail({direction:'incoming', status:'delivered', description:'already delivered'});
+    state.mailDraft = Object.assign({}, existing);
+    const dirSelect2 = document.createElement('select');
+    dirSelect2.setAttribute('data-mail-path', 'direction');
+    dirSelect2.value = 'outgoing';
+    const changeEv2 = { target:dirSelect2, closest(sel){ return dirSelect2.closest(sel); } };
+    (window.__pnDocListeners.change || []).forEach(fn=>fn(changeEv2));
+    log('AA: editing an existing DELIVERED record keeps its status when direction is toggled', state.mailDraft.status === 'delivered');
+    Actions.removeMail(existing.id);
+    state.mailDraft = null;
+  })();
+
   return out;
 })()
 `);

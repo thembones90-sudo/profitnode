@@ -198,6 +198,38 @@ const results = env.run(sandbox, `
     log('Serbian acceptance and relative rule parse deterministically', sr.dateSentAt === '2026-09-09T12:15' && sr.dateSentSource === 'acceptance' && sr.deadlineAt === '2026-09-16T12:15' && sr.deadlineSource === 'relative');
   })();
 
+  // 20. Pošta's tracking-widget page text (title + headline status + fixed 3-stage caption + info/history panel),
+  // pasted verbatim instead of an SMS, must not be misread as DELIVERED, and the caption's own stage labels must
+  // never be captured as the sender.
+  (function(){
+    const widgetText = [
+      'PX893404347RS',
+      'Pošiljka je primljena od pošiljaoca',
+      'Preuzeta',
+      'Isporuka u toku',
+      'Isporučena',
+      'Informacije',
+      'Status ažuriran: 14.09.2026 18:31:38',
+      'Lokacija pošiljke: 15300 LOZNICA 1',
+      'Istorija statusa',
+      'Status: Pošiljka je primljena od pošiljaoca',
+      'Vreme: 14.09.2026 18:31:38',
+      'Mesto: 15300 LOZNICA 1'
+    ].join('\\n');
+    const w = mailParseCourierMessage(widgetText, new Date(2026, 8, 14, 18, 35));
+    log('pasted tracking-widget text is not misread as DELIVERED just because "Isporučena" is a future stage label', w.ok && w.status === 'in_transit');
+    log('pasted tracking-widget text does not capture the stage-label caption as the sender', w.sender === '');
+    log('pasted tracking-widget text still extracts the real tracking number', w.trackingNumber === 'PX893404347RS');
+
+    // A real delivered message must still be detected correctly — the caption strip must not over-correct.
+    const delivered = mailParseCourierMessage('Pošta Srbije: Vaša pošiljka PX893404347RS je uručena. Hvala na poverenju.', new Date(2026, 8, 16, 10, 0));
+    log('a genuine delivery confirmation still parses as DELIVERED', delivered.ok && delivered.status === 'delivered');
+
+    // Pošta's own status vocabulary must never be captured as a sender name even outside the widget-caption case.
+    const bareStatusWord = mailParseCourierMessage('Posta Srbije: Posiljka PX893404348RS je primljena od posiljaoca Preuzeta.', new Date(2026, 8, 14));
+    log('a bare status word after "od pošiljaoca" is rejected as a sender rather than captured literally', bareStatusWord.sender === '');
+  })();
+
   return out;
 })()
 `);

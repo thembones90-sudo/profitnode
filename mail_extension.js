@@ -55,9 +55,13 @@ function mailMatchesFilter(m,key){
   return true;
 }
 
+/* Default direction is "incoming" — by the time you have a shipment to log, someone else has already sent it,
+   so "preparing" (which reads as "I'm still packing this myself") is the wrong default. mailFormChange flips this
+   back to "preparing" if the direction is switched to outgoing on a still-blank draft. */
+function mailDefaultStatusForDirection(direction){return direction==="outgoing"?"preparing":"in_transit"}
 function mailDefaultRecord(){
   return{direction:"incoming",description:"",linkedType:"none",linkedId:null,carrier:"",trackingNumber:"",trackingUrl:"",sender:"",receiver:"",
-    shippingCost:0,currency:"RSD",codAmount:0,dateSent:todayISO(),dateSentAt:"",dateSentSource:"manual",expectedDeliveryDate:"",actualDeliveryDate:"",deadlineAt:"",deadlineSource:"",deadlineRule:"",deadlineAnchorAt:"",deadlineDays:null,pickupAvailableFrom:"",pickupDeadline:"",pickupDeadlineSource:"none",status:"preparing",notes:"",actionLinks:[],messageHistory:[]};
+    shippingCost:0,currency:"RSD",codAmount:0,dateSent:todayISO(),dateSentAt:"",dateSentSource:"manual",expectedDeliveryDate:"",actualDeliveryDate:"",deadlineAt:"",deadlineSource:"",deadlineRule:"",deadlineAnchorAt:"",deadlineDays:null,pickupAvailableFrom:"",pickupDeadline:"",pickupDeadlineSource:"none",status:mailDefaultStatusForDirection("incoming"),notes:"",actionLinks:[],messageHistory:[]};
 }
 function mailSafeUrl(u){
   const s=String(u||"").trim();
@@ -84,6 +88,12 @@ function mailCleanForwardedMessage(raw){
   out=out.replace(/\n-{3,}\n/g,"\n").replace(/\n_{3,}\n/g,"\n");
   out=out.replace(/^\s*from:\s*[^\n]+\n?/gim,"").replace(/^\s*sent:\s*[^\n]+\n?/gim,"").replace(/^\s*to:\s*[^\n]+\n?/gim,"").replace(/^\s*cc:\s*[^\n]+\n?/gim,"").replace(/^\s*bcc:\s*[^\n]+\n?/gim,"").replace(/^\s*subject:\s*[^\n]+\n?/gim,"");
   out=out.replace(/^\s*>[>\s]*/gm,"").replace(/^\s*\|[\|\s]*/gm,"");
+  /* Pošta Srbije's tracking-page widget always prints its fixed 3-stage caption row ("Preuzeta · Isporuka u toku ·
+     Isporučena") regardless of which stage the shipment has actually reached — the other two are just greyed-out
+     future labels. If someone pastes that widget's text instead of an SMS, "Isporučena" sitting in that caption
+     must never be read as a real "delivered" status line. Strip the whole fixed caption before status/sender
+     detection ever sees it. */
+  out=out.replace(/\bPreuzeta\b[\s|·•\-–—]{0,20}\bIsporuka\s+u\s+toku\b[\s|·•\-–—]{0,20}\bIsporu[cč]ena\b/gi,"");
   return out.trim();
 }
 function mailExtractUrls(raw){
@@ -101,9 +111,14 @@ function mailExtractGenericTracking(raw){
   const candidates=(up.match(/\b(?:[A-Z]{2,4}[0-9]{8,16}|[0-9]{9,16})\b/g)||[]).filter(x=>!/^[0-9]+$/.test(x)||x.length>=10);
   return candidates.length?mailNormalizeTracking(candidates[0]):"";
 }
+/* Guard against Pošta's own status/stage vocabulary being mistaken for a sender name — belt-and-suspenders
+   alongside the caption strip above, since this runs against the raw (unstripped) message. */
+const MAIL_SENDER_STOPWORDS=["preuzeta","preuzeto","isporuka","toku","isporucena","poslato","otpremljeno","dostavljeno","vracena","izgubljena"];
 function mailExtractSender(raw){
   const hit=String(raw||"").match(/\bod\s+po(?:s|š)iljaoca\s+([^,.;\n]+)/i);
-  return hit?String(hit[1]||"").trim():"";
+  if(!hit)return"";
+  const candidate=String(hit[1]||"").trim();
+  return candidate&&MAIL_SENDER_STOPWORDS.indexOf(mailFoldSerbian(candidate))===-1?candidate:"";
 }
 function mailExtractReceiver(raw){
   const hit=String(raw||"").match(/\bza\s+([^,.;\n]{2,40})\s*(?:\(|\-|adresa|ulica|telefon|br\.|mob)/i);
@@ -282,7 +297,10 @@ function mailGenericStatus(text){
   if(/\b(?:neuspesna\s+dostava|neuspešna\s+dostava|nije\s+dostavljena|delayed|kasnjenje|odlozeno|odloženo)\b/.test(f))return"delayed";
   if(/\b(?:kurir\s+je\s+preuzeo|na\s+dostavi|u\s+transportu|in\s+transit|otpremljena|poslata)\b/.test(f))return"in_transit";
   if(/\b(?:poslato|otpremljeno|sent|shipped)\b/.test(f))return"sent";
-  return"preparing";
+  /* Reached only from a smart-imported courier message (always direction:"incoming" — see mailParseCarrierBase)
+     with no recognizable status keyword at all. Someone already shipped it to you, so "in_transit" is the honest
+     default — matches mailPostaStatus's own fallback below. */
+  return"in_transit";
 }
 function mailNormalizeActionLinks(links){
   const out=[];
@@ -1120,6 +1138,9 @@ function mailFormChange(e){
   if(path==="direction"){
     const valid=mailLinkedTypeOptions(state.mailDraft.direction);
     if(valid.indexOf(state.mailDraft.linkedType)===-1){state.mailDraft.linkedType="none";state.mailDraft.linkedId=null}
+    /* Only re-guess status on a still-blank, unsaved draft, and only if it's still sitting at whichever auto
+       default we assigned — never clobber a status the user (or an import) deliberately set. */
+    if(!state.mailDraft.id&&(state.mailDraft.status==="preparing"||state.mailDraft.status==="in_transit"))state.mailDraft.status=mailDefaultStatusForDirection(state.mailDraft.direction);
     render();
     return;
   }
