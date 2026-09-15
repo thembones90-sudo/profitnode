@@ -1,6 +1,6 @@
 "use strict";
 window.__PN_SCRIPTS = [
-  "app_core.js?v=build-integrity-v1",
+  "app_core.js?v=ram-inventory-structured-v3",
   "cpu_revaluation_extension.js?v=v3-stack-20260912b",
   "gpu_revaluation_extension.js?v=v3-stack-20260912b",
   "motherboard_revaluation_extension.js?v=v3-stack-20260912b",
@@ -13,7 +13,7 @@ window.__PN_SCRIPTS = [
   "command_header_glitch_extension.js?v=commander-welcome-v1",
   "rig_bench_navigation_extension.js?v=rig-direct-open-v1",
   "command_financial_model_extension.js?v=rig-assembly-nav-v1",
-  "profitnode_intelligence_extension.js?v=part-rating-100-v1",
+  "profitnode_intelligence_extension.js?v=ram-structured-rating-v2",
   "command_separator_tune.js?v=command-depth-responsive-v3",
   "roulette_extension.js?v=roulette-loss-reason-v1",
   "roulette_ui_extension.js?v=rig-assembly-nav-v1",

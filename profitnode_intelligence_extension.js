@@ -130,8 +130,20 @@ function pnMotherboardNameTier(text,catalog){
   return 2;
 }
 
-function pnRamNameTier(text){
-  const capacity=pnPartCapacityGb(text,null),speed=Number((text.match(/(?:DDR[45]\s*)?(\d{4,5})\s*(?:MT S|MHZ)?/)||[])[1])||0;
+function pnRamStructuredRating(item){
+  if(!item||pnPartTierCategory(item.category)!=="RAM"||typeof ramRating!=="function") return null;
+  const d=typeof inventoryRamDetails==="function"?inventoryRamDetails(item):null;
+  if(!d) return null;
+  const total=Number(d.totalCapacity)||0,count=Number(d.moduleCount)||0,each=Number(d.moduleCapacity)||(total&&count&&total%count===0?total/count:0),speed=Number(d.ramSpeedMTs||d.ramSpeedMHz)||0,cas=Number(d.casLatency)||0;
+  if(!total||!count||!each||!speed) return null;
+  const rating=ramRating({technology:d.ramType||(/DDR5/.test(pnPartText(item,null))?"DDR5":"DDR4"),totalCapacity:total,moduleCount:count,perModuleCapacity:each,speed:speed,casLatency:cas});
+  return rating&&Number.isFinite(Number(rating.overall))?rating:null;
+}
+
+function pnRamNameTier(item,text){
+  const structured=pnRamStructuredRating(item);
+  if(structured) return Math.max(1,Math.min(7,Number(structured.tierIndex)+1));
+  const capacity=pnPartCapacityGb(text,null),speed=Number((text.match(/(?:DDR[45]\s*)?(\d{4,5})\s*(?:MT S|MT\/S|MHZ)?/)||[])[1])||0;
   const ddr5=/DDR5/.test(text),single=/SINGLE(?: CHANNEL)?|1\s*X\s*\d+\s*GB/.test(text),dual=/DUAL(?: CHANNEL)?|2\s*X\s*\d+\s*GB/.test(text);
   if(ddr5&&capacity>=32&&speed>=6000) return 7;
   if(ddr5&&capacity>=32||capacity>=32&&speed>=3200&&!single) return 6;
@@ -198,10 +210,11 @@ function pnCaseNameTier(text,catalog){
 }
 
 function pnPartNameTier(item){
-  const category=pnPartTierCategory(item&&item.category),resolution=pnPartCatalogResolution(item||{}),catalog=resolution.item,text=pnPartText(item,catalog);
-  let tier=category==="CPU"?pnCpuNameTier(text,catalog):category==="GPU"?pnGpuNameTier(text,catalog):category==="MOTHERBOARD"?pnMotherboardNameTier(text,catalog):category==="RAM"?pnRamNameTier(text):category==="PSU"?pnPsuNameTier(text,catalog):category==="STORAGE"?pnStorageNameTier(item,text,catalog):category==="COOLING"?pnCoolerNameTier(text,catalog):category==="CASE"?pnCaseNameTier(text,catalog):4;
+  const category=pnPartTierCategory(item&&item.category),resolution=pnPartCatalogResolution(item||{}),catalog=resolution.item,text=pnPartText(item,catalog),ramStructured=category==="RAM"?pnRamStructuredRating(item):null;
+  let tier=category==="CPU"?pnCpuNameTier(text,catalog):category==="GPU"?pnGpuNameTier(text,catalog):category==="MOTHERBOARD"?pnMotherboardNameTier(text,catalog):category==="RAM"?pnRamNameTier(item,text):category==="PSU"?pnPsuNameTier(text,catalog):category==="STORAGE"?pnStorageNameTier(item,text,catalog):category==="COOLING"?pnCoolerNameTier(text,catalog):category==="CASE"?pnCaseNameTier(text,catalog):4;
   tier=Math.max(1,Math.min(7,Number(tier)||4));
-  return Object.assign({tier:tier,rating:pnPartNameRating(tier,category),source:catalog?"catalog":"heuristic",category:category,matchConfidence:resolution.confidence,reason:catalog?"Canonical "+category.toLowerCase()+" evidence · "+resolution.reason:resolution.reason},PN_PART_NAME_TIERS[tier]);
+  const rating=ramStructured?Math.max(1,Math.min(100,Math.round(Number(ramStructured.overall)||1))):pnPartNameRating(tier,category),source=ramStructured?"configuration":catalog?"catalog":"heuristic",reason=ramStructured?"Structured RAM configuration"+(catalog?" · "+resolution.reason:""):catalog?"Canonical "+category.toLowerCase()+" evidence · "+resolution.reason:resolution.reason;
+  return Object.assign({tier:tier,rating:rating,source:source,category:category,matchConfidence:resolution.confidence,reason:reason},PN_PART_NAME_TIERS[tier]);
 }
 
 function pnPartNameHtml(item){
