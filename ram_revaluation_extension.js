@@ -193,6 +193,9 @@
       + optionSelect("perModuleCapacity","Each GB",Number(input.perModuleCapacity),supported.per_module_gb || [4,8,16,24,32,48,64])
       + optionSelect("speed","MT/s",Number(input.speed),speeds)
       + '<label><span>CAS Latency</span><input type="number" min="10" max="80" step="1" data-rig-ram-field="casLatency" value="'+escAttr(input.casLatency || "")+'" placeholder="e.g. 30"></label>'
+      + '<label><span>Voltage</span><select data-rig-ram-field="voltage"><option value="">— select —</option><option value="1.2V"'+(input.voltage==="1.2V"?' selected':"")+'>1.2V</option><option value="1.25V"'+(input.voltage==="1.25V"?' selected':"")+'>1.25V</option><option value="1.35V"'+(input.voltage==="1.35V"?' selected':"")+'>1.35V</option><option value="1.5V"'+(input.voltage==="1.5V"?' selected':"")+'>1.5V</option><option value="1.8V"'+(input.voltage==="1.8V"?' selected':"")+'>1.8V</option></select></label>'
+      + '<label><span>Part Number</span><input type="text" data-rig-ram-field="partNumber" value="'+escAttr(input.partNumber || "")+'" placeholder="e.g. KF426C16BBK2/16"></label>'
+      + '<label><span>Matched Kit</span><select data-rig-ram-field="matchedKit"><option value="">Unknown</option><option value="true"'+(input.matchedKit===true?' selected':'')+'>Yes</option><option value="false"'+(input.matchedKit===false?' selected':'')+'>No</option></select></label>'
       + '<label><span>RGB</span><select data-rig-ram-field="rgb"><option value="false"'+(input.rgb?'':' selected')+'>No</option><option value="true"'+(input.rgb?' selected':'')+'>Yes</option></select></label>'
       + boolSelect("xmp","XMP",input.xmp)
       + boolSelect("expo","EXPO",input.expo)

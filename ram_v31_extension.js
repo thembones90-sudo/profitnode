@@ -218,11 +218,11 @@
     </select></label>`;
   }
 
-  // Replace the V3 editor so 3-DIMM DDR4 is actually selectable.
   globalThis.renderRamConfig = function renderRamConfigV31(slot) {
     const r = Object.assign({
       technology:"DDR4", dimmType:"UDIMM", moduleCount:2, perModuleCapacity:8,
-      speed:3200, casLatency:16, rgb:false, xmp:null, expo:null, notes:""
+      speed:3200, casLatency:16, rgb:false, xmp:null, expo:null, notes:"",
+      voltage:"1.2V", partNumber:"", matchedKit:null
     }, slot && slot.ram || {});
     const tech = normTech(r.technology,r.speed);
     if (tech !== "DDR4") return baseRenderRamConfig(slot);
@@ -239,6 +239,9 @@
       <label><span>Each GB</span><select data-rig-ram-field="perModuleCapacity">${options(PER_DIMM,Number(r.perModuleCapacity))}</select></label>
       <label><span>MT/s</span><select data-rig-ram-field="speed">${options(DDR4_SPEEDS,Number(r.speed))}</select></label>
       <label><span>CAS Latency</span><input type="number" min="10" max="40" step="1" data-rig-ram-field="casLatency" value="${esc(r.casLatency)}"></label>
+      <label><span>Voltage</span><select data-rig-ram-field="voltage">${options(["1.2V","1.25V","1.35V","1.5V","1.8V"],r.voltage || "1.2V")}</select></label>
+      <label><span>Part Number</span><input type="text" data-rig-ram-field="partNumber" value="${esc(r.partNumber || "")}" placeholder="e.g. KF426C16BBK2/16"></label>
+      <label><span>Matched Kit</span><select data-rig-ram-field="matchedKit"><option value="">Unknown</option><option value="true"${r.matchedKit===true?" selected":""}>Yes</option><option value="false"${r.matchedKit===false?" selected":""}>No</option></select></label>
       <label><span>RGB</span><select data-rig-ram-field="rgb">${options(["false","true"],String(!!r.rgb))}</select></label>
       ${boolSelect("xmp","XMP",r.xmp)}
       ${boolSelect("expo","EXPO",r.expo)}

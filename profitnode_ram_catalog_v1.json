@@ -70,7 +70,41 @@
     },
     {
       "brand": "Kingston",
-      "series": "Fury Beast DDR4"
+      "series": "Fury Beast DDR4",
+      "kits": [
+        {
+          "capacity": 16,
+          "sticks": 2,
+          "speed": 2666,
+          "cas": 16,
+          "voltage": "1.2V",
+          "partNumber": "KF426C16BBK2/16"
+        },
+        {
+          "capacity": 32,
+          "sticks": 2,
+          "speed": 3200,
+          "cas": 16,
+          "voltage": "1.2V",
+          "partNumber": "KF432C16BBK2/32"
+        },
+        {
+          "capacity": 16,
+          "sticks": 1,
+          "speed": 2666,
+          "cas": 16,
+          "voltage": "1.2V",
+          "partNumber": "KF426C16BB/16"
+        },
+        {
+          "capacity": 8,
+          "sticks": 1,
+          "speed": 2666,
+          "cas": 16,
+          "voltage": "1.2V",
+          "partNumber": "KF426C16BB/8"
+        }
+      ]
     },
     {
       "brand": "Kingston",
