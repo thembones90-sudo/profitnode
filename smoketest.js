@@ -13,17 +13,18 @@ const checks = [];
 const CANONICAL_ORDER = [
   'app_core.js', 'cpu_revaluation_extension.js', 'gpu_revaluation_extension.js',
   'motherboard_revaluation_extension.js', 'planner_retirement_extension.js', 'terminal_naming_extension.js',
-  'psu_extension.js', 'rig_enclosure_extension.js', 'sale_type_extension.js',
+  'psu_extension.js', 'psu_top10_data_1.js', 'psu_top10_data_2.js', 'psu_top10_data_3.js', 'psu_top10_extension.js',
+  'rig_enclosure_extension.js', 'sale_type_extension.js',
   'command_center_extension.js', 'command_header_glitch_extension.js',
   'rig_bench_navigation_extension.js', 'command_financial_model_extension.js',
   'profitnode_intelligence_extension.js', 'command_separator_tune.js',
   'roulette_extension.js', 'roulette_ui_extension.js', 'treasury_extension.js',
   'road_to_extension.js', 'my_rig_extension.js', 'sidebar_cleanup_extension.js',
   'mail_extension.js', 'treasury_flow_extension.js', 'sold_transaction_extension.js',
-  'project_build_extension.js', 'build_rating_extension.js', 'rig_rating_extension.js', 'ram_revaluation_extension.js', 'ram_v31_extension.js'
+  'project_build_extension.js', 'project_build_acquisition_extension.js', 'display_dedupe_extension.js', 'build_rating_extension.js', 'rig_rating_extension.js', 'ram_revaluation_extension.js', 'ram_v31_extension.js'
 ];
-checks.push(['manifest has 29 scripts', entries.length === 29]);
-checks.push(['manifest order matches canonical 29-file load order',
+checks.push(['manifest has 35 scripts', entries.length === 35]);
+checks.push(['manifest order matches canonical 35-file load order',
   entries.map(e => e.split('?')[0]).join(',') === CANONICAL_ORDER.join(',')]);
 checks.push(['first script is app_core.js', entries[0].split('?')[0] === 'app_core.js']);
 checks.push(['last script is ram_v31_extension.js',
@@ -87,7 +88,7 @@ checks.push(['road-to route present', routeKeys.includes('roadto')]);
 checks.push(['mail route present', routeKeys.includes('mail')]);
 checks.push(['backup route still present', routeKeys.includes('backup')]);
 const expectedSeq = [
-  ['dashboard','COMMAND'], ['treasury','TREASURY'], ['analytics','INTEL'], ['rigbuild','RIG ASSEMBLY'], ['myrig','MY RIG'],
+  ['dashboard','COMMAND'], ['treasury','WAR CHEST'], ['analytics','INTEL'], ['rigbuild','RIG ASSEMBLY'], ['myrig','MY RIG'],
   ['projects','BUILDS'], ['inventory','PARTS VAULT'], ['repairs','REPAIR BAY'],
   ['roadto','ROAD TO'], ['sales','LEDGER'], ['mail','MAIL'], ['history','ARCHIVE'],
   ['roulette','THE ROULETTE'], ['backup','BLACKBOX'], ['projectbuild','Build Workspace']
@@ -119,7 +120,7 @@ checks.push(['roulette ledger CSV export registered', meta.csvKeys.includes('rou
 checks.push(['mail CSV export registered', meta.csvKeys.includes('mail')]);
 checks.push(['PN_SALE_TYPES = RIG,COMPONENT,OTHER', meta.saleTypes === 'RIG,COMPONENT,OTHER']);
 checks.push(['currencies remain RSD,EUR', meta.curren === 'RSD,EUR']);
-checks.push(['manifest declares 29 scripts in sandbox', meta.manifestLen === 29]);
+checks.push(['manifest declares 35 scripts in sandbox', meta.manifestLen === 35]);
 const migrationProbe = env.run(sandbox, `(() => {
   const legacy={meta:{seeded:true},inventory:[
     {id:'healthy',category:'STORAGE',driveHealthPercent:120,catalogOverride:'  Samsung 970 EVO Plus 1TB  '},

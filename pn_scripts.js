@@ -1,13 +1,17 @@
 "use strict";
 window.__PN_SCRIPTS = [
-  "app_core.js?v=ram-inventory-structured-v3",
+  "app_core.js?v=parts-vault-tweaks-v1",
   "cpu_revaluation_extension.js?v=v3-stack-20260912b",
   "gpu_revaluation_extension.js?v=v3-stack-20260912b",
   "motherboard_revaluation_extension.js?v=v3-stack-20260912b",
 "planner_retirement_extension.js?v=planner-retired-v1",
   "terminal_naming_extension.js?v=sidebar-navigation-v2",
   "psu_extension.js?v=tier-glow-v1",
-  "rig_enclosure_extension.js?v=cooler-registry-overhaul-v1",
+  "psu_top10_data_1.js?v=top10-psu-skynet-v1",
+  "psu_top10_data_2.js?v=top10-psu-skynet-v1",
+  "psu_top10_data_3.js?v=top10-psu-skynet-v1",
+  "psu_top10_extension.js?v=top10-psu-skynet-v1",
+  "rig_enclosure_extension.js?v=intel-e97379-001-v2",
   "sale_type_extension.js?v=escape-consume-fix-v1",
   "command_center_extension.js?v=rig-assembly-nav-v1",
   "command_header_glitch_extension.js?v=commander-welcome-v1",
@@ -25,8 +29,12 @@ window.__PN_SCRIPTS = [
   "treasury_flow_extension.js?v=treasury-reserve-crossings-v1",
   "sold_transaction_extension.js?v=sold-in-transit-v1",
   "project_build_extension.js?v=loadout-typography-v1",
+  "project_build_acquisition_extension.js?v=build-acquisition-v1",
+  "display_dedupe_extension.js?v=display-dedupe-v1",
+  "build_workspace_refinement_extension.js?v=build-workspace-refinement-v1",
   "build_rating_extension.js?v=build-rating-v3-omnissiah-vocab",
   "rig_rating_extension.js?v=rig-rating-v2-hooks-fix",
   "ram_revaluation_extension.js?v=ram-v3-20260912-live1",
   "ram_v31_extension.js?v=ram-v31-20260912-live2"
 ];
+

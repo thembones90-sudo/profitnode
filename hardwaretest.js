@@ -345,7 +345,7 @@ const results = env.run(sandbox, `(() => {
   HardwareCatalog.cases = canonicalCases.cases;
   HardwareCatalog.coolers = canonicalCoolers.coolers;
   out.push(['canonical case catalog is loaded with 24 entries', HardwareCatalog.cases.length === 24]);
-  out.push(['canonical cooler catalog is loaded with 44 entries', HardwareCatalog.coolers.length === 44]);
+  out.push(['canonical cooler catalog is loaded with 45 entries (44 base + Noctua NH-D15 / NH-D15S additions)', HardwareCatalog.coolers.length === 45]);
   out.push(['case catalog searches brand + model', catalogSearch('CASE','Lancool 216').some(e => e.brand === 'Lian Li' && e.model === 'Lancool 216')]);
   out.push(['cooler catalog searches brand + model', catalogSearch('COOLER','NH-D15').some(e => e.brand === 'Noctua' && e.caps.type === 'DUAL TOWER')]);
   out.push(['cooler and case names receive restrained category-aware tiers', pnPartNameTier({category:'COOLING',manufacturer:'Noctua',model:'NH-D15'}).key==='LEGENDARY'&&pnPartNameTier({category:'CASE',manufacturer:'Lian Li',model:'Lancool 216'}).key==='RARE'&&pnPartNameHtml({category:'COOLING',manufacturer:'Noctua',model:'NH-D15'}).includes('pn-part-name-subtle')]);
@@ -368,7 +368,7 @@ const results = env.run(sandbox, `(() => {
   out.push(['stock cooler scores resolve through COOLER-specific thresholds, never CPU/GPU ones', catalogTier('COOLER',{model:'x',pn_score:28})===1&&cpuGearTier({model:'x',pn_score:28})===0&&catalogTier('COOLER',{model:'x',pn_score:42})===2&&motherboardGearTier({model:'x',pn_score:42})===1&&catalogTier('COOLER',{model:'x',pn_score:57})===3&&motherboardGearTier({model:'x',pn_score:57})===2]);
   out.push(['stock origin never forces POOR — Wraith Prism and Wraith Max rate RARE', catalogTier('COOLER',coolerByModel('Wraith Prism'))===3&&catalogTier('COOLER',coolerByModel('Wraith Max'))===3&&catalogTier('COOLER',coolerByModel('Wraith Stealth'))===1]);
   out.push(['boxed cooler scores follow the AMD and Intel capability ladders', coolerByModel('Wraith Prism').pn_score>coolerByModel('Wraith Max').pn_score&&coolerByModel('Wraith Max').pn_score>coolerByModel('Wraith Spire RGB').pn_score&&coolerByModel('Wraith Spire RGB').pn_score>=coolerByModel('Wraith Spire').pn_score&&coolerByModel('Wraith Spire').pn_score>coolerByModel('AMD Stock Cooler').pn_score&&coolerByModel('AMD Stock Cooler').pn_score>coolerByModel('Wraith Stealth').pn_score&&coolerByModel('Laminar RH1').pn_score>coolerByModel('Laminar RM1').pn_score&&coolerByModel('Laminar RM1').pn_score>coolerByModel('Laminar RS1').pn_score&&coolerByModel('Laminar RS1').pn_score>coolerByModel('Intel Stock Cooler').pn_score]);
-  out.push(['stock-class search terms surface the boxed cooler family', ["stock","wraith","stealth","spire","prism","max","laminar","rs1","rm1","rh1","amd stock","intel stock"].every(t=>catalogSearch('COOLER',t).length>=1)&&catalogSearch('COOLER','stock',20).length===13]);
+  out.push(['stock-class search terms surface the boxed cooler family', ["stock","wraith","stealth","spire","prism","max","laminar","rs1","rm1","rh1","amd stock","intel stock"].every(t=>catalogSearch('COOLER',t).length>=1)&&catalogSearch('COOLER','stock',20).length===12]);
   out.push(['scored boxed coolers render a tier pill and glow in the rig slot row', (function(){const r=goodRig();r.slots.COOLER={kind:'CATALOG',catalogType:'COOLER',label:'AMD Wraith Prism',cost:0,originalPrice:0,currency:'RSD'};const h=renderRigSlotRow('COOLER',r);return h.includes('pn-tier-rare')&&h.includes('Tier')&&h.includes('FIT:')})()]);
   out.push(['uncataloged coolers stay UNRATED with no tier pill', (function(){const r=goodRig();r.slots.COOLER={kind:'CATALOG',catalogType:'COOLER',label:'Arctic Liquid Freezer III 240',cost:0,originalPrice:0,currency:'RSD'};const h=renderRigSlotRow('COOLER',r);return !(/\bTier\b/.test(h))})()]);
 
@@ -589,9 +589,32 @@ const results = env.run(sandbox, `(() => {
   const backupHtml = renderBackup();
   out.push(['the Backup/Archive page embeds the Catalog Coverage panel alongside the user\\'s own ledger stats', backupHtml.includes('Catalog Coverage') && backupHtml.includes('Current Ledger')]);
 
+  // --- PARTS VAULT table integrity + operator tweaks ---
+  const pvCpu = Actions.addInventory({category:'CPU',manufacturer:'AMD',model:'Ryzen 5 5600',purchaseDate:'2025-11-01',purchasePrice:10000,currency:'RSD',estimatedMarketValue:14000,source:'OTHER',condition:'WORKING',status:'IN_STORAGE',notes:''});
+  const pvSsd = Actions.addInventory({category:'STORAGE',manufacturer:'Samsung',model:'870 EVO 1TB',purchaseDate:'2026-07-01',purchasePrice:7000,currency:'RSD',estimatedMarketValue:9000,driveHealthPercent:87,source:'OTHER',condition:'WORKING',status:'IN_STORAGE',notes:''});
+  const pvSold = Actions.addInventory({category:'GPU',manufacturer:'NVIDIA',model:'GTX 1650',purchaseDate:'2026-03-01',purchasePrice:12000,currency:'RSD',estimatedMarketValue:16000,source:'OTHER',condition:'WORKING',status:'SOLD',notes:''});
+  const pvF=state.filters.inventory;
+  state.filters.inventory={category:'ALL',status:'ALL',q:'',sort:'QUALITY'};
+  const pvHtml = renderInventory();
+  state.filters.inventory=pvF;
+  const pvThCount = (function(){const a=pvHtml.indexOf('<thead>'),b=pvHtml.indexOf('</thead>');return (pvHtml.slice(a,b).match(/<th[ >]/g)||[]).length})();
+  const pvRowTdCount = (function(id){const i=pvHtml.indexOf('data-open-entity="inventory" data-id="'+id+'"'),t=pvHtml.lastIndexOf('<tr class="clickable"',i),e=pvHtml.indexOf('</tr>',i);return (pvHtml.slice(t,e).match(/<td/g)||[]).length})(pvCpu.id);
+  out.push(['PARTS VAULT header and row cell counts agree (no more 10-th / 11-td drift)', pvThCount===12&&pvRowTdCount===12]);
+  const pvHeldDays=Calc.daysHeld(pvCpu.purchaseDate,todayISO());
+  out.push(['PARTS VAULT shows net profit (est value - price) per row instead of duplicating est value', pvHtml.includes('<td class="num">'+money(10000,'RSD')+'</td><td class="num">'+money(14000,'RSD')+'</td><td class="num" style="color:var(--green)">'+money(4000,'RSD')+'</td>')&&!pvHtml.includes('<td class="num">'+money(14000,'RSD')+'</td><td class="num" style="color:var(--green)">'+money(14000,'RSD'))]);
+  out.push(['PARTS VAULT shows DAYS HELD with a stale red tint for parts held 90+ days', pvHtml.includes('style="color:var(--red)">'+pvHeldDays+'d')&&pvHeldDays>=90]);
+  out.push(['PARTS VAULT STORAGE row surfaces the media health chip from driveHealthPercent', (function(){const i=pvHtml.indexOf(pvSsd.id);return pvHtml.slice(i-300,i+450).includes('HEALTH 87%')})()]);
+  out.push(['PARTS VAULT SOLD rows dim via pn-inv-row-sold while active rows stay crisp', pvHtml.includes('class="clickable pn-inv-row-sold" data-open-entity="inventory" data-id="'+pvSold.id+'"')&&!pvHtml.includes('data-id="'+pvCpu.id+'" pn-inv-row-sold')]);
+  const pvGroupSub=pvHtml.slice(pvHtml.indexOf('pn-inv-group-val')).slice(0,400);
+  out.push(['PARTS VAULT group header now shows PAID and PROFIT beside EST. VALUE', pvGroupSub.includes('EST. VALUE')&&pvGroupSub.includes('PAID')&&pvGroupSub.includes('PROFIT')&&pvHtml.includes('pn-inv-group-sub')]);
+  out.push(['PARTS VAULT filter bar exposes the inventory sort control defaulting to QUALITY', pvHtml.includes('data-filter="inventory.sort"')&&pvHtml.includes('<option value="QUALITY" selected>QUALITY</option>')&&pvHtml.includes('<option value="HELD">DAYS HELD</option>')]);
+  out.push(['PARTS VAULT sort mode HELD ranks oldest-held first', (function(){state.filters.inventory.sort='HELD';const s=[{id:'a',category:'CPU',purchaseDate:'2025-01-01',currency:'RSD'},{id:'b',category:'CPU',purchaseDate:'2026-09-01',currency:'RSD'}];inventorySortItems(s,'RSD');state.filters.inventory.sort='QUALITY';return s[0].id==='a'})()]);
+  out.push(['PARTS VAULT empty filter state offers a CLEAR FILTERS reset action', (function(){const prev=state.filters.inventory;state.filters.inventory={category:'ALL',status:'ACTIVE',q:'__no_such_part__',sort:'QUALITY'};const empty=renderInventory();state.filters.inventory=prev;return empty.includes('No inventory matches this filter.')&&empty.includes('data-clear-inventory-filters')})()]);
+  out.push(['PARTS VAULT tier pill appears beside part names that clear COMMON', pvHtml.includes('pn-inv-tier-chip pn-part-name-rare')&&pvHtml.includes('pn-inv-tier-chip pn-part-name-common')===false]);
+  out.push(['PARTS VAULT inventorySortItems falls back to QUALITY when the sort filter is unset', (function(){state.filters.inventory.sort=undefined;const s=[{id:'x',category:'CPU',manufacturer:'AMD',model:'Ryzen 5 3600',purchaseDate:'2025-01-01',currency:'RSD'},{id:'y',category:'GPU',manufacturer:'NVIDIA',model:'RTX 3090',purchaseDate:'2026-09-01',currency:'RSD'}];inventorySortItems(s,'RSD');state.filters.inventory.sort='QUALITY';return typeof inventoryQualitySort==='function'&&s.length===2})()]);
+
   return out;
 })()`);
-
 let failures=0;
 for(const [name, ok] of results){
   console.log((ok ? 'PASS' : 'FAIL') + ' - ' + name);

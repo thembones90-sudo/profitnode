@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <style>
 /* ============================================================
-   PROFITNODE â€” workshop ledger / trading terminal for SHADEZY REPAIR SHOP
+   PROFITNODE Ã¢â‚¬â€ workshop ledger / trading terminal for SHADEZY REPAIR SHOP
    Hardware workshop ledger / trading terminal aesthetic.
    Deliberately single-theme (dark graphite + amber): the terminal
    look is the point, so tokens are fixed rather than swapped
@@ -275,7 +275,7 @@ tbody tr:not(.pn-inv-group-head):hover td:first-child{border-left-color:var(--re
 td.num,th.num{font-family:var(--mono);text-align:right;font-variant-numeric:tabular-nums}
 td.mono{font-family:var(--mono)}
 tbody tr.clickable{cursor:pointer}
-/* RIG BENCH family row â€” target-lock hover */
+/* RIG BENCH family row Ã¢â‚¬â€ target-lock hover */
 tbody tr.clickable[data-open-rig-family]{transition:transform .18s ease}
 tbody tr.clickable[data-open-rig-family]:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,.22)}
 tbody tr.clickable[data-open-rig-family]:hover td{background:linear-gradient(90deg,rgba(210,216,225,.05),rgba(235,239,244,.10) 45%,rgba(190,198,208,.04)),var(--panel-2);border-left-color:rgba(210,216,225,.10);border-bottom-color:rgba(210,216,225,.10)}
@@ -343,6 +343,10 @@ tbody tr.clickable[data-open-rig-family]:hover td:last-child::before{opacity:1}
 .pn-inv-group-val{font-family:var(--mono);font-size:10.5px;color:#E3E7ED;margin-left:auto}
 .pn-inv-group-head .pn-cat-chip{color:#E3E7ED;background:rgba(218,224,233,.07);border-color:rgba(218,224,233,.24);letter-spacing:.12em}
 .pn-inv-group.collapsed{opacity:.72}
+.pn-inv-row-sold{opacity:.55}
+.pn-inv-row-sold:hover{opacity:.8}
+.pn-inv-tier-chip{display:inline-block;font-family:var(--stamp);font-size:9px;font-weight:700;letter-spacing:.08em;margin-left:6px;vertical-align:2px;text-transform:uppercase}
+.pn-inv-group-sub{font-family:var(--mono);font-size:10px;color:var(--text-mute);margin-left:12px;white-space:nowrap}
 .score-badge{
   font-family:var(--mono);font-weight:600;font-size:12px;color:var(--bg);
   width:26px;height:26px;border-radius:2px;display:inline-flex;align-items:center;justify-content:center;
@@ -676,7 +680,8 @@ body{background-image:url(data:image/webp;base64,UklGRkJKAABXRUJQVlA4IDZKAADwMQO
 </head>
 <body>
 <div id="root"></div>
-<script src="pn_scripts.js?v=ram-fix-skynet-v2"></script>
+<script src="pn_scripts.js?v=build-workspace-refinement-v1"></script>
 <script src="app.js?v=defer-load-v1"></script>
 </body>
 </html>
+
