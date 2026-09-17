@@ -398,7 +398,7 @@
         "noiseClass": "NORMAL",
         "tdpClass": "LIGHT",
         "ramClearance": "NO",
-        "notes": "Generic fallback for an unknown AMD boxed cooler — capability class is an estimate."
+        "notes": "Generic fallback for an unknown AMD boxed cooler \u2014 capability class is an estimate."
       }
     },
     {
@@ -510,7 +510,7 @@
         "noiseClass": "NORMAL",
         "tdpClass": "STRONG",
         "ramClearance": "NO",
-        "notes": "One of AMD's stronger stock-style coolers. Large heatsink and good airflow — significantly better than Stealth/Spire."
+        "notes": "One of AMD's stronger stock-style coolers. Large heatsink and good airflow \u2014 significantly better than Stealth/Spire."
       }
     },
     {
