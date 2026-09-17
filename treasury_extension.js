@@ -55,9 +55,15 @@ const PN_WC_SOURCE_ASSETS={
 function pnTreasurySourceCards(e){
   const t=pnTreasuryCoreDraft(JSON.parse(JSON.stringify(e))),settings=t.settings;
   return'<section class="pn-wc-sources"><div class="pn-wc-section-head"><b>RESERVES</b></div><div class="pn-wc-source-grid">'+PN_TREASURY_CORE_BALANCES.map(def=>{
-    const b=t.balances.find(x=>x.sourceKey===def.sourceKey)||{amount:0,currency:def.currency,include:!0},enabled=b.include!==!1;
-    const cur=b.currency||def.currency,equivalent="EUR"===cur?"":pnTreasuryMoney(pnTreasuryEur(b.amount,cur,settings));
-    return'<article class="pn-wc-source '+(enabled?'':'is-muted')+'" data-wc-source="'+def.sourceKey+'"><div class="pn-wc-source-mark"><img src="'+PN_WC_SOURCE_ASSETS[def.sourceKey]+'" alt="" aria-hidden="true"></div><div><span>'+escHtml(def.label)+'</span><strong>'+pnTreasuryNativeMoney(b.amount,cur)+'</strong>'+(equivalent?'<small>'+equivalent+(enabled?'':' · excluded')+'</small>':enabled?'':'<small>EXCLUDED</small>')+'</div></article>'
+    const b=t.balances.find(x=>x.sourceKey===def.sourceKey)||{amount:0,currency:def.currency,include:!0},
+      enabled=b.include!==!1,
+      cur=b.currency||def.currency,
+      amount=Math.max(0,Number(b.amount)||0),
+      equivalent="EUR"===cur?"":pnTreasuryMoney(pnTreasuryEur(amount,cur,settings)),
+      zero=pnTreasuryZero(amount),
+      major=def.sourceKey==="PAYONEER"||def.sourceKey==="PREPLY",
+      cls=(enabled?"":" is-muted")+(zero?" is-zero":" is-funded")+(major?" is-major":"");
+    return'<article class="pn-wc-source'+cls+'" data-wc-source="'+def.sourceKey+'"><div class="pn-wc-source-mark"><img src="'+PN_WC_SOURCE_ASSETS[def.sourceKey]+'" alt="" aria-hidden="true"></div><div><span>'+escHtml(def.label)+'</span><strong>'+pnTreasuryNativeMoney(amount,cur)+'</strong>'+(equivalent?'<small>'+equivalent+(enabled?'':' · excluded')+'</small>':enabled?'':'<small>EXCLUDED</small>')+'</div></article>'
   }).join("")+'</div></section>'
 }
 function pnTreasuryLastRecount(e){
@@ -73,20 +79,53 @@ function pnTreasuryMovements(e,t,r){
     +'</div></section>'
 }
 function pnTreasuryHero(t,e,a){
-  const maxScale=Math.max(1e3,t.fortress*1.15),fillPct=Math.max(0,Math.min(100,t.fortress/maxScale*100));
-  const floorPct=PN_WC_SAFETY_FLOOR/maxScale*100,greenPct=PN_WC_GREEN_TARGET/maxScale*100;
-  const gaugeStops='var(--wc-savings-blood) 0%,var(--wc-savings-blood) '+floorPct.toFixed(2)+'%,var(--wc-savings-yellow) '+floorPct.toFixed(2)+'%,var(--wc-savings-yellow) '+greenPct.toFixed(2)+'%,var(--wc-savings-green) '+greenPct.toFixed(2)+'%,var(--wc-savings-green) 100%';
-  const bgSizePct=fillPct>0?10000/fillPct:100;
-  const fillStyle='width:'+fillPct.toFixed(2)+'%;background-image:linear-gradient(90deg,'+gaugeStops+');background-size:'+bgSizePct.toFixed(2)+'% 100%';
-  return'<div class="pn-treasury-card pn-wc-hero is-fortress '+a.tone+'" data-wc-band="'+a.band+'">'
-    +'<div class="pn-wc-hero-top"><span class="pn-wc-hero-eyebrow">'+PN_WC_GLYPH.fortress+'FORTRESS RESERVE</span><span class="pn-wc-hero-status '+a.tone+'">'+a.label+'</span></div>'
-    +'<strong>'+pnTreasuryMoney(t.fortress)+'</strong>'
-    +'<div class="pn-wc-gauge"><div class="pn-wc-gauge-track"><div class="pn-wc-gauge-fill" style="'+fillStyle+'"></div><div class="pn-wc-gauge-floor" style="left:'+floorPct.toFixed(2)+'%"><span>€500</span></div><div class="pn-wc-gauge-target" style="left:'+greenPct.toFixed(2)+'%"><span>€800</span></div></div></div>'
-    +'<div class="pn-wc-reserve-summary"><span class="gate"><b>NEXT GATE</b> '+pnTreasuryNextGate(t.fortress)+'</span><span><b>'+pnTreasuryMoney(Math.min(Math.max(0,t.fortress),PN_WC_GREEN_TARGET))+'</b> PROTECTED</span><span><b>'+pnTreasuryMoney(Math.max(0,t.fortress-PN_WC_GREEN_TARGET))+'</b> DEPLOYABLE</span>'+(pnTreasuryRecurringDues(e)>0?'<span><b>'+pnTreasuryRunway(e,t)+'</b> RUNWAY</span>':'')+'</div>'
-    +'</div>'
+  const maxScale=Math.max(1e3,t.fortress*1.15),
+    fillPct=Math.max(0,Math.min(100,t.fortress/maxScale*100)),
+    floorPct=PN_WC_SAFETY_FLOOR/maxScale*100,
+    greenTargetPct=PN_WC_GREEN_TARGET/maxScale*100,
+    bloodAbs=Math.max(0,Math.min(fillPct,floorPct)),
+    yellowAbs=Math.max(0,Math.min(fillPct,greenTargetPct)-bloodAbs),
+    greenAbs=Math.max(0,fillPct-bloodAbs-yellowAbs),
+    bloodRel=fillPct>0?bloodAbs/fillPct*100:0,
+    yellowRel=fillPct>0?yellowAbs/fillPct*100:0,
+    greenRel=fillPct>0?greenAbs/fillPct*100:0;
+
+  return'<div class="pn-treasury-card pn-wc-hero is-fortress '+a.tone+'" data-wc-band="'+a.band+'">'+
+    '<div class="pn-wc-hero-top"><span class="pn-wc-hero-eyebrow">'+PN_WC_GLYPH.fortress+'FORTRESS RESERVE</span><span class="pn-wc-hero-status '+a.tone+'">'+a.label+'</span></div>'+
+    '<strong>'+pnTreasuryMoney(t.fortress)+'</strong>'+
+    '<div class="pn-wc-gauge"><div class="pn-wc-gauge-track">'+
+      '<div class="pn-wc-gauge-progress" style="width:'+fillPct.toFixed(2)+'%">'+
+        '<i class="pn-wc-gauge-segment blood" style="width:'+bloodRel.toFixed(3)+'%"></i>'+
+        '<i class="pn-wc-gauge-segment yellow" style="width:'+yellowRel.toFixed(3)+'%"></i>'+
+        '<i class="pn-wc-gauge-segment green" style="width:'+greenRel.toFixed(3)+'%"></i>'+
+        '<i class="pn-wc-gauge-gloss" aria-hidden="true"></i>'+
+        '<i class="pn-wc-gauge-pulse-v6" aria-hidden="true"></i>'+
+      '</div>'+
+      '<div class="pn-wc-gauge-floor" style="left:'+floorPct.toFixed(2)+'%"><span>€500</span></div>'+
+      '<div class="pn-wc-gauge-target" style="left:'+greenTargetPct.toFixed(2)+'%"><span>€800</span></div>'+
+    '</div></div>'+
+    '<div class="pn-wc-reserve-summary"><span class="gate"><b>NEXT GATE</b> '+pnTreasuryNextGate(t.fortress)+'</span><span><b>'+pnTreasuryMoney(Math.min(Math.max(0,t.fortress),PN_WC_GREEN_TARGET))+'</b> PROTECTED</span><span><b>'+pnTreasuryMoney(Math.max(0,t.fortress-PN_WC_GREEN_TARGET))+'</b> DEPLOYABLE</span>'+(pnTreasuryRecurringDues(e)>0?'<span><b>'+pnTreasuryRunway(e,t)+'</b> RUNWAY</span>':'')+'</div>'+
+    '</div>'
 }
 function pnTreasuryCrossingAlert(e){const t=pnTreasuryLatestCrossing(e);if(!t)return"";return'<div class="pn-wc-crossing-alert"><b>RESERVE BAND BREACH</b><span>'+escHtml(String(t.reserveBandBefore||"")+" → "+String(t.reserveBandAfter||""))+'</span><span>'+escHtml(pnTreasuryFlowMeta(t))+'</span><small>'+fmtDate(String(t.reserveCrossedAt||t.updatedAt||t.createdAt||"").slice(0,10),"short")+'</small></div>'}
-function pnTreasurySurplusProtocol(t){const e=Math.max(0,t.fortress-PN_WC_GREEN_TARGET);if(!e)return"";return'<div class="panel pn-wc-surplus-protocol"><b>SURPLUS '+pnTreasuryMoney(e)+'</b><span>ROAD TO '+pnTreasuryMoney(e*PN_WC_SURPLUS_PROTOCOL.roadTo)+'</span><span>HARDWARE '+pnTreasuryMoney(e*PN_WC_SURPLUS_PROTOCOL.hardware)+'</span><span>FREE '+pnTreasuryMoney(e*PN_WC_SURPLUS_PROTOCOL.freeCash)+'</span><small>50 / 30 / 20 · advisory</small></div>'}
+function pnTreasurySurplusProtocol(t){
+  const e=Math.max(0,t.fortress-PN_WC_GREEN_TARGET);
+  if(!e)return"";
+  const road=e*PN_WC_SURPLUS_PROTOCOL.roadTo,
+    hardware=e*PN_WC_SURPLUS_PROTOCOL.hardware,
+    free=e*PN_WC_SURPLUS_PROTOCOL.freeCash;
+  return'<div class="panel pn-wc-surplus-protocol pn-wc-surplus-v21">'+
+    '<div class="pn-wc-surplus-total"><span>SURPLUS</span><strong>'+pnTreasuryMoney(e)+'</strong><small>Allocation doctrine · 50 / 30 / 20</small></div>'+
+    '<div class="pn-wc-allocation">'+
+      '<div class="pn-wc-allocation-bar"><i class="road"></i><i class="hardware"></i><i class="free"></i></div>'+
+      '<div class="pn-wc-allocation-cards">'+
+        '<div class="pn-wc-allocation-card road"><span>ROAD TO · 50%</span><strong>'+pnTreasuryMoney(road)+'</strong><small>Strategic reserve</small></div>'+
+        '<div class="pn-wc-allocation-card hardware"><span>HARDWARE · 30%</span><strong>'+pnTreasuryMoney(hardware)+'</strong><small>Parts / flips / acquisitions</small></div>'+
+        '<div class="pn-wc-allocation-card free"><span>FREE · 20%</span><strong>'+pnTreasuryMoney(free)+'</strong><small>Flexible pool</small></div>'+
+      '</div>'+
+    '</div>'+
+  '</div>'
+}
 function pnTreasuryOptions(e,t){return e.map(e=>'<option value="'+e+'"'+(e===t?' selected':'')+'>'+STATUS_LABEL(e)+'</option>').join("")}
 function pnTreasuryInput(e,t,a,r){return'<label><span>'+e+'</span><input type="'+(r||"text")+'" value="'+escAttr(null==a?"":a)+'" data-treasury-path="'+t+'"'+("number"===r?' min="0" step="0.01" data-treasury-number':'')+'></label>'}
 function pnTreasurySelect(e,t,a,r){return'<label><span>'+e+'</span><select data-treasury-path="'+t+'">'+pnTreasuryOptions(r,a)+'</select></label>'}

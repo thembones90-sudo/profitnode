@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="rentStroke" x1="12" y1="10" x2="52" y2="54" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFD2E4"/>
+      <stop offset="0.48" stop-color="#FF7AA8"/>
+      <stop offset="1" stop-color="#C74D80"/>
+    </linearGradient>
+    <filter id="rentGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="1.7" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <g stroke="url(#rentStroke)" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" filter="url(#rentGlow)">
+    <path d="M12 29.5 29 16l13.5 10.7"/>
+    <path d="M17.5 27.5V48h17V35.5H29V48"/>
+    <circle cx="43.5" cy="20.5" r="7.2"/>
+    <circle cx="43.5" cy="20.5" r="2.1"/>
+    <path d="m38.4 25.6-13 13v5h-5v5h-5"/>
+  </g>
+</svg>

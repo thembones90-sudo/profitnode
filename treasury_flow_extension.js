@@ -19,12 +19,42 @@
     flows), so replacing the ledger never replays deductions.
 */
 
+function findExactTreasuryPool(treasury, currency){
+  const t = treasury || {balances:[]};
+  const balances = Array.isArray(t.balances) ? t.balances : [];
+  const cur = String(currency || "RSD").toUpperCase();
+  const key = "CASH_" + cur;
+  const label = "cash (" + cur.toLowerCase() + ")";
+  return balances.find(b => b && b.sourceKey === key) ||
+    balances.find(b => b && b.label && String(b.label).trim().toLowerCase() === label) || null;
+}
+
 function treasuryFlowPool(treasury, currency){
   const t = treasury || {balances:[]};
+  if (!Array.isArray(t.balances)) t.balances = [];
   const cur = String(currency || "RSD").toUpperCase();
-  const byKey = k => b => !!(b && b.sourceKey === "CASH_" + k);
-  const byLabel = k => b => !!(b && b.label && String(b.label).toLowerCase() === "cash (" + k.toLowerCase() + ")");
-  return t.balances.find(byKey(cur)) || t.balances.find(byKey("RSD")) || t.balances.find(byLabel(cur)) || null;
+  const key = "CASH_" + cur;
+  let pool = findExactTreasuryPool(t, cur);
+  if (pool){
+    if (!pool.sourceKey) pool.sourceKey = key;
+    if (!pool.currency) pool.currency = cur;
+    return pool;
+  }
+  const canonical = typeof PN_TREASURY_CORE_BALANCES !== "undefined"
+    ? PN_TREASURY_CORE_BALANCES.find(def => def && def.sourceKey === key)
+    : null;
+  pool = {
+    id: typeof pnTreasuryId === "function" ? pnTreasuryId() : (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())),
+    sourceKey: key,
+    label: canonical ? canonical.label : "Cash (" + cur + ")",
+    amount: 0,
+    currency: cur,
+    include: true,
+    note: "",
+    updatedAt: typeof todayISO === "function" ? todayISO() : ""
+  };
+  t.balances.push(pool);
+  return pool;
 }
 
 function applyPoolDelta(treasury, currency, signedDelta){
@@ -95,6 +125,10 @@ function applyTreasuryChange(treasury, refType, refId, kind, amount, currency, n
     t.flows.push(flow);
   }
   const applied = applyPoolDelta(t, cur, delta);
+  if (applied){
+    flow.poolSourceKey = "CASH_" + String(cur).toUpperCase();
+    flow.poolAppliedAt = nowISO();
+  }
   if (typeof pnTreasuryCalculate === "function") stampTreasuryReserveCrossing(flow, baselineFortress, pnTreasuryCalculate(t).fortress);
   return applied;
 }
@@ -111,26 +145,44 @@ function removeTreasuryFlow(treasury, refType, refId, kind){
 
 function reconcileSaleFlow(oldSale, newSale){
   const treasury = Store.load().treasury;
-  const oldState = oldSale ? saleStateResolved(oldSale) : "COMPLETED";
+  const oldState = oldSale ? saleStateResolved(oldSale) : null;
   const newState = saleStateResolved(newSale);
   const amount = Number(newSale.buyerPrice) || 0;
-  const cur = newSale.currency || "RSD";
+  const cur = String(newSale.currency || "RSD").toUpperCase();
+  const existing = findTreasuryFlow(treasury, "sale", newSale.id, "SALE");
+
+  /* Pending sales never own cash. */
   if (newState === "PENDING"){
-    removeTreasuryFlow(treasury, "sale", newSale.id, "SALE");
-    Store.persist();
+    if (existing){
+      removeTreasuryFlow(treasury, "sale", newSale.id, "SALE");
+      Store.persist();
+    }
     return;
   }
-  if (oldState === "PENDING" || !oldSale){
+
+  /* Completed sales always own exactly one GROSS revenue flow. */
+  if (!existing){
     applyTreasuryChange(treasury, "sale", newSale.id, "SALE", amount, cur, "Sale revenue");
     Store.persist();
     return;
   }
-  if ((Number(oldSale.buyerPrice) || 0) !== amount){
+
+  const existingCur = String(existing.currency || "RSD").toUpperCase();
+  const priceChanged = Number(existing.amount || 0) !== amount || Number(existing.signedDelta || 0) !== amount;
+  const currencyChanged = existingCur !== cur;
+
+  if (currencyChanged){
+    removeTreasuryFlow(treasury, "sale", newSale.id, "SALE");
+    applyTreasuryChange(treasury, "sale", newSale.id, "SALE", amount, cur, "Sale revenue");
+    Store.persist();
+    return;
+  }
+
+  if (priceChanged || oldState === "PENDING"){
     applyTreasuryChange(treasury, "sale", newSale.id, "SALE", amount, cur, "Sale revenue");
     Store.persist();
   }
 }
-
 const PNStoreInsertTreasuryFlow = Store.insert.bind(Store);
 Store.insert = function(collection, data){
   const result = PNStoreInsertTreasuryFlow(collection, data);
@@ -168,14 +220,38 @@ Actions.addInventory = function(data){
 const PNCoreUpdateInventoryTreasuryFlow = Actions.updateInventory;
 Actions.updateInventory = function(id, data){
   const oldItem = Store.get("inventory", id);
+  const treasury = Store.load().treasury;
+  const existingBefore = findTreasuryFlow(treasury, "inventory", id, "ACQUISITION");
   const result = PNCoreUpdateInventoryTreasuryFlow.call(this, id, data);
-  if (oldItem && result){
-    applyTreasuryChange(Store.load().treasury, "inventory", id, "ACQUISITION", Number(result.purchasePrice) || 0, result.currency, "Inventory purchase");
+
+  if (!oldItem || !result) return result;
+
+  const oldPrice = Number(oldItem.purchasePrice) || 0;
+  const newPrice = Number(result.purchasePrice) || 0;
+  const oldCur = String(oldItem.currency || "RSD").toUpperCase();
+  const newCur = String(result.currency || "RSD").toUpperCase();
+  const priceChanged = oldPrice !== newPrice;
+  const currencyChanged = oldCur !== newCur;
+
+  /*
+    Critical doctrine:
+    - Newly-added inventory is charged by Actions.addInventory().
+    - Legacy/imported inventory with NO acquisition flow stays flowless.
+    - A status/note/assignment edit must NEVER suddenly charge the purchase price.
+  */
+  if (!existingBefore) return result;
+
+  if (currencyChanged){
+    removeTreasuryFlow(treasury, "inventory", id, "ACQUISITION");
+    applyTreasuryChange(treasury, "inventory", id, "ACQUISITION", newPrice, newCur, "Inventory purchase");
+    Store.persist();
+  } else if (priceChanged){
+    applyTreasuryChange(treasury, "inventory", id, "ACQUISITION", newPrice, newCur, "Inventory purchase");
     Store.persist();
   }
+
   return result;
 };
-
 const PNCoreRemoveInventoryTreasuryFlow = Actions.removeInventory;
 Actions.removeInventory = function(id){
   const item = Store.get("inventory", id);
@@ -205,6 +281,9 @@ Actions.updateMail = function(id, data){
     const kind = result.direction === "incoming" ? "SHIPPING_IN" : "SHIPPING_OUT";
     const amt = Number(result.shippingCost) || 0;
     if (amt > 0 || findTreasuryFlow(treasury, "mail", id, kind)){
+      const existing = findTreasuryFlow(treasury, "mail", id, kind);
+      const currencyChanged = !!existing && String(existing.currency || "RSD").toUpperCase() !== String(result.currency || "RSD").toUpperCase();
+      if (currencyChanged) removeTreasuryFlow(treasury, "mail", id, kind);
       applyTreasuryChange(treasury, "mail", id, kind, amt, result.currency, result.direction === "incoming" ? "Incoming shipping" : "Outgoing shipping");
       Store.persist();
     }
@@ -220,3 +299,43 @@ Actions.removeMail = function(id){
   Store.persist();
   return PNCoreRemoveMailTreasuryFlow.call(this, id);
 };
+
+
+/* PN TREASURY SINGLE AUTHORITY V4 REPAIR */
+(function pnRepairRetroactiveLegacyAcquisitionFlowsV4(){
+  const ledger = Store.load();
+  const treasury = ledger && ledger.treasury;
+  if (!treasury || !Array.isArray(treasury.flows)) return;
+
+  const inventory = Array.isArray(ledger.inventory) ? ledger.inventory : [];
+  let repaired = 0;
+
+  /*
+    A legitimate acquisition flow is created immediately when the inventory
+    row itself is created. The old bug created ACQUISITION flows days/weeks
+    later during unrelated edits (LISTED -> SOLD, notes, assignment, etc.).
+    Those late-created flows are invalid for legacy inventory and must be
+    refunded exactly once.
+  */
+  const suspicious = treasury.flows.slice().filter(flow => {
+    if (!flow || flow.refType !== "inventory" || flow.kind !== "ACQUISITION") return false;
+    const item = inventory.find(x => x && x.id === flow.refId);
+    if (!item || !item.createdAt || !flow.createdAt) return false;
+    const itemTs = Date.parse(item.createdAt);
+    const flowTs = Date.parse(flow.createdAt);
+    if (!Number.isFinite(itemTs) || !Number.isFinite(flowTs)) return false;
+    return flowTs - itemTs > 10 * 60 * 1000;
+  });
+
+  suspicious.forEach(flow => {
+    const item = inventory.find(x => x && x.id === flow.refId);
+    removeTreasuryFlow(treasury, "inventory", flow.refId, "ACQUISITION");
+    repaired++;
+    console.warn("[PROFITNODE] Removed retroactive legacy acquisition deduction:",
+      item ? ((item.manufacturer || "") + " " + (item.model || "")).trim() : flow.refId,
+      flow.amount, flow.currency);
+  });
+
+  if (repaired) Store.persist();
+  console.info("[PROFITNODE] TREASURY SINGLE AUTHORITY V4 active · repaired", repaired, "retroactive acquisition flow(s).");
+})();
