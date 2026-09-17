@@ -45,6 +45,13 @@ function mailStatusMayAdvance(from,to){if(!from)return true;if(!to)return false;
 function mailAll(){return Store.all("mail")}
 function mailGet(id){return Store.get("mail",id)}
 function mailIsActive(m){return["delivered","returned","lost"].indexOf(m.status)===-1}
+
+/* PN MAIL NAV BADGE V5 START */
+function mailNavBadgeCount(){
+  return mailAll().filter(mailIsActive).length;
+}
+/* PN MAIL NAV BADGE V5 END */
+
 function mailIsProblem(m){return MAIL_PROBLEM_STATUSES.indexOf(m.status)>-1}
 function mailMatchesFilter(m,key){
   if(key==="INCOMING")return m.direction==="incoming";
@@ -1151,15 +1158,14 @@ function mailFormChange(e){
   }
 }
 
+
 if(typeof ROUTES!=="undefined"&&!window.__PN_MAIL_REGISTERED){
   const salesIdx=ROUTES.findIndex(r=>r.key==="sales");
-  ROUTES.splice(salesIdx>=0?salesIdx+1:ROUTES.length,0,{key:"mail",label:"MAIL",render:renderMail});
-  const dashRoute=ROUTES.find(r=>r.key==="dashboard");
-  if(dashRoute&&typeof renderDashboard==="function"){
-    const PNCoreRenderDashboardMail=renderDashboard;
-    renderDashboard=function(){return mailDashboardSummaryHtml()+PNCoreRenderDashboardMail()};
-    dashRoute.render=renderDashboard;
-  }
+  ROUTES.splice(
+    salesIdx>=0?salesIdx+1:ROUTES.length,
+    0,
+    {key:"mail",label:"MAIL",render:renderMail,navBadge:mailNavBadgeCount}
+  );
   window.__PN_MAIL_REGISTERED=true;
 }
 if(typeof renderModal==="function"&&!window.__PN_MAIL_MODAL_PATCHED){
