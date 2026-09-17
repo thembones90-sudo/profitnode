@@ -27,6 +27,7 @@ window.__PN_SCRIPTS = [
   "sidebar_cleanup_extension.js?v=product-refinement-v3",
   "mail_extension.js?v=posta-widget-caption-fix-v1",
   "treasury_flow_extension.js?v=treasury-reserve-crossings-v1",
+  "monthly_tribute_extension.js?v=tribute-picture-icons-override-fix-v2",
   "sold_transaction_extension.js?v=sold-in-transit-v1",
   "project_build_extension.js?v=ram-picker-ux-v1",
   "project_build_acquisition_extension.js?v=build-acquisition-v1",
