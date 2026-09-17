@@ -1,9 +1,78 @@
 {
   "schema_version": "1.0",
-  "catalog": "PN RAM Foundation v1",
+  "catalog": "PN RAM Foundation v1 + exact legacy DIMM registry",
   "scope": "Desktop DDR4 UDIMM and DDR5 UDIMM consumer and gaming memory",
   "technology": "DDR4",
   "families": [
+    {
+      "brand": "GeIL",
+      "series": "GN48GB2133C15S",
+      "technology": "DDR4",
+      "aliases": [
+        "GeIL GN48GB2133C15S",
+        "GeIL 8GB DDR4-2133 CL15",
+        "GN48GB2133C15S"
+      ],
+      "exact_model": true,
+      "module_metadata": {
+        "capacity_gb": 8,
+        "rank": "1R",
+        "dram_manufacturer": "Micron",
+        "form_factor": "UDIMM",
+        "ecc": false,
+        "registered": false
+      },
+      "kits": [
+        {
+          "capacity": 8,
+          "sticks": 1,
+          "speed": 2133,
+          "cas": 15,
+          "voltage": "1.2V",
+          "partNumber": "GN48GB2133C15S",
+          "xmp": false,
+          "rank": "1R",
+          "dramManufacturer": "Micron"
+        }
+      ]
+    },
+    {
+      "brand": "Kingston HyperX",
+      "series": "KHX3000C15D4/8GX",
+      "technology": "DDR4",
+      "aliases": [
+        "Kingston KHX3000C15D4/8GX",
+        "HyperX KHX3000C15D4/8GX",
+        "Kingston HyperX 8GB DDR4-3000 CL15",
+        "KHX3000C15D4/8GX"
+      ],
+      "exact_model": true,
+      "module_metadata": {
+        "capacity_gb": 8,
+        "rank": "1R",
+        "dram_manufacturer": "SK Hynix",
+        "form_factor": "UDIMM",
+        "ecc": false,
+        "registered": false,
+        "jedec_speed": 2133,
+        "jedec_voltage": "1.2V",
+        "xmp_speed": 3000,
+        "xmp_voltage": "1.35V"
+      },
+      "kits": [
+        {
+          "capacity": 8,
+          "sticks": 1,
+          "speed": 3000,
+          "cas": 15,
+          "voltage": "1.35V",
+          "partNumber": "KHX3000C15D4/8GX",
+          "xmp": true,
+          "rank": "1R",
+          "dramManufacturer": "SK Hynix"
+        }
+      ]
+    },
     {
       "brand": "Corsair",
       "series": "ValueSelect DDR4"
@@ -853,5 +922,6 @@
       "ALGHOUL"
     ],
     "notes": "Brand, series, SKU, RGB and aesthetics do not affect performance rating."
-  }
+  },
+  "exact_model_patch": "PARANOIA_RAM_EXACT_MODELS_V1"
 }
