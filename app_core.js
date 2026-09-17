@@ -516,11 +516,55 @@ const t=e.dataset.entityForm;if(!FORM_SCHEMAS[t])return
 if("components"===e.type)return void(s.componentIds=n.getAll("componentIds"));if("scorePreview"===e.type||"partSearch"===e.type||"ramDetails"===e.type||"workspaceNote"===e.type)return;let t=n.get(e.key)
 ;"number"===e.type&&(t=""===t||null==t?null:parseFloat(t)),s[e.key]=t
 }),"sale"===t&&(s.inventoryItemId=n.get("inventoryItemId")||null);if("inventory"===t){s.catalogOverride=String(n.get("catalogOverride")||"").trim()||null,"STORAGE"!==s.category&&(s.driveHealthPercent=null);if("RAM"===s.category){const t=readInventoryRamForm(e);if(!t)return;Object.assign(s,t)}else Object.assign(s,{ramType:null,totalCapacity:null,moduleCount:null,moduleCapacity:null,ramSpeedMTs:null,ramSpeedMHz:null})}"inventory"===t?a?Actions.updateInventory(a,s):Actions.addInventory(s):"project"===t?(a?Actions.updateProject(a,s):(function(){const p=Actions.addProject(s);state.pbId=p.id,state.route="projectbuild"})()):"sale"===t?a?Actions.updateSale(a,s):Actions.addSale(s):"repair"===t&&(a?Actions.updateRepair(a,s):Actions.addRepair(s)),
-closeModal()}function buildProfitSeries(){
-const e=displayCurrency(),t=Store.all("sales").filter(e=>"function"!=typeof saleIsCompleted||saleIsCompleted(e)).slice().sort((e,t)=>e.saleDate.localeCompare(t.saleDate)),a=Store.all("inventory").reduce((e,t)=>!e||t.purchaseDate<e?t.purchaseDate:e,null)||todayISO()
-;let r=0;const n=[{date:a,value:0}];t.forEach(t=>{const a=saleDerived(t);r+=convert(a.profit,t.currency,e),n.push({date:t.saleDate,value:r})});const s=todayISO()
-;return n[n.length-1].date<s&&n.push({date:s,value:r}),n}function renderChart(){
-const e=buildProfitSeries(),t=displayCurrency(),a=640,r=220,n=58,s=e.map(e=>new Date(e.date+"T00:00:00").getTime()),l=s[0],o=s[s.length-1],i=e.map(e=>e.value)
+closeModal()}
+/* PN SVG CHART NAN FIX V1 START */
+function pnChartDateTs(v){
+  if(!v)return null;
+  const raw=String(v).trim();
+  if(!raw)return null;
+  const normalized=/^\d{4}-\d{2}-\d{2}$/.test(raw)?raw+"T00:00:00":raw;
+  const ts=new Date(normalized).getTime();
+  return Number.isFinite(ts)?ts:null;
+}
+function pnChartFiniteNumber(v,fallback){
+  const n=Number(v);
+  return Number.isFinite(n)?n:(Number.isFinite(Number(fallback))?Number(fallback):0);
+}
+/* PN SVG CHART NAN FIX V1 END */
+function buildProfitSeries(){
+  const currency=displayCurrency();
+  const sales=Store.all("sales")
+    .filter(s=>("function"!=typeof saleIsCompleted||saleIsCompleted(s))&&pnChartDateTs(s&&s.saleDate)!==null)
+    .slice()
+    .sort((a,b)=>pnChartDateTs(a.saleDate)-pnChartDateTs(b.saleDate));
+
+  const inventoryDates=Store.all("inventory")
+    .map(item=>item&&item.purchaseDate)
+    .filter(d=>pnChartDateTs(d)!==null)
+    .sort((a,b)=>pnChartDateTs(a)-pnChartDateTs(b));
+
+  const firstSaleDate=sales.length?sales[0].saleDate:null;
+  const baselineDate=inventoryDates[0]||firstSaleDate||todayISO();
+
+  let running=0;
+  const series=[{date:baselineDate,value:0}];
+
+  sales.forEach(sale=>{
+    const derived=saleDerived(sale)||{};
+    const delta=pnChartFiniteNumber(convert(derived.profit,sale.currency,currency),0);
+    running+=delta;
+    series.push({date:sale.saleDate,value:running});
+  });
+
+  const today=todayISO();
+  const last=series[series.length-1];
+  if(last&&pnChartDateTs(last.date)!==null&&pnChartDateTs(today)!==null&&pnChartDateTs(last.date)<pnChartDateTs(today)){
+    series.push({date:today,value:running});
+  }
+
+  return series.filter(p=>p&&pnChartDateTs(p.date)!==null&&Number.isFinite(Number(p.value)));
+}function renderChart(){
+const e=buildProfitSeries().filter(e=>pnChartDateTs(e&&e.date)!==null&&Number.isFinite(Number(e&&e.value))),t=displayCurrency(),a=640,r=220,n=58,s=e.map(e=>pnChartDateTs(e.date)),l=s[0],o=s[s.length-1],i=e.map(e=>pnChartFiniteNumber(e.value,0))
 ;let c=Math.min(0,...i),d=Math.max(0,...i);c===d&&(d=c+1e3);const u=.12*(d-c)||1e3;c-=u,d+=u
 ;const p=e=>o===l?n:n+(e-l)/(o-l)*564,m=e=>16+178*(1-(e-c)/(d-c)),v=m(0),y=(d-c)/4,h=Math.pow(10,Math.floor(Math.log10(Math.abs(y)||1))),S=Math.max(Math.round(y/h)*h,h),f=[]
 ;for(let e=Math.ceil(c/S)*S;e<=d;e+=S)f.push(Math.round(e));let b=f.map(e=>{const a=m(e)
@@ -542,8 +586,7 @@ const l=t.getBoundingClientRect(),o=l.width/640,i=(s.clientX-l.left)/o;let c=r[0
 a.setAttribute("x2",c.x),a.style.display="block",function(a,r,s){n||(n=document.createElement("div"),n.className="chart-tip",e.appendChild(n)),
 n.innerHTML='<div class="tip-date">'+fmtDate(s.date)+'</div><div class="tip-val" style="color:'+(s.value>=0?"var(--green)":"var(--red)")+'">'+money(s.value,displayCurrency())+"</div>"
 ;const l=t.getBoundingClientRect().width/640;n.style.left=a*l+"px",n.style.top=r*l+"px",n.style.display="block"}(c.x,c.y,c)}),t.addEventListener("mouseleave",function(){
-a.style.display="none",n&&(n.style.display="none")})}function sparkline(e,t){if(!e.length)return"";const a=Math.min(...e),r=Math.max(...e)-a||1
-;return'<svg class="kpi-spark" viewBox="0 0 120 20" preserveAspectRatio="none"><polyline points="'+e.map((t,n)=>n/(e.length-1||1)*120+","+(20-(t-a)/r*20)).join(" ")+'" fill="none" stroke="'+t+'" stroke-width="1.5"/></svg>'
+a.style.display="none",n&&(n.style.display="none")})}function sparkline(e,t){e=(Array.isArray(e)?e:[]).map(Number).filter(Number.isFinite);if(!e.length)return"";const a=Math.min(...e),r=Math.max(...e)-a||1;return'<svg class="kpi-spark" viewBox="0 0 120 20" preserveAspectRatio="none"><polyline points="'+e.map((t,n)=>n/(e.length-1||1)*120+","+(20-(t-a)/r*20)).join(" ")+'" fill="none" stroke="'+t+'" stroke-width="1.5"/></svg>'
 }function renderBarChart(e,t,a){if(a=a||{},!e.length)return'<p class="hint" style="margin:0">No data yet.</p>'
 ;const r=!1===a.sort?e:e.slice().sort((e,t)=>t.value-e.value),n=Math.max(1,...r.map(e=>Math.abs(e.value)));return'<div class="hbar-list">'+r.map(e=>{
 const a=(Math.abs(e.value)/n*50).toFixed(2),r=e.value>=0,s=(r?"left:50%;":"right:50%;")+"width:"+a+"%;background:"+(r?"var(--green)":"var(--red)")
@@ -774,8 +817,46 @@ Inventory:e.inventory.length,Repairs:e.repairs.length,Deals:e.deals.length,Sales
 }const ROUTES=[{key:"dashboard",label:"Dashboard",nix:"01",render:renderDashboard},{key:"analytics",label:"Analytics",nix:"02",render:renderAnalytics},{key:"planner",
 label:"Build Planner",nix:"03",render:renderPlanner},{key:"rigbuild",label:"Rig Build",nix:"04",render:renderRigBuild},{key:"projects",label:"Projects",nix:"05",render:renderProjects},{key:"inventory",label:"Inventory",nix:"06",
 render:renderInventory},{key:"repairs",label:"Repairs",nix:"07",render:renderRepairs},{key:"sales",label:"Sales",nix:"09",
-render:renderSales},{key:"history",label:"History",nix:"10",render:renderHistory},{key:"backup",label:"Backup",nix:"11",render:renderBackup}];function activeNavRoute(e){const t={};let a=String(e||"");while(a&&!t[a]){t[a]=!0;const e=ROUTES.find(e=>e.key===a);if(!e)return null;if(!e.parent)return e.hidden?null:e.key;a=e.parent}return null}function renderShell(){
-const e=displayCurrency(),active=activeNavRoute(state.route),t=ROUTES.filter(e=>!e.hidden).map(e=>{const t=active===e.key;return'<button class="navlink'+(t?" active is-powered":"")+'" data-route="'+e.key+'"'+(t?' aria-current="page" data-nav-active="true"':"")+">"+e.label.toUpperCase()+"</button>"}).join(""),a=(ROUTES.find(e=>e.key===state.route)||ROUTES[0]).render()
+render:renderSales},{key:"history",label:"History",nix:"10",render:renderHistory},{key:"backup",label:"Backup",nix:"11",render:renderBackup}];/* PN NAV ICONS V3 START */
+const NAV_ICON={
+dashboard:"assets/nav/command.svg",
+treasury:"assets/nav/war-chest.svg",
+analytics:"assets/nav/intel.svg",
+rigbuild:"assets/nav/rig-assembly.svg",
+myrig:"assets/nav/my-rig.svg",
+projects:"assets/nav/builds.svg",
+inventory:"assets/nav/parts-vault.svg",
+repairs:"assets/nav/repair-bay.svg",
+roadto:"assets/nav/road-to.svg",
+sales:"assets/nav/ledger.svg",
+mail:"assets/nav/mail.svg",
+history:"assets/nav/archive.svg",
+roulette:"assets/nav/roulette.svg",
+backup:"assets/nav/blackbox.svg"
+};
+function pnNavIconHtml(key){
+  const src=NAV_ICON[key];
+  return src?'<img class="pn-nav-icon" src="'+src+'" alt="" aria-hidden="true">':"";
+}
+/* PN NAV ICONS V3 END */
+/* PN NAV BADGE V5 START */
+function pnNavBadgeHtml(route){
+  if(!route)return"";
+  let raw=null;
+  try{
+    raw=typeof route.navBadge==="function"?route.navBadge():route.navBadge;
+  }catch(_err){
+    raw=null;
+  }
+  const count=Math.max(0,Number(raw)||0);
+  if(!count)return"";
+  const text=count>99?"99+":String(Math.floor(count));
+  return'<span class="pn-nav-badge" aria-label="'+text+' active mail item'+(count===1?'':'s')+'">'+text+'</span>';
+}
+/* PN NAV BADGE V5 END */
+
+function activeNavRoute(e){const t={};let a=String(e||"");while(a&&!t[a]){t[a]=!0;const e=ROUTES.find(e=>e.key===a);if(!e)return null;if(!e.parent)return e.hidden?null:e.key;a=e.parent}return null}function renderShell(){
+const e=displayCurrency(),active=activeNavRoute(state.route),t=ROUTES.filter(e=>!e.hidden).map(e=>{const t=active===e.key;return'<button class="navlink'+(t?" active is-powered":"")+'" data-route="'+e.key+'"'+(t?' aria-current="page" data-nav-active="true"':"")+"><span class=\"pn-nav-label\">"+e.label.toUpperCase()+"</span>"+pnNavBadgeHtml(e)+pnNavIconHtml(e.key)+"</button>"}).join(""),a=(ROUTES.find(e=>e.key===state.route)||ROUTES[0]).render()
 ;return'<aside class="sidebar" role="navigation" aria-label="Main navigation"><div class="brand"><div class="brand-mark brand-logo-mark" role="img" aria-label="PROFITNODE"></div><div class="brand-rule"></div><div class="brand-shop">Shadezy Repair Shop</div></div><nav class="mainnav">'+t+'</nav><div class="sidebar-foot">DISPLAY CURRENCY<div class="curr-toggle">'+CURRENCIES.map(t=>'<button class="curr-btn'+(e===t?" active":"")+'" data-set-currency="'+t+'">'+t+"</button>").join("")+'</div></div></aside><div class="sidebar-backdrop" data-sidebar-backdrop></div><div class="main"><div id="page-mount">'+a+"</div></div>"+renderModal()
 }function render(){document.getElementById("root").innerHTML=renderShell(),wireChartInteraction(),enhanceOverlay()}let __pnRenderDebounceTimer=null;function renderDebounced(restoreSel,delay){clearTimeout(__pnRenderDebounceTimer),__pnRenderDebounceTimer=setTimeout(()=>{__pnRenderDebounceTimer=null,render();if(restoreSel){const el=document.querySelector(restoreSel);if(el&&el.focus){el.focus();if(el.setSelectionRange)try{el.setSelectionRange(String(el.value).length,String(el.value).length)}catch(e){}}}},delay||120)}function setDeepOn(e,t,a){const r=t.split(".");let n=e
 ;for(let e=0;e<r.length-1;e++)n=n[r[e]];n[r[r.length-1]]=a}function setDeep(e,t){setDeepOn(state.filters,e,t)}function performDelete(e,t){
@@ -847,8 +928,8 @@ const t=e.target.closest("input[data-filter]");if(t){setDeep(t.dataset.filter,t.
 const rf=e.target.closest("input[data-rig-field], textarea[data-rig-field]");if(rf&&state.rigDraft){let v=rf.value;"number"===rf.type&&(v=""===v?0:parseFloat(v))
 ;const monetaryFields=["expectedSalePrice","estimatedMarketValue"];if(monetaryFields.includes(rf.dataset.rigField))v=displayValueToRsd(v);state.rigDraft[rf.dataset.rigField]=v;return void renderDebounced('[data-rig-field="'+rf.dataset.rigField+'"]')}
  const rci=e.target.closest("input[data-rig-catalog-item]");if(rci&&state.rigDraft){const k=rci.dataset.rigCatalogItem,cur=state.rigDraft.currency,slot=state.rigDraft.slots[k]||{kind:"PLANNED",catalogType:k,cost:0,originalPrice:0,currency:cur};slot.kind="PLANNED",slot.label=rci.value,slot.catalogType=k;const match=catalogFind(k,rci.value);slot.catalogKey=match?catalogKey(k,match):null,state.rigDraft.slots[k]=slot;return void renderDebounced('[data-rig-catalog-item="'+k+'"]')}
- const rsf=e.target.closest("input[data-rig-slot-field]");if(rsf&&state.rigDraft){const[k,f]=rsf.dataset.rigSlotField.split(".")
-;let v=rsf.value;["cost","originalPrice"].includes(f)&&(v=""===v?0:parseFloat(v));if(["cost","originalPrice"].includes(f))v=displayValueToRsd(v);const slot=state.rigDraft.slots[k]||{kind:"PLANNED",label:"",cost:0,originalPrice:0,currency:cur}
+const rsf=e.target.closest("input[data-rig-slot-field]");if(rsf&&state.rigDraft){const[k,f]=rsf.dataset.rigSlotField.split(".")
+;let v=rsf.value;["cost","originalPrice"].includes(f)&&(v=""===v?0:parseFloat(v));if(["cost","originalPrice"].includes(f))v=displayValueToRsd(v);const slot=state.rigDraft.slots[k]||{kind:"PLANNED",label:"",cost:0,originalPrice:0,currency:state.rigDraft.currency}
 ;slot[f]=v,state.rigDraft.slots[k]=slot;if(rigPriceField(f))return;return void renderDebounced('[data-rig-slot-field="'+rsf.dataset.rigSlotField+'"]')}
 const a=e.target.closest("input[data-draft-field], textarea[data-draft-field]");if(a&&state.plannerDraft){let e=a.value;"number"===a.type&&(e=""===e?null:parseFloat(e)),
 setDeepOn(state.plannerDraft,a.dataset.draftField,e);return void renderDebounced('[data-draft-field="'+a.dataset.draftField+'"]')}}),e.addEventListener("focusin",e=>{const price=e.target.closest(".rig-price-input:not([readonly])");price&&0===Number(price.value)&&price.select()}),e.addEventListener("keydown",e=>{const input=e.target.closest("input[data-rig-catalog-item]"),option=e.target.closest("[data-rig-catalog-choice]")

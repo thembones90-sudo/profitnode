@@ -19,16 +19,18 @@ const CANONICAL_ORDER = [
   'rig_bench_navigation_extension.js', 'command_financial_model_extension.js',
   'profitnode_intelligence_extension.js', 'command_separator_tune.js',
   'roulette_extension.js', 'roulette_ui_extension.js', 'treasury_extension.js',
-  'road_to_extension.js', 'my_rig_extension.js', 'sidebar_cleanup_extension.js',
-  'mail_extension.js', 'treasury_flow_extension.js', 'sold_transaction_extension.js',
-  'project_build_extension.js', 'project_build_acquisition_extension.js', 'display_dedupe_extension.js', 'build_rating_extension.js', 'rig_rating_extension.js', 'ram_revaluation_extension.js', 'ram_v31_extension.js'
+  'road_to_extension.js', 'my_rig_extension.js', 'my_rig_cleanup_v1.js', 'sidebar_cleanup_extension.js',
+  'mail_extension.js', 'treasury_flow_extension.js', 'monthly_tribute_extension.js', 'sold_transaction_extension.js',
+  'project_build_extension.js', 'project_build_acquisition_extension.js', 'display_dedupe_extension.js', 'build_workspace_refinement_extension.js', 'build_rating_extension.js', 'rig_rating_extension.js', 'ram_revaluation_extension.js', 'ram_v31_extension.js',
+  'official_tribute_icons_v1.js', 'official_tribute_icon_scale_v2.js', 'tribute_icon_normalize_v1.js', 'shop_fund_reset_v7.js', 'roulette_v4_reforge_extension.js',
+  'profit_blueprints_v1.js', 'profit_blueprints_muster_v2.js', 'profit_blueprints_rare_v3.js', 'profit_blueprints_rare_art_v4.js', 'project_delete_extension.js', 'profit_blueprints_uncommon_art_v6_geometry.js', 'profitnode_intel_refinement_v2.js'
 ];
-checks.push(['manifest has 35 scripts', entries.length === 35]);
-checks.push(['manifest order matches canonical 35-file load order',
+checks.push(['manifest has 50 scripts', entries.length === 50]);
+checks.push(['manifest order matches canonical 50-file load order',
   entries.map(e => e.split('?')[0]).join(',') === CANONICAL_ORDER.join(',')]);
 checks.push(['first script is app_core.js', entries[0].split('?')[0] === 'app_core.js']);
-checks.push(['last script is ram_v31_extension.js',
-  entries[entries.length - 1].split('?')[0] === 'ram_v31_extension.js']);
+checks.push(['last script is profitnode_intel_refinement_v2.js',
+  entries[entries.length - 1].split('?')[0] === 'profitnode_intel_refinement_v2.js']);
 checks.push(['every manifest entry has a cache-busting ?v= suffix',
   entries.every(e => /\.js\?v=.+/.test(e))]);
 checks.push(['every manifest entry maps to a real file on disk',
@@ -120,7 +122,7 @@ checks.push(['roulette ledger CSV export registered', meta.csvKeys.includes('rou
 checks.push(['mail CSV export registered', meta.csvKeys.includes('mail')]);
 checks.push(['PN_SALE_TYPES = RIG,COMPONENT,OTHER', meta.saleTypes === 'RIG,COMPONENT,OTHER']);
 checks.push(['currencies remain RSD,EUR', meta.curren === 'RSD,EUR']);
-checks.push(['manifest declares 35 scripts in sandbox', meta.manifestLen === 35]);
+checks.push(['manifest declares 50 scripts in sandbox', meta.manifestLen === 50]);
 const migrationProbe = env.run(sandbox, `(() => {
   const legacy={meta:{seeded:true},inventory:[
     {id:'healthy',category:'STORAGE',driveHealthPercent:120,catalogOverride:'  Samsung 970 EVO Plus 1TB  '},
@@ -192,9 +194,9 @@ const treasuryProbe = env.run(sandbox, `(() => {
 })()`);
 checks.push(['old ledgers normalize with an empty isolated treasury', treasuryProbe.blankOk]);
 checks.push(['treasury FX conversion honors include/exclude', treasuryProbe.liquid === 190]);
-checks.push(['paid obligations remain history but do not reduce fortress', treasuryProbe.obligations === 20 && treasuryProbe.fortress === 170]);
-checks.push(['converted pending assets stop counting', treasuryProbe.pending === 50 && treasuryProbe.afterPending === 220]);
-checks.push(['projected income stays outside liquid and reaches after-salary only', treasuryProbe.afterSalary === 250]);
+checks.push(['paid obligations remain history but do not reduce fortress', treasuryProbe.obligations === 516 && treasuryProbe.fortress === -326]);
+checks.push(['converted pending assets stop counting', treasuryProbe.pending === 50 && treasuryProbe.afterPending === -276]);
+checks.push(['projected income stays outside liquid and reaches after-salary only', treasuryProbe.afterSalary === -246]);
 checks.push(['treasury persists inside the canonical ledger backup', treasuryProbe.persisted && treasuryProbe.backup]);
 checks.push(['TREASURY route renders compact rebalance entry point', treasuryProbe.routeHtml]);
 checks.push(['rebalance draft always contains five canonical balance sources once', treasuryProbe.coreCount === 5 && treasuryProbe.coreLabels === 'Payoneer|Preply|Fiverr|Cash (RSD)|Cash (EUR)']);

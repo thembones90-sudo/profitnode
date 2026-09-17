@@ -4,7 +4,7 @@ window.__PN_SCRIPTS = [
   "cpu_revaluation_extension.js?v=v3-stack-20260912b",
   "gpu_revaluation_extension.js?v=v3-stack-20260912b",
   "motherboard_revaluation_extension.js?v=v3-stack-20260912b",
-"planner_retirement_extension.js?v=planner-retired-v1",
+  "planner_retirement_extension.js?v=planner-retired-v1",
   "terminal_naming_extension.js?v=sidebar-navigation-v2",
   "psu_extension.js?v=tier-glow-v1",
   "psu_top10_data_1.js?v=top10-psu-skynet-v1",
@@ -28,13 +28,14 @@ window.__PN_SCRIPTS = [
   "mail_extension.js?v=posta-widget-caption-fix-v1",
   "treasury_flow_extension.js?v=treasury-reserve-crossings-v1",
   "sold_transaction_extension.js?v=sold-in-transit-v1",
-  "project_build_extension.js?v=loadout-typography-v1",
+  "project_build_extension.js?v=ram-picker-ux-v1",
   "project_build_acquisition_extension.js?v=build-acquisition-v1",
   "display_dedupe_extension.js?v=display-dedupe-v1",
   "build_workspace_refinement_extension.js?v=build-workspace-refinement-v1",
   "build_rating_extension.js?v=build-rating-v3-omnissiah-vocab",
   "rig_rating_extension.js?v=rig-rating-v2-hooks-fix",
   "ram_revaluation_extension.js?v=ram-v3-20260912-live1",
-  "ram_v31_extension.js?v=ram-v31-20260912-live2"
+  "ram_v31_extension.js?v=ram-v31-20260912-live2",
+  "ram_hybrid_v3_extension.js?v=ram-hybrid-v3-standalone",
+  "f5_route_persistence_v3.js?v=f5-route-v3-standalone"
 ];
-

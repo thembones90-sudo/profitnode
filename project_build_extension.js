@@ -58,6 +58,21 @@ function pbRamModuleIndex(){
 function pbRamRowLabel(row){
   return(row.brand+" "+row.series).trim()+" "+row.technology+" "+row.speed+" CL"+row.casLatency+" "+row.perModuleCapacity+"GB"
 }
+
+/* PROFITNODE_RAM_PICKER_UX_V1 */
+function pbRamResultName(row){return(row.brand+" "+row.series).trim()}
+function pbRamResultSpec(row){return row.perModuleCapacity+"GB · "+row.technology+"-"+row.speed+" · CL"+row.casLatency}
+function pbRamSearchResultsHtml(hits,query){
+  if(!query)return'<div class="pn-pb-ram-empty">TYPE SIZE, BRAND OR MODEL</div>'
+  if(!hits||!hits.length)return'<div class="pn-pb-ram-empty">NO MATCHING RAM MODULES</div>'
+  return hits.map((h,i)=>'<button type="button" class="pn-pb-ram-hit" data-pb-ram-pick="'+i+'"><span class="pn-pb-ram-hit-main"><b>'+escHtml(pbRamResultName(h))+'</b><small>'+escHtml(pbRamResultSpec(h))+'</small></span>'+(h.isKit?'<span class="pn-pb-ram-hit-badge">EXACT / KNOWN</span>':'')+'</button>').join("")
+}
+function pbRamUpdateSearchDropdown(query){
+  const box=document.querySelector("[data-pb-ram-live-results]")
+  if(!box)return
+  box.innerHTML=pbRamSearchResultsHtml(PBUI.ramHits||[],query||"")
+  box.classList.toggle("is-open",!!query)
+}
 // The persisted slot.label stays a clean brand/series name only — the
 // DDR/speed/CL/capacity detail is appended once, downstream, by
 // rigSlotResolved's own RAM branch. Storing the rich pbRamRowLabel() text
@@ -325,17 +340,13 @@ function pbComponentSlotEditorHtml(project){
     if(!d.ramPicked){
       const hits=PBUI.ramHits||[]
       body=groupsHtml
-        +'<label class="field" style="grid-column:1/-1"><span>'+(groups.length?"ADD ANOTHER MODULE (NON-MATCHING OK) / SEARCH":"RAM MODULE SIZE / SEARCH")+'</span><input type="text" data-pb-ram-search value="'+escAttr(d.ramQuery||"")+'" placeholder="e.g. 8GB, Corsair 8GB, 16GB DDR5 6000" autocomplete="off"></label>'
-        +(hits.length?'<div class="myrig-catalog-results" style="grid-column:1/-1;max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);padding:4px">'+hits.map((h,i)=>'<button type="button" class="btn btn-sm btn-ghost" data-pb-ram-pick="'+i+'" style="display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;padding:6px 8px;gap:8px"><span>'+escHtml(pbRamRowLabel(h))+'</span>'+(h.isKit?'<span class="chip chip-blue-outline">KNOWN KIT</span>':"")+"</button>").join("")+"</div>"
-          :(d.ramQuery?'<p class="hint" style="grid-column:1/-1">No matching RAM modules — try a different capacity (e.g. 8GB, 16GB) or brand.</p>':'<p class="hint" style="grid-column:1/-1">Start with the module size — e.g. "8GB" — then narrow by brand, DDR generation or speed.</p>'))
+        +'<div class="field pn-pb-ram-search-field" style="grid-column:1/-1"><span>'+(groups.length?"ADD ANOTHER DIFFERENT STICK":"FIND RAM MODULE")+'</span><div class="pn-pb-ram-search-shell"><input type="text" data-pb-ram-search value="'+escAttr(d.ramQuery||"")+'" placeholder="8GB, GN48GB2133C15S, HyperX 3000..." autocomplete="off" spellcheck="false"><div class="pn-pb-ram-live-results'+(d.ramQuery?" is-open":"")+'" data-pb-ram-live-results>'+pbRamSearchResultsHtml(hits,d.ramQuery||"")+'</div></div><p class="hint pn-pb-ram-search-hint">Search by capacity, brand, exact model, speed or DDR generation.</p></div>'
         +(groups.length?costNotesHtml:"")
     }else{
       const ram=d.ram||{moduleCount:d.ramPicked.suggestedCount||2,perModuleCapacity:d.ramPicked.perModuleCapacity}
       const runningTotal=groups.reduce((s,g)=>s+g.moduleCount*g.perModuleCapacity,0)+ram.moduleCount*ram.perModuleCapacity
       body=groupsHtml
-        +'<div class="field" style="grid-column:1/-1"><span style="display:block;margin-bottom:4px">SELECTED MODULE</span><div style="font-weight:800;font-size:13px">'+escHtml(pbRamRowLabel(d.ramPicked))+'</div><button type="button" class="btn btn-sm" style="margin-top:6px" data-pb-ram-change>CHANGE MODULE</button></div>'
-        +'<div class="field" style="grid-column:1/-1"><span style="display:block;margin-bottom:4px">QUANTITY (STICKS OF THIS SIZE)</span><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'+[1,2,3,4].map(n=>'<button type="button" class="btn btn-sm'+(ram.moduleCount===n?" btn-primary":"")+'" data-pb-ram-qty="'+n+'">'+n+"</button>").join("")+'<button type="button" class="btn btn-sm btn-ghost" data-pb-ram-add-group style="margin-left:auto">+ ADD NON-MATCHING STICK</button></div></div>'
-        +'<div class="field" style="grid-column:1/-1"><span>RUNNING TOTAL</span><div style="font-weight:800">'+runningTotal+"GB TOTAL"+(groups.length?" ("+(groups.length+1)+" different sticks)":"")+"</div></div>"
+        +'<div class="pn-pb-ram-selected" style="grid-column:1/-1"><div class="pn-pb-ram-selected-top"><div><span class="pn-pb-ram-selected-kicker">SELECTED STICK</span><b>'+escHtml(pbRamResultName(d.ramPicked))+'</b><small>'+escHtml(pbRamResultSpec(d.ramPicked))+'</small></div><button type="button" class="btn btn-sm" data-pb-ram-change>CHANGE</button></div><div class="pn-pb-ram-selected-bottom"><div><span>QUANTITY</span><div class="pn-pb-ram-qty">'+[1,2,3,4].map(n=>'<button type="button" class="btn btn-sm'+(ram.moduleCount===n?" btn-primary":"")+'" data-pb-ram-qty="'+n+'">'+n+"</button>").join("")+'</div></div><div class="pn-pb-ram-total"><span>CONFIG TOTAL</span><b>'+runningTotal+'GB</b></div><button type="button" class="btn btn-sm btn-ghost pn-pb-ram-add-different" data-pb-ram-add-group>+ ADD DIFFERENT STICK</button></div></div>'
         +costNotesHtml
     }
   }else{
@@ -593,9 +604,8 @@ function pbSecondaryInput(e){
   if(t.matches&&t.matches("[data-pb-quick-price-input]")&&PBUI.quickPrice)return void(PBUI.quickPrice.value=t.value)
   if(t.matches&&t.matches("[data-pb-ram-search]")){const val=t.value||""
     if(PBUI.slot)PBUI.slot.ramQuery=val
-    PBUI.ramHits=val.length>=1?pbRamSearch(val,10):[]
-    render();const next=document.querySelector("[data-pb-ram-search]")
-    if(next){next.focus();if(next.setSelectionRange)next.setSelectionRange(next.value.length,next.value.length)}
+    PBUI.ramHits=val.length>=1?pbRamSearch(val,8):[]
+    pbRamUpdateSearchDropdown(val)
     return}
   if(t.matches&&t.matches("[data-pb-catalog-search]")){const val=t.value||"",k=t.dataset.pbCatalogSearch
     if(PBUI.slot)PBUI.slot.label=val
@@ -661,3 +671,7 @@ if(typeof document!=="undefined"&&document.addEventListener){
     window.__PN_PROJECT_BUILD_REGISTERED=!0
   }
 }
+
+
+if(typeof document!=="undefined"&&document.head&&!document.getElementById("pn-ram-picker-ux-v1-style")){const s=document.createElement("style");s.id="pn-ram-picker-ux-v1-style";s.textContent=`
+.pn-pb-ram-search-field{position:relative;z-index:30}.pn-pb-ram-search-shell{position:relative}.pn-pb-ram-live-results{display:none;position:absolute;left:0;right:0;top:calc(100% + 5px);z-index:500;max-height:310px;overflow:auto;border:1px solid rgba(198,106,255,.55);border-radius:8px;background:rgba(16,12,24,.985);box-shadow:0 18px 45px rgba(0,0,0,.55);padding:5px}.pn-pb-ram-live-results.is-open{display:block}.pn-pb-ram-hit{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;border:0;border-bottom:1px solid rgba(255,255,255,.055);background:transparent;color:var(--text);padding:9px 10px;text-align:left;cursor:pointer}.pn-pb-ram-hit:hover,.pn-pb-ram-hit:focus{background:rgba(198,106,255,.12);outline:none}.pn-pb-ram-hit-main{display:flex;flex-direction:column;min-width:0;gap:2px}.pn-pb-ram-hit-main b{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pn-pb-ram-hit-main small{font:10px var(--mono);color:var(--text-muted)}.pn-pb-ram-hit-badge{flex:0 0 auto;font:800 8px var(--mono);color:#66f0cf;border:1px solid rgba(102,240,207,.45);border-radius:4px;padding:3px 5px}.pn-pb-ram-empty{padding:11px 10px;font:800 9px var(--mono);color:var(--text-muted)}.pn-pb-ram-selected{border:1px solid rgba(50,198,166,.32);border-radius:8px;background:rgba(50,198,166,.045);padding:11px}.pn-pb-ram-selected-top{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.pn-pb-ram-selected-top>div{display:flex;flex-direction:column;gap:3px}.pn-pb-ram-selected-kicker,.pn-pb-ram-selected-bottom span{font:800 8px var(--mono);color:var(--text-muted)}.pn-pb-ram-selected-top b{font-size:13px}.pn-pb-ram-selected-top small{font:10px var(--mono);color:#6fe5cc}.pn-pb-ram-selected-bottom{display:grid;grid-template-columns:auto auto 1fr;align-items:end;gap:18px;margin-top:11px;padding-top:10px;border-top:1px solid rgba(255,255,255,.07)}.pn-pb-ram-qty{display:flex;gap:5px;margin-top:4px}.pn-pb-ram-total{display:flex;flex-direction:column;gap:3px}.pn-pb-ram-total b{font-size:16px;color:#6fe5cc}.pn-pb-ram-add-different{justify-self:end}@media(max-width:720px){.pn-pb-ram-selected-bottom{grid-template-columns:1fr 1fr}.pn-pb-ram-add-different{grid-column:1/-1;justify-self:stretch}}`;document.head.appendChild(s)}
