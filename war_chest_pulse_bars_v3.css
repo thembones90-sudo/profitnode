@@ -1,0 +1,202 @@
+/* PROFITNODE WAR CHEST PULSE BARS V3
+   Light-only animation pass.
+   Geometry and values remain static. */
+
+/* ---------- FORTRESS RESERVE pulse ---------- */
+
+@keyframes pnWcFortressGreenPulse{
+  0%,100%{
+    filter:brightness(1) saturate(1);
+    box-shadow:
+      0 0 4px rgba(104,180,101,.16),
+      0 0 10px rgba(104,180,101,.06);
+  }
+  50%{
+    filter:brightness(1.12) saturate(1.05);
+    box-shadow:
+      0 0 9px rgba(104,180,101,.34),
+      0 0 18px rgba(104,180,101,.12);
+  }
+}
+
+@keyframes pnWcFortressYellowPulse{
+  0%,100%{
+    filter:brightness(1) saturate(1);
+    box-shadow:
+      0 0 4px rgba(211,166,57,.18),
+      0 0 10px rgba(211,166,57,.07);
+  }
+  50%{
+    filter:brightness(1.14) saturate(1.08);
+    box-shadow:
+      0 0 10px rgba(211,166,57,.4),
+      0 0 20px rgba(211,166,57,.14);
+  }
+}
+
+@keyframes pnWcFortressBloodPulse{
+  0%,100%{
+    filter:brightness(1) saturate(1);
+    box-shadow:
+      0 0 4px rgba(190,47,65,.2),
+      0 0 10px rgba(190,47,65,.08);
+  }
+  50%{
+    filter:brightness(1.17) saturate(1.1);
+    box-shadow:
+      0 0 11px rgba(190,47,65,.46),
+      0 0 22px rgba(190,47,65,.16);
+  }
+}
+
+.pn-wc-hero[data-wc-band="GREEN"] .pn-wc-gauge-fill{
+  animation:pnWcFortressGreenPulse 3.2s ease-in-out infinite;
+}
+
+.pn-wc-hero[data-wc-band="YELLOW"] .pn-wc-gauge-fill{
+  animation:pnWcFortressYellowPulse 2.6s ease-in-out infinite;
+}
+
+.pn-wc-hero[data-wc-band="BLOOD"] .pn-wc-gauge-fill{
+  animation:pnWcFortressBloodPulse 1.9s ease-in-out infinite;
+}
+
+/* threshold markers breathe with the current state, but less strongly */
+.pn-wc-hero[data-wc-band="GREEN"] .pn-wc-gauge-target{
+  animation:pnWcFortressGreenPulse 3.2s ease-in-out infinite;
+}
+
+.pn-wc-hero[data-wc-band="YELLOW"] .pn-wc-gauge-floor{
+  animation:pnWcFortressYellowPulse 2.6s ease-in-out infinite;
+}
+
+.pn-wc-hero[data-wc-band="BLOOD"] .pn-wc-gauge-floor{
+  animation:pnWcFortressBloodPulse 1.9s ease-in-out infinite;
+}
+
+/* ---------- SURPLUS 50 / 30 / 20 luminous sweep ---------- */
+
+@keyframes pnWcAllocationSweep{
+  0%{
+    transform:translateX(-140%);
+    opacity:0;
+  }
+  12%{
+    opacity:.1;
+  }
+  28%{
+    opacity:.42;
+  }
+  46%{
+    opacity:.16;
+  }
+  58%{
+    transform:translateX(340%);
+    opacity:0;
+  }
+  100%{
+    transform:translateX(340%);
+    opacity:0;
+  }
+}
+
+@keyframes pnWcAllocationAmbient{
+  0%,100%{
+    filter:brightness(1);
+    box-shadow:0 0 4px rgba(150,105,180,.06);
+  }
+  50%{
+    filter:brightness(1.045);
+    box-shadow:0 0 9px rgba(150,105,180,.1);
+  }
+}
+
+.pn-wc-surplus-v21 .pn-wc-allocation-bar{
+  position:relative;
+  isolation:isolate;
+  overflow:hidden;
+  animation:pnWcAllocationAmbient 4.8s ease-in-out infinite;
+}
+
+/* light travels across the fixed 50/30/20 geometry */
+.pn-wc-surplus-v21 .pn-wc-allocation-bar::after{
+  content:"";
+  position:absolute;
+  z-index:2;
+  top:-45%;
+  bottom:-45%;
+  left:0;
+  width:18%;
+  pointer-events:none;
+  opacity:0;
+  transform:translateX(-140%);
+  background:
+    linear-gradient(
+      100deg,
+      transparent 0%,
+      rgba(255,255,255,.03) 20%,
+      rgba(255,246,214,.34) 48%,
+      rgba(217,187,255,.16) 64%,
+      transparent 100%
+    );
+  filter:blur(2px);
+  animation:pnWcAllocationSweep 5.2s ease-in-out infinite;
+}
+
+/* subtle individual segment breathing, no size change */
+@keyframes pnWcRoadGlow{
+  0%,100%{filter:brightness(1)}
+  50%{filter:brightness(1.055)}
+}
+@keyframes pnWcHardwareGlow{
+  0%,100%{filter:brightness(1)}
+  50%{filter:brightness(1.065)}
+}
+@keyframes pnWcFreeGlow{
+  0%,100%{filter:brightness(1)}
+  50%{filter:brightness(1.06)}
+}
+
+.pn-wc-surplus-v21 .pn-wc-allocation-bar .road{
+  animation:pnWcRoadGlow 4.8s ease-in-out infinite;
+}
+.pn-wc-surplus-v21 .pn-wc-allocation-bar .hardware{
+  animation:pnWcHardwareGlow 4.8s ease-in-out .25s infinite;
+}
+.pn-wc-surplus-v21 .pn-wc-allocation-bar .free{
+  animation:pnWcFreeGlow 4.8s ease-in-out .5s infinite;
+}
+
+/* Keep the supporting allocation cards calm. Only a faint aura follows the bar. */
+.pn-wc-surplus-v21 .pn-wc-allocation-card{
+  transition:
+    border-color .18s ease,
+    box-shadow .18s ease,
+    background .18s ease;
+}
+.pn-wc-surplus-v21 .pn-wc-allocation-card:hover{
+  background:rgba(255,255,255,.02);
+}
+.pn-wc-surplus-v21 .pn-wc-allocation-card.road:hover{
+  box-shadow:inset 0 0 18px rgba(105,172,103,.05);
+}
+.pn-wc-surplus-v21 .pn-wc-allocation-card.hardware:hover{
+  box-shadow:inset 0 0 18px rgba(208,166,66,.05);
+}
+.pn-wc-surplus-v21 .pn-wc-allocation-card.free:hover{
+  box-shadow:inset 0 0 18px rgba(153,96,208,.055);
+}
+
+/* Accessibility: absolutely no forced motion if the OS asks for reduced motion. */
+@media (prefers-reduced-motion: reduce){
+  .pn-wc-hero .pn-wc-gauge-fill,
+  .pn-wc-hero .pn-wc-gauge-floor,
+  .pn-wc-hero .pn-wc-gauge-target,
+  .pn-wc-surplus-v21 .pn-wc-allocation-bar,
+  .pn-wc-surplus-v21 .pn-wc-allocation-bar::after,
+  .pn-wc-surplus-v21 .pn-wc-allocation-bar .road,
+  .pn-wc-surplus-v21 .pn-wc-allocation-bar .hardware,
+  .pn-wc-surplus-v21 .pn-wc-allocation-bar .free{
+    animation:none !important;
+  }
+}

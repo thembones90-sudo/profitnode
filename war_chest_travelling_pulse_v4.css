@@ -1,0 +1,180 @@
+/* PROFITNODE WAR CHEST TRAVELLING PULSE V4
+   Visible travelling energy pulses THROUGH the bars.
+   CSS-only. Geometry and treasury values remain fixed. */
+
+/* Kill the old "breathing" approach if V3 is still loaded. */
+.pn-wc-hero .pn-wc-gauge-fill,
+.pn-wc-hero .pn-wc-gauge-floor,
+.pn-wc-hero .pn-wc-gauge-target,
+.pn-wc-surplus-v21 .pn-wc-allocation-bar,
+.pn-wc-surplus-v21 .pn-wc-allocation-bar .road,
+.pn-wc-surplus-v21 .pn-wc-allocation-bar .hardware,
+.pn-wc-surplus-v21 .pn-wc-allocation-bar .free{
+  animation:none !important;
+}
+
+/* =========================================================
+   FORTRESS RESERVE — a bright pulse travels through FILLED bar
+   ========================================================= */
+
+.pn-wc-gauge-fill{
+  position:relative !important;
+  overflow:hidden !important;
+  isolation:isolate;
+}
+
+.pn-wc-gauge-fill::after{
+  content:"";
+  position:absolute;
+  z-index:5;
+  top:-55%;
+  bottom:-55%;
+  left:-28%;
+  width:20%;
+  pointer-events:none;
+  opacity:0;
+  transform:translateX(0) skewX(-18deg);
+  background:
+    linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255,255,255,.08) 20%,
+      rgba(255,255,255,.92) 48%,
+      rgba(255,255,255,.26) 66%,
+      transparent 100%
+    );
+  filter:blur(.6px);
+  mix-blend-mode:screen;
+}
+
+@keyframes pnWcFortressTravellingPulse{
+  0%{
+    left:-28%;
+    opacity:0;
+  }
+  10%{
+    opacity:.95;
+  }
+  42%{
+    opacity:1;
+  }
+  72%{
+    opacity:.92;
+  }
+  88%{
+    left:112%;
+    opacity:0;
+  }
+  100%{
+    left:112%;
+    opacity:0;
+  }
+}
+
+.pn-wc-hero[data-wc-band="GREEN"] .pn-wc-gauge-fill::after{
+  animation:pnWcFortressTravellingPulse 2.6s linear infinite !important;
+  box-shadow:
+    0 0 8px rgba(136,255,137,.65),
+    0 0 16px rgba(136,255,137,.32);
+}
+
+.pn-wc-hero[data-wc-band="YELLOW"] .pn-wc-gauge-fill::after{
+  animation:pnWcFortressTravellingPulse 2.15s linear infinite !important;
+  box-shadow:
+    0 0 8px rgba(255,212,92,.72),
+    0 0 16px rgba(255,212,92,.34);
+}
+
+.pn-wc-hero[data-wc-band="BLOOD"] .pn-wc-gauge-fill::after{
+  animation:pnWcFortressTravellingPulse 1.75s linear infinite !important;
+  box-shadow:
+    0 0 9px rgba(255,79,99,.78),
+    0 0 18px rgba(255,79,99,.36);
+}
+
+/* Tiny trailing aura so the pulse reads even on a dark display. */
+.pn-wc-gauge-fill::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:4;
+  pointer-events:none;
+  background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.035) 50%,transparent 100%);
+}
+
+/* =========================================================
+   SURPLUS 50/30/20 — one energy pulse travels through all segments
+   ========================================================= */
+
+.pn-wc-surplus-v21 .pn-wc-allocation-bar{
+  position:relative !important;
+  overflow:hidden !important;
+  isolation:isolate;
+}
+
+.pn-wc-surplus-v21 .pn-wc-allocation-bar::after{
+  content:"";
+  position:absolute;
+  z-index:9;
+  top:-70%;
+  bottom:-70%;
+  left:-24%;
+  width:16%;
+  pointer-events:none;
+  opacity:0;
+  transform:skewX(-18deg);
+  background:
+    linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255,255,255,.05) 14%,
+      rgba(255,255,255,.95) 46%,
+      rgba(236,214,255,.38) 64%,
+      transparent 100%
+    );
+  filter:blur(.7px);
+  mix-blend-mode:screen;
+  animation:pnWcAllocationTravellingPulse 2.9s linear infinite !important;
+  box-shadow:
+    0 0 8px rgba(255,255,255,.5),
+    0 0 16px rgba(185,114,255,.24);
+}
+
+@keyframes pnWcAllocationTravellingPulse{
+  0%{
+    left:-24%;
+    opacity:0;
+  }
+  9%{
+    opacity:.95;
+  }
+  45%{
+    opacity:1;
+  }
+  78%{
+    opacity:.9;
+  }
+  91%{
+    left:112%;
+    opacity:0;
+  }
+  100%{
+    left:112%;
+    opacity:0;
+  }
+}
+
+/* Give each segment a faint reactive halo when the beam crosses it. */
+.pn-wc-surplus-v21 .pn-wc-allocation-bar .road,
+.pn-wc-surplus-v21 .pn-wc-allocation-bar .hardware,
+.pn-wc-surplus-v21 .pn-wc-allocation-bar .free{
+  position:relative;
+  z-index:1;
+  filter:saturate(1.06) brightness(1.03);
+}
+
+/* No geometry animation. Widths are finance, not decorative suggestions. */
+.pn-wc-surplus-v21 .pn-wc-allocation-bar .road{width:50% !important;}
+.pn-wc-surplus-v21 .pn-wc-allocation-bar .hardware{width:30% !important;}
+.pn-wc-surplus-v21 .pn-wc-allocation-bar .free{width:20% !important;}
+

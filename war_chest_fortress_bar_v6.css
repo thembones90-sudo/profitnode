@@ -1,0 +1,164 @@
+/* PROFITNODE WAR CHEST FORTRESS BAR V6
+   Native three-segment fortress bar + real travelling pulse.
+   No pseudo-element dependency. */
+
+.pn-wc-gauge-track{
+  position:relative;
+  height:18px;
+  overflow:visible;
+}
+
+/* Filled portion of the reserve. Absolute, exactly like the original design. */
+.pn-wc-gauge-progress{
+  position:absolute !important;
+  left:0 !important;
+  top:0 !important;
+  bottom:0 !important;
+  display:flex !important;
+  overflow:hidden !important;
+  min-width:0;
+  border-radius:2px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.24),
+    inset 0 -7px 11px -6px rgba(0,0,0,.5);
+}
+
+.pn-wc-gauge-segment{
+  display:block;
+  height:100%;
+  min-width:0;
+  flex:0 0 auto;
+}
+
+.pn-wc-gauge-segment.blood{
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 44%),
+    var(--wc-savings-blood);
+}
+.pn-wc-gauge-segment.yellow{
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.09),rgba(255,255,255,0) 44%),
+    var(--wc-savings-yellow);
+}
+.pn-wc-gauge-segment.green{
+  background:
+    linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,0) 44%),
+    var(--wc-savings-green);
+}
+
+/* Static glass highlight, rendered as a real element. */
+.pn-wc-gauge-gloss{
+  position:absolute;
+  z-index:3;
+  left:0;
+  right:0;
+  top:0;
+  height:43%;
+  pointer-events:none;
+  background:linear-gradient(180deg,rgba(255,255,255,.24),rgba(255,255,255,0));
+}
+
+/* Actual travelling pulse. */
+.pn-wc-gauge-pulse-v6{
+  position:absolute;
+  z-index:5;
+  top:0;
+  bottom:0;
+  left:-20%;
+  width:16%;
+  pointer-events:none;
+  opacity:0;
+  transform:skewX(-17deg);
+  background:linear-gradient(
+    90deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,.12) 24%,
+    rgba(255,255,255,.98) 50%,
+    rgba(255,255,255,.17) 75%,
+    rgba(255,255,255,0) 100%
+  );
+}
+
+@keyframes pnWcFortressPulseV6{
+  0%   { left:-20%; opacity:0; }
+  7%   { opacity:1; }
+  48%  { opacity:1; }
+  88%  { left:106%; opacity:0; }
+  100% { left:106%; opacity:0; }
+}
+
+.pn-wc-hero[data-wc-band="GREEN"] .pn-wc-gauge-pulse-v6{
+  animation:pnWcFortressPulseV6 2.7s linear infinite;
+  box-shadow:
+    0 0 9px rgba(131,255,129,.55),
+    0 0 17px rgba(131,255,129,.24);
+}
+.pn-wc-hero[data-wc-band="YELLOW"] .pn-wc-gauge-pulse-v6{
+  animation:pnWcFortressPulseV6 2.2s linear infinite;
+  box-shadow:
+    0 0 9px rgba(255,216,99,.62),
+    0 0 17px rgba(255,216,99,.27);
+}
+.pn-wc-hero[data-wc-band="BLOOD"] .pn-wc-gauge-pulse-v6{
+  animation:pnWcFortressPulseV6 1.8s linear infinite;
+  box-shadow:
+    0 0 10px rgba(255,83,106,.68),
+    0 0 18px rgba(255,83,106,.30);
+}
+
+/* Remove visual influence from the legacy fill if some stale DOM/CSS survives. */
+.pn-wc-gauge-fill{
+  display:none !important;
+}
+
+/* Preserve the working surplus travelling pulse in the same stylesheet. */
+.pn-wc-surplus-v21 .pn-wc-allocation-bar{
+  position:relative !important;
+  overflow:hidden !important;
+  isolation:isolate;
+}
+
+.pn-wc-surplus-v21 .pn-wc-allocation-bar::after{
+  content:"";
+  position:absolute;
+  z-index:9;
+  top:-60%;
+  bottom:-60%;
+  left:-22%;
+  width:16%;
+  pointer-events:none;
+  opacity:0;
+  transform:skewX(-18deg);
+  border-radius:999px;
+  background:linear-gradient(
+    90deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,247,219,.10) 22%,
+    rgba(255,255,255,.88) 50%,
+    rgba(212,182,255,.20) 70%,
+    rgba(255,255,255,0) 100%
+  );
+  box-shadow:
+    0 0 10px rgba(255,245,210,.20),
+    0 0 18px rgba(183,126,255,.14);
+  animation:pnWcAllocationPulseV6 3.8s linear infinite;
+}
+
+@keyframes pnWcAllocationPulseV6{
+  0%   { left:-22%; opacity:0; }
+  8%   { opacity:.95; }
+  46%  { opacity:1; }
+  86%  { left:106%; opacity:0; }
+  100% { left:106%; opacity:0; }
+}
+
+.pn-wc-surplus-v21 .pn-wc-allocation-bar .road{width:50% !important}
+.pn-wc-surplus-v21 .pn-wc-allocation-bar .hardware{width:30% !important}
+.pn-wc-surplus-v21 .pn-wc-allocation-bar .free{width:20% !important}
+
+@media (prefers-reduced-motion: reduce){
+  .pn-wc-gauge-pulse-v6,
+  .pn-wc-surplus-v21 .pn-wc-allocation-bar::after{
+    animation:none !important;
+  }
+}

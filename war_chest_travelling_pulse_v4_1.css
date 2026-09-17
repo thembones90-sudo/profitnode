@@ -1,0 +1,135 @@
+/* PROFITNODE WAR CHEST TRAVELLING PULSE V4.1
+   Replacement for V4.
+   Same idea: visible travelling pulse THROUGH the bars.
+   Fortress implementation rebuilt to avoid damaging the base bar rendering.
+   CSS-only. */
+
+/* ---------------------------------------------------------
+   FORTRESS RESERVE
+   Conservative overlay: no mix-blend-mode, no oversized vertical spill,
+   no extra haze layer. Just a clean sweep inside the existing filled bar.
+   --------------------------------------------------------- */
+
+/* Neutralize the risky parts if V4 is still present somewhere in cache/order. */
+.pn-wc-gauge-fill::before{
+  content:none !important;
+}
+
+.pn-wc-gauge-fill{
+  position:relative !important;
+  overflow:hidden !important;
+}
+
+.pn-wc-gauge-fill::after{
+  content:"";
+  position:absolute;
+  left:-24%;
+  top:0;
+  bottom:0;
+  width:18%;
+  opacity:0;
+  pointer-events:none;
+  transform:skewX(-18deg);
+  border-radius:999px;
+  background:linear-gradient(
+    90deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,255,255,.12) 28%,
+    rgba(255,255,255,.95) 50%,
+    rgba(255,255,255,.16) 72%,
+    rgba(255,255,255,0) 100%
+  );
+}
+
+@keyframes pnWcFortressSweepV41{
+  0%   { left:-24%; opacity:0; }
+  8%   { opacity:.95; }
+  48%  { opacity:1; }
+  86%  { left:106%; opacity:0; }
+  100% { left:106%; opacity:0; }
+}
+
+.pn-wc-hero[data-wc-band="GREEN"] .pn-wc-gauge-fill::after{
+  animation:pnWcFortressSweepV41 2.7s linear infinite !important;
+  box-shadow:0 0 10px rgba(132,255,126,.38);
+}
+.pn-wc-hero[data-wc-band="YELLOW"] .pn-wc-gauge-fill::after{
+  animation:pnWcFortressSweepV41 2.2s linear infinite !important;
+  box-shadow:0 0 10px rgba(255,214,97,.42);
+}
+.pn-wc-hero[data-wc-band="BLOOD"] .pn-wc-gauge-fill::after{
+  animation:pnWcFortressSweepV41 1.8s linear infinite !important;
+  box-shadow:0 0 11px rgba(255,83,109,.48);
+}
+
+/* Optional tiny state glow on the fill itself, but never enough to alter geometry. */
+.pn-wc-hero[data-wc-band="GREEN"] .pn-wc-gauge-fill{ box-shadow: inset 0 0 8px rgba(102,196,96,.10); }
+.pn-wc-hero[data-wc-band="YELLOW"] .pn-wc-gauge-fill{ box-shadow: inset 0 0 8px rgba(210,167,63,.11); }
+.pn-wc-hero[data-wc-band="BLOOD"] .pn-wc-gauge-fill{ box-shadow: inset 0 0 8px rgba(197,56,74,.12); }
+
+/* ---------------------------------------------------------
+   SURPLUS 50 / 30 / 20
+   Keep the working travelling pulse.
+   --------------------------------------------------------- */
+
+.pn-wc-surplus-v21 .pn-wc-allocation-bar,
+.pn-wc-surplus-v21 .pn-wc-allocation-bar .road,
+.pn-wc-surplus-v21 .pn-wc-allocation-bar .hardware,
+.pn-wc-surplus-v21 .pn-wc-allocation-bar .free{
+  animation:none !important;
+}
+
+.pn-wc-surplus-v21 .pn-wc-allocation-bar{
+  position:relative !important;
+  overflow:hidden !important;
+  isolation:isolate;
+}
+
+.pn-wc-surplus-v21 .pn-wc-allocation-bar::after{
+  content:"";
+  position:absolute;
+  z-index:9;
+  top:-60%;
+  bottom:-60%;
+  left:-22%;
+  width:16%;
+  pointer-events:none;
+  opacity:0;
+  transform:skewX(-18deg);
+  background:linear-gradient(
+    90deg,
+    rgba(255,255,255,0) 0%,
+    rgba(255,247,219,.10) 22%,
+    rgba(255,255,255,.88) 50%,
+    rgba(212,182,255,.20) 70%,
+    rgba(255,255,255,0) 100%
+  );
+  border-radius:999px;
+  box-shadow:
+    0 0 10px rgba(255,245,210,.20),
+    0 0 18px rgba(183,126,255,.14);
+}
+
+@keyframes pnWcAllocationSweepV41{
+  0%   { left:-22%; opacity:0; }
+  8%   { opacity:.95; }
+  46%  { opacity:1; }
+  86%  { left:106%; opacity:0; }
+  100% { left:106%; opacity:0; }
+}
+
+.pn-wc-surplus-v21 .pn-wc-allocation-bar::after{
+  animation:pnWcAllocationSweepV41 3.8s linear infinite !important;
+}
+
+/* keep the 50 / 30 / 20 widths totally fixed */
+.pn-wc-surplus-v21 .pn-wc-allocation-bar .road{ width:50% !important; }
+.pn-wc-surplus-v21 .pn-wc-allocation-bar .hardware{ width:30% !important; }
+.pn-wc-surplus-v21 .pn-wc-allocation-bar .free{ width:20% !important; }
+
+@media (prefers-reduced-motion: reduce){
+  .pn-wc-gauge-fill::after,
+  .pn-wc-surplus-v21 .pn-wc-allocation-bar::after{
+    animation:none !important;
+  }
+}

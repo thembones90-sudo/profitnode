@@ -1,0 +1,197 @@
+/* PROFITNODE SIDEBAR ASSET ICONS V3
+   Static source-level sidebar icon treatment.
+   No runtime JS decoration. */
+
+.mainnav .navlink{
+  position:relative;
+  display:flex;
+  align-items:center;
+  padding-right:48px;
+}
+
+.mainnav .pn-nav-label{
+  display:block;
+  min-width:0;
+  pointer-events:none;
+}
+
+.mainnav .pn-nav-icon{
+  position:absolute;
+  right:20px;
+  top:50%;
+  width:15px;
+  height:15px;
+  transform:translateY(-50%);
+  opacity:.62;
+  pointer-events:none;
+  user-select:none;
+  transition:opacity .15s ease,transform .15s ease,filter .15s ease;
+}
+
+.mainnav .navlink:hover .pn-nav-icon,
+.mainnav .navlink.active .pn-nav-icon,
+.mainnav .navlink.is-powered .pn-nav-icon{
+  opacity:1;
+  transform:translateY(-50%) scale(1.04);
+  filter:brightness(1.18) drop-shadow(0 0 3px rgba(200,205,214,.18));
+}
+
+/* RIG ASSEMBLY keeps its existing gold/lightning identity. */
+.mainnav .navlink[data-route="rigbuild"] .pn-nav-label{
+  color:transparent !important;
+}
+
+.mainnav .navlink[data-route="rigbuild"]:before{
+  content:"RIG ASSEMBLY" !important;
+}
+
+.mainnav .navlink[data-route="rigbuild"] .pn-nav-icon{
+  opacity:.92;
+  filter:drop-shadow(0 0 3px rgba(231,188,78,.42));
+}
+
+.mainnav .navlink[data-route="rigbuild"]:hover .pn-nav-icon,
+.mainnav .navlink[data-route="rigbuild"].active .pn-nav-icon{
+  opacity:1;
+  filter:drop-shadow(0 0 5px rgba(231,188,78,.62));
+}
+
+.mainnav .navlink[data-route="inventory"] .pn-nav-icon{
+  width:16px;
+  height:16px;
+}
+
+.mainnav .navlink[data-route="backup"] .pn-nav-icon{
+  opacity:.46;
+}
+
+.mainnav .navlink[data-route="backup"]:hover .pn-nav-icon,
+.mainnav .navlink[data-route="backup"].active .pn-nav-icon{
+  opacity:.82;
+}
+
+@media(max-width:760px){
+  .mainnav .pn-nav-icon{right:17px}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .mainnav .pn-nav-icon{transition:none}
+}
+
+
+
+
+/* PN MAIL BADGE POLISH V6 START
+   Incoming-transmission treatment:
+   badge is physically attached to the envelope icon. */
+
+.mainnav .navlink[data-route="mail"]{
+  padding-right:48px;
+}
+
+/* Quiet Revan alert haze only while a badge actually exists. */
+.mainnav .navlink[data-route="mail"]:has(.pn-nav-badge){
+  --pn-mail-alert-red:196,58,88;
+  --pn-mail-alert-purple:126,55,172;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(var(--pn-mail-alert-red),.075) 0%,
+      rgba(var(--pn-mail-alert-purple),.038) 48%,
+      transparent 82%
+    );
+}
+
+/* MAIL text wakes up when active mail exists. */
+.mainnav .navlink[data-route="mail"]:has(.pn-nav-badge) .pn-nav-label{
+  color:#cf5b70;
+  text-shadow:
+    0 0 8px rgba(201,66,96,.16),
+    0 0 14px rgba(124,49,164,.07);
+}
+
+/* Envelope gets the same restrained alert language. */
+.mainnav .navlink[data-route="mail"]:has(.pn-nav-badge) .pn-nav-icon{
+  opacity:.92;
+  filter:
+    brightness(1.18)
+    sepia(.12)
+    saturate(1.22)
+    drop-shadow(0 0 4px rgba(196,61,99,.22));
+}
+
+/* Badge sits on the envelope's upper-right corner. */
+.mainnav .navlink[data-route="mail"] .pn-nav-badge{
+  position:absolute;
+  z-index:3;
+  right:11px;
+  top:calc(50% - 13px);
+  min-width:17px;
+  height:17px;
+  padding:0 4px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  box-sizing:border-box;
+  border-radius:999px;
+
+  border:1px solid rgba(255,110,145,.78);
+  background:
+    linear-gradient(
+      135deg,
+      #d33a59 0%,
+      #aa326f 44%,
+      #7b38b7 100%
+    );
+
+  color:#fff7fb;
+  font-family:var(--mono);
+  font-size:9px;
+  font-weight:900;
+  line-height:1;
+  letter-spacing:0;
+  text-align:center;
+  font-variant-numeric:tabular-nums;
+
+  text-shadow:0 1px 1px rgba(0,0,0,.52);
+  box-shadow:
+    0 0 0 1px rgba(80,22,94,.28),
+    0 0 6px rgba(205,58,101,.32),
+    0 0 10px rgba(123,56,183,.14);
+
+  pointer-events:none;
+}
+
+/* Hover/active = slightly more energized, never pulsing. */
+.mainnav .navlink[data-route="mail"]:hover .pn-nav-badge,
+.mainnav .navlink[data-route="mail"].active .pn-nav-badge,
+.mainnav .navlink[data-route="mail"].is-powered .pn-nav-badge{
+  border-color:rgba(255,137,166,.92);
+  background:
+    linear-gradient(
+      135deg,
+      #e04463 0%,
+      #b43a79 44%,
+      #8743c5 100%
+    );
+  box-shadow:
+    0 0 0 1px rgba(92,28,108,.34),
+    0 0 8px rgba(220,67,111,.42),
+    0 0 13px rgba(132,63,194,.20);
+}
+
+/* The envelope remains readable beneath the overlapping badge. */
+.mainnav .navlink[data-route="mail"] .pn-nav-icon{
+  right:20px;
+}
+
+/* Mobile keeps the same composition, just slightly tighter. */
+@media(max-width:760px){
+  .mainnav .navlink[data-route="mail"]{padding-right:45px}
+  .mainnav .navlink[data-route="mail"] .pn-nav-icon{right:17px}
+  .mainnav .navlink[data-route="mail"] .pn-nav-badge{
+    right:8px;
+    top:calc(50% - 13px);
+  }
+}
+/* PN MAIL BADGE POLISH V6 END */
