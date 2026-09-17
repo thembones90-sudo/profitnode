@@ -1,2 +1,24 @@
 .vercel
 .env*
+
+# local backups / safety-net copies
+*.bak
+*.bak-*
+*backup*
+*.swp
+.pn_patch_backups/
+_pn_backups/
+PROFITNODE_RAM_FIX_PATCH/
+
+# scratch / debug / audit probes
+_bp_audit*
+_bp_detail.js
+_bp_shots.js
+_bp_rare.png
+_bp_uncommon.png
+_probe_manifest.js
+roulette_probe*.js
+treasury_probe.js
+
+# local output scratch
+Claude outputs/
