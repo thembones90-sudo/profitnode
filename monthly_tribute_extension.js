@@ -251,8 +251,9 @@
     const obligations=sum(t.obligations,o=>obligationOutstanding(t,o));
     const pending=sum(t.pendingAssets,a=>!a.converted);
     const income=sum(t.incomes,()=>true);
-    const fortress=liquid-obligations;
-    return {liquid,obligations,fortress,pending,income,afterPending:fortress+pending,afterSalary:fortress+pending+income};
+    const fortress=liquid;
+    const afterObligations=liquid-obligations;
+    return {liquid,obligations,fortress,afterObligations,pending,income,afterPending:fortress+pending,afterSalary:fortress+pending+income};
   };
 
   pnTreasuryRecurringDues=function(treasury){

@@ -188,9 +188,9 @@ const treasuryProbe = env.run(sandbox, `(() => {
 })()`);
 checks.push(['old ledgers normalize with an empty isolated treasury', treasuryProbe.blankOk]);
 checks.push(['treasury FX conversion honors include/exclude', treasuryProbe.liquid === 190]);
-checks.push(['paid obligations remain history but do not reduce fortress', treasuryProbe.obligations === 516 && treasuryProbe.fortress === -326]);
-checks.push(['converted pending assets stop counting', treasuryProbe.pending === 50 && treasuryProbe.afterPending === -276]);
-checks.push(['projected income stays outside liquid and reaches after-salary only', treasuryProbe.afterSalary === -246]);
+checks.push(['pending obligations remain separate and do not reduce fortress reserve', treasuryProbe.obligations === 516 && treasuryProbe.fortress === 190]);
+checks.push(['converted pending assets stop counting', treasuryProbe.pending === 50 && treasuryProbe.afterPending === 240]);
+checks.push(['projected income stays outside liquid and reaches after-salary only', treasuryProbe.afterSalary === 270]);
 checks.push(['treasury persists inside the canonical ledger backup', treasuryProbe.persisted && treasuryProbe.backup]);
 checks.push(['TREASURY route renders compact rebalance entry point', treasuryProbe.routeHtml]);
 checks.push(['rebalance draft always contains five canonical balance sources once', treasuryProbe.coreCount === 5 && treasuryProbe.coreLabels === 'Payoneer|Preply|Fiverr|Cash (RSD)|Cash (EUR)']);
