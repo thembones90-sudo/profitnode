@@ -330,6 +330,10 @@ Actions.removeMail = function(id){
   suspicious.forEach(flow => {
     const item = inventory.find(x => x && x.id === flow.refId);
     removeTreasuryFlow(treasury, "inventory", flow.refId, "ACQUISITION");
+    ledger.meta = ledger.meta || {};
+    const refunded = Array.isArray(ledger.meta.treasuryV4RefundedAcquisitions) ? ledger.meta.treasuryV4RefundedAcquisitions : [];
+    if (!refunded.includes(flow.refId)) refunded.push(flow.refId);
+    ledger.meta.treasuryV4RefundedAcquisitions = refunded;
     repaired++;
     console.warn("[PROFITNODE] Removed retroactive legacy acquisition deduction:",
       item ? ((item.manufacturer || "") + " " + (item.model || "")).trim() : flow.refId,
@@ -338,4 +342,43 @@ Actions.removeMail = function(id){
 
   if (repaired) Store.persist();
   console.info("[PROFITNODE] TREASURY SINGLE AUTHORITY V4 active · repaired", repaired, "retroactive acquisition flow(s).");
+})();
+
+/* PN TREASURY SINGLE AUTHORITY V5 MISSING-FLOW REPAIR */
+const PN_TREASURY_ACQUISITION_CHARGING_SINCE = "2026-09-11T12:11:01Z";
+function pnTreasuryV5Candidates(ledger){
+  const treasury = ledger && ledger.treasury;
+  if (!treasury || !Array.isArray(treasury.flows)) return [];
+  const inventory = Array.isArray(ledger.inventory) ? ledger.inventory : [];
+  const timeline = Array.isArray(ledger.timeline) ? ledger.timeline : [];
+  const refunded = ledger.meta && Array.isArray(ledger.meta.treasuryV4RefundedAcquisitions) ? ledger.meta.treasuryV4RefundedAcquisitions : [];
+  const since = Date.parse(PN_TREASURY_ACQUISITION_CHARGING_SINCE);
+  return inventory.filter(item => {
+    if (!item || !item.id || refunded.includes(item.id) || findTreasuryFlow(treasury, "inventory", item.id, "ACQUISITION")) return false;
+    if (!((Number(item.purchasePrice) || 0) > 0)) return false;
+    const itemTs = Date.parse(item.createdAt || "");
+    if (!Number.isFinite(itemTs) || itemTs < since) return false;
+    return timeline.some(ev => {
+      if (!ev || ev.type !== "PURCHASE" || ev.relatedType !== "inventory" || ev.relatedId !== item.id) return false;
+      const evTs = Date.parse(ev.createdAt || "");
+      return Number.isFinite(evTs) && Math.abs(evTs - itemTs) <= 60 * 1000;
+    });
+  });
+}
+(function pnRepairMissingCanonicalAcquisitionFlowsV5(){
+  const ledger = Store.load();
+  if (!ledger || !ledger.treasury || !Array.isArray(ledger.treasury.flows)) return;
+  if (ledger.meta && ledger.meta.treasuryAcquisitionRepairV5At) return;
+  const candidates = pnTreasuryV5Candidates(ledger);
+
+  candidates.forEach(item => {
+    const price = Number(item.purchasePrice) || 0;
+    applyTreasuryChange(ledger.treasury, "inventory", item.id, "ACQUISITION", price, item.currency || "RSD", "Inventory purchase");
+    console.warn("[PROFITNODE] Repaired missing canonical acquisition deduction:", ((item.manufacturer || "") + " " + (item.model || "")).trim(), price, item.currency || "RSD");
+  });
+
+  ledger.meta = ledger.meta || {};
+  ledger.meta.treasuryAcquisitionRepairV5At = nowISO();
+  Store.persist();
+  console.info("[PROFITNODE] TREASURY SINGLE AUTHORITY V5 active · repaired", candidates.length, "missing canonical acquisition flow(s).");
 })();

@@ -114,14 +114,17 @@ if (typeof pbRamConfigLine === "function"){
 }
 
 /*
-  The hero KPI strip already owns ACTUAL SPENT / PLANNED COST /
-  ESTIMATED FINAL COST. This lower panel is detail-only.
+  The hero KPI strip already owns PROJECT CASH / REUSED INVENTORY BASIS /
+  TOTAL COST BASIS / PLANNED COST. This lower panel carries only the
+  estimated final basis plus the itemized detail.
 */
 if (typeof pbCostBreakdownHtml === "function"){
   pbCostBreakdownHtml = function(project){
     const data = pbBuildCostRows(project);
-    const owned = data.owned || [];
+    const direct = data.direct || [];
+    const reused = data.reused || [];
     const planned = data.planned || [];
+    const stats = Actions.projectBuildStats(project);
 
     const rowsHtml = function(rows){
       return rows.length
@@ -131,19 +134,21 @@ if (typeof pbCostBreakdownHtml === "function"){
         : '<p class="hint">None yet.</p>';
     };
 
-    const count = owned.length + planned.length;
+    const finalRow =
+      '<div class="pn-pb-cost-totals"><div class="pn-pb-cost-total pn-pb-cost-final" data-pb-est-final="'+stats.estimatedFinalCost+'">EST. FINAL BASIS<b>'+money(stats.estimatedFinalCost,project.currency)+'</b></div></div>';
     const itemized =
       '<details class="pn-pb-cost-details">'+
-        '<summary>ITEMIZED COMPONENT COSTS'+(count ? ' · '+count+' ENTRIES' : '')+'</summary>'+
+        '<summary>ITEMIZED BREAKDOWN</summary>'+
         '<div class="pn-pb-cost-cols">'+
-          '<div class="pn-pb-cost-group"><h3>OWNED / PAID</h3>'+rowsHtml(owned)+'</div>'+
+          '<div class="pn-pb-cost-group"><h3>PROJECT CASH</h3>'+rowsHtml(direct)+'</div>'+
+          '<div class="pn-pb-cost-group"><h3>REUSED INVENTORY</h3>'+rowsHtml(reused)+'</div>'+
           '<div class="pn-pb-cost-group"><h3>PLANNED / NOT YET PURCHASED</h3>'+rowsHtml(planned)+'</div>'+
         '</div>'+
       '</details>';
 
     return '<div class="panel pn-pb-cost-detail-only" data-pb-cost-breakdown style="margin-top:8px">'+
       '<div class="panel-head"><h2>COST DETAILS</h2></div>'+
-      '<div class="panel-body">'+itemized+'</div>'+
+      '<div class="panel-body">'+finalRow+itemized+'</div>'+
     '</div>';
   };
 }

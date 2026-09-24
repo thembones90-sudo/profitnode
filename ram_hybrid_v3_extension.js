@@ -35,6 +35,7 @@
     return Array.from(new Set(ids.filter(Boolean)));
   }
   function saveHybrid(project,ids){
+    if(project&&project.buildLocked)return{ok:false,error:"Completed build is locked."};
     ids=Array.from(new Set((ids||[]).filter(Boolean)));
     if(ids.length<2)return{ok:false,error:"Select at least two RAM items for a hybrid set."};
     const items=ids.map(id=>Store.get("inventory",id));
@@ -49,12 +50,13 @@
     ram.groups=groups.map(g=>Object.assign({},g));ram.mixed=true;
     const oldSlot=project.slots&&project.slots.RAM,oldIds=idsOf(oldSlot);
     release(project.id,oldIds.filter(id=>!ids.includes(id)));
-    const status=project.status==="COMPLETED"?"INSTALLED":"IN_BUILD";
-    ids.forEach(id=>Store.update("inventory",id,{assignedProjectId:project.id,status}));
-    const slot={kind:"INVENTORY",inventoryItemId:ids[0],ramVaultItemIds:ids,label:items.map(pbPartLabel).join(" + "),ram,hybridOwned:true};
+    const invalidated=!!(project.assembledAt||project.buildVerification);
+    if(invalidated)Store.all("inventory").filter(x=>x.assignedProjectId===project.id&&x.status==="INSTALLED").forEach(x=>Store.update("inventory",x.id,{status:"IN_BUILD"}));
+    ids.forEach(id=>Store.update("inventory",id,{assignedProjectId:project.id,status:"IN_BUILD"}));
+    const slot={kind:"INVENTORY",inventoryItemId:ids[0],ramVaultItemIds:ids,label:items.map(pbPartLabel).join(" + "),ram,hybridOwned:true,ownershipSource:items.every(x=>x.acquisitionProjectId===project.id)?"PURCHASED_NOW":"EXISTING_INVENTORY"};
     const slots=Object.assign({},project.slots||{},{RAM:slot});
     const componentIds=Store.all("inventory").filter(x=>x.assignedProjectId===project.id).map(x=>x.id);
-    Store.update("projects",project.id,{slots,componentIds});
+    Store.update("projects",project.id,{slots,componentIds,assembledAt:invalidated?null:project.assembledAt||null,verifiedAt:invalidated?null:project.verifiedAt||null,buildVerification:invalidated?null:project.buildVerification||null,status:invalidated?"BUILDING":project.status});
     return{ok:true,project:Store.get("projects",project.id)};
   }
 
@@ -67,7 +69,7 @@
       const ids=idsOf(slot);
       if(ids.length>1&&(slotKey==="RAM"||(slot&&slot.hybridOwned))){
         const items=ids.map(id=>Store.get("inventory",id)).filter(Boolean),rating=slot.ram&&typeof ramRating==="function"?ramRating(slot.ram):null;
-        return{label:(slot.label||items.map(pbPartLabel).join(" + "))+(slot.ram&&slot.ram.totalCapacity?" / "+slot.ram.totalCapacity+"GB TOTAL":""),cost:ids.reduce((sum,id)=>{const it=Store.get("inventory",id);return sum+(it?inventoryAcquisitionCost(it,currency):0)},0),originalPrice:items.reduce((sum,it)=>sum+(Number(it.estimatedMarketValue)||0),0),category:"RAM",condition:"WORKING",status:items[0]?items[0].status:"IN_BUILD",item:items[0]||null,pn:rating?{type:"RAM",data:{technology:(slot.ram&&slot.ram.technology)||"DDR4",brand:"HYBRID",series:"MIXED"},performance:rating.overall,tierIndex:rating.tierIndex,tier:rating.tier,ram:slot.ram}:null};
+        return{label:(slot.label||items.map(pbPartLabel).join(" + "))+(slot.ram&&slot.ram.totalCapacity?" / "+slot.ram.totalCapacity+"GB TOTAL":""),cost:ids.reduce((sum,id)=>{const it=Store.get("inventory",id);return sum+(it?inventoryAcquisitionCost(it,currency):0)},0),originalPrice:items.reduce((sum,it)=>sum+convert(Number(it.estimatedMarketValue)||0,it.currency||currency,currency),0),category:"RAM",condition:"WORKING",status:items[0]?items[0].status:"IN_BUILD",item:items[0]||null,pn:rating?{type:"RAM",data:{technology:(slot.ram&&slot.ram.technology)||"DDR4",brand:"HYBRID",series:"MIXED"},performance:rating.overall,tierIndex:rating.tierIndex,tier:rating.tier,ram:slot.ram}:null};
       }
       return originalResolved(slot,currency,slotKey);
     };

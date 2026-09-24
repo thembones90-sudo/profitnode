@@ -36,12 +36,13 @@ function pnBwrCostCounts(project){
     try{
       const rows = pbBuildCostRows(project) || {};
       return {
-        owned: Array.isArray(rows.owned) ? rows.owned.length : 0,
+        direct: Array.isArray(rows.direct) ? rows.direct.length : 0,
+        reused: Array.isArray(rows.reused) ? rows.reused.length : 0,
         planned: Array.isArray(rows.planned) ? rows.planned.length : 0
       };
     }catch(_){}
   }
-  return pnBwrSlotCounts(project);
+  const slots=pnBwrSlotCounts(project);return{direct:slots.owned,reused:0,planned:slots.planned};
 }
 
 /*
@@ -57,12 +58,13 @@ if (typeof pbCostBreakdownHtml === "function"){
     const counts = pnBwrCostCounts(project);
 
     const summary =
-      "ITEMIZED COMPONENT COSTS · " +
-      counts.owned + " OWNED · " +
+      "ITEMIZED BREAKDOWN · " +
+      counts.direct + " PROJECT CASH · " +
+      counts.reused + " REUSED · " +
       counts.planned + " PLANNED";
 
     html = String(html).replace(
-      /ITEMIZED COMPONENT COSTS(?:\s*·\s*\d+\s+ENTRIES)?/i,
+      /ITEMIZED BREAKDOWN/i,
       summary
     );
 

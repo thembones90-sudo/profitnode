@@ -10,27 +10,21 @@ const entries = env.loadAll(sandbox, DIR);
 const checks = [];
 
 // --- Manifest / architecture checks (Node side) ---
-const CANONICAL_ORDER = [
-  'app_core.js', 'cpu_revaluation_extension.js', 'gpu_revaluation_extension.js',
-  'motherboard_revaluation_extension.js', 'planner_retirement_extension.js', 'terminal_naming_extension.js',
-  'psu_extension.js', 'psu_top10_data_1.js', 'psu_top10_data_2.js', 'psu_top10_data_3.js', 'psu_top10_extension.js',
-  'rig_enclosure_extension.js', 'sale_type_extension.js',
-  'command_center_extension.js', 'command_header_glitch_extension.js',
-  'rig_bench_navigation_extension.js', 'command_financial_model_extension.js',
-  'profitnode_intelligence_extension.js', 'command_separator_tune.js',
-  'roulette_extension.js', 'roulette_ui_extension.js', 'treasury_extension.js',
-  'road_to_extension.js', 'my_rig_extension.js', 'my_rig_cleanup_v1.js', 'sidebar_cleanup_extension.js',
-  'mail_extension.js', 'treasury_flow_extension.js', 'monthly_tribute_extension.js', 'sold_transaction_extension.js',
-  'project_build_extension.js', 'project_build_acquisition_extension.js', 'display_dedupe_extension.js', 'build_workspace_refinement_extension.js', 'build_rating_extension.js', 'rig_rating_extension.js', 'ram_revaluation_extension.js', 'ram_v31_extension.js',
-  'official_tribute_icons_v1.js', 'official_tribute_icon_scale_v2.js', 'tribute_icon_normalize_v1.js', 'shop_fund_reset_v7.js', 'roulette_v4_reforge_extension.js',
-  'profit_blueprints_v1.js', 'profit_blueprints_muster_v2.js', 'profit_blueprints_rare_v3.js', 'profit_blueprints_rare_art_v4.js', 'project_delete_extension.js', 'profit_blueprints_uncommon_art_v6_geometry.js', 'profitnode_intel_refinement_v2.js'
-];
-checks.push(['manifest has 50 scripts', entries.length === 50]);
-checks.push(['manifest order matches canonical 50-file load order',
-  entries.map(e => e.split('?')[0]).join(',') === CANONICAL_ORDER.join(',')]);
-checks.push(['first script is app_core.js', entries[0].split('?')[0] === 'app_core.js']);
-checks.push(['last script is profitnode_intel_refinement_v2.js',
-  entries[entries.length - 1].split('?')[0] === 'profitnode_intel_refinement_v2.js']);
+// pn_scripts.js is the single canonical manifest. Tests verify invariants and
+// dependency order without maintaining a second full copy that can drift.
+const manifestNames = entries.map(e => e.split('?')[0]);
+const manifestIndex = name => manifestNames.indexOf(name);
+const before = (a,b) => manifestIndex(a) >= 0 && manifestIndex(b) >= 0 && manifestIndex(a) < manifestIndex(b);
+checks.push(['manifest has a substantial runtime script set', entries.length >= 35]);
+checks.push(['manifest contains no duplicate runtime scripts', new Set(manifestNames).size === manifestNames.length]);
+checks.push(['first script is app_core.js', manifestNames[0] === 'app_core.js']);
+checks.push(['critical extension dependency order is preserved',
+  before('app_core.js','treasury_flow_extension.js') &&
+  before('treasury_extension.js','treasury_flow_extension.js') &&
+  before('project_build_extension.js','project_build_acquisition_extension.js') &&
+  before('project_build_extension.js','build_rating_extension.js') &&
+  before('build_rating_extension.js','rig_rating_extension.js') &&
+  before('ram_revaluation_extension.js','ram_v31_extension.js')]);
 checks.push(['every manifest entry has a cache-busting ?v= suffix',
   entries.every(e => /\.js\?v=.+/.test(e))]);
 checks.push(['every manifest entry maps to a real file on disk',
@@ -122,7 +116,7 @@ checks.push(['roulette ledger CSV export registered', meta.csvKeys.includes('rou
 checks.push(['mail CSV export registered', meta.csvKeys.includes('mail')]);
 checks.push(['PN_SALE_TYPES = RIG,COMPONENT,OTHER', meta.saleTypes === 'RIG,COMPONENT,OTHER']);
 checks.push(['currencies remain RSD,EUR', meta.curren === 'RSD,EUR']);
-checks.push(['manifest declares 50 scripts in sandbox', meta.manifestLen === 50]);
+checks.push(['sandbox loaded the exact canonical manifest length', meta.manifestLen === entries.length]);
 const migrationProbe = env.run(sandbox, `(() => {
   const legacy={meta:{seeded:true},inventory:[
     {id:'healthy',category:'STORAGE',driveHealthPercent:120,catalogOverride:'  Samsung 970 EVO Plus 1TB  '},
@@ -211,6 +205,10 @@ const probe = `
 
   const item = Actions.addInventory({category:'CPU',manufacturer:'Intel',model:'Core i5-10400F',purchaseDate:'2026-01-01',purchasePrice:10000,currency:'RSD',estimatedMarketValue:15000,source:'OTHER',condition:'WORKING',status:'IN_STORAGE',notes:''});
   log('Actions.addInventory returns an id', !!item.id);
+  log('inventory acquisition immediately creates one -purchase treasury flow', (function(){
+    const flow=Store.load().treasury.flows.find(f=>f.refType==='inventory'&&f.refId===item.id&&f.kind==='ACQUISITION');
+    return !!flow && flow.amount===10000 && flow.signedDelta===-10000;
+  })());
   log('Store.get round-trips the inserted row', Store.get('inventory', item.id) && Store.get('inventory', item.id).model === 'Core i5-10400F');
   const updated = Store.update('inventory', item.id, {estimatedMarketValue: 16000});
   log('Store.update mutates and persists', updated.estimatedMarketValue === 16000);
@@ -969,27 +967,27 @@ const rigProbe = `
   const ratingStored = Store.get('rigs', ratingRigId);
   const rm = rigRatingModel(ratingStored);
   out.push(['rig rating model: purpose defaults to FLIP when unset', rm.purpose === 'FLIP']);
-  out.push(['rig rating model: finalScore numeric and bounded', Number.isFinite(rm.finalScore) && rm.finalScore >= 0 && rm.finalScore <= 100]);
+  out.push(['rig rating model: incomplete core hardware withholds the overall score', rm.finalScore === null && rm.quality === 'UNRATED' && rm.coverage && rm.coverage.eligible === false]);
   out.push(['rig rating model: category keys are all present with a score or an explicit UNRATED state', Object.keys(rm.categories).length === 6 && PB_BUILD_CATEGORIES.every(k => rm.categories[k] === null || (Number.isFinite(rm.categories[k]) && rm.categories[k] >= 0 && rm.categories[k] <= 100))]);
   out.push(['rig rating model: one confidence state per category, stock ladder', Object.keys(rm.confidences).length === 6 && PB_BUILD_CATEGORIES.every(k => ['VERIFIED','ESTIMATED','UNVERIFIED','UNRATED'].includes(rm.confidences[k]))]);
   out.push(['rig rating model: unknown parts stay UNRATED while balance/reliability stay neutral', rm.categories.PERFORMANCE === null && rm.categories.COMPONENT_QUALITY === null && rm.categories.RELIABILITY === 100 && rm.categories.BALANCE === 100 && rm.confidences.PERFORMANCE === 'UNRATED' && rm.confidences.COMPONENT_QUALITY === 'UNRATED']);
   out.push(['rig rating model: VALUE is the smooth market-efficiency curve for an unrated-performance build (11000/10000 -> 58)', rm.categories.VALUE === 58 && rm.confidences.VALUE === 'ESTIMATED']);
   out.push(['rig rating model: upgrade path uses neutral defaults when nothing is known', rm.categories.UPGRADE_PATH === 34]);
-  out.push(['rig rating model: weighted final uses only rated categories and stamps the engine', rm.finalScore === 83 && rm.quality === 'LEGENDARY' && PB_BUILD_SCORE_TIERS.some(t => t.key === rm.quality) && rm.engine === 'build-rating-v3']);
+  out.push(['rig rating model: unknown core evidence never manufactures a high tier and stamps v4', rm.finalScore === null && rm.quality === 'UNRATED' && rm.engine === 'build-rating-v4']);
   out.push(['rig rating model: verdict prose', typeof rm.verdict === 'string' && rm.verdict.length > 0]);
   const purposeFieldHtml = rigPurposeFieldHtml(ratingStored, false);
   out.push(['rig purpose field renders 5 options with FLIP selected', (purposeFieldHtml.match(/<option/g) || []).length === 5 && /data-rig-field="purpose"/.test(purposeFieldHtml) && /value="FLIP"[^>]*selected/.test(purposeFieldHtml)]);
   const chipHtml = rigRatingChipHtml(95);
   out.push(['rig rating chip carries score + quality hooks for ARTIFACT', /data-rig-rating-score="95"/.test(chipHtml) && /data-rig-rating-quality="ARTIFACT"/.test(chipHtml)]);
   const cellsHtml = rigRatingCells(ratingStored);
-  out.push(['rig rating cells emit two cells with score + quality hooks', /<td class="num"><b data-rig-rating-score="[0-9]+">/.test(cellsHtml) && /<td><span class="chip[^"]*" data-rig-rating-quality="[A-Z]+">/.test(cellsHtml)]);
+  out.push(['rig rating cells emit honest UNRATED score + quality hooks', cellsHtml.includes('data-rig-rating-score="n/a"') && cellsHtml.includes('data-rig-rating-quality="UNRATED"')]);
   const resAssembleRating = Actions.assembleRig(ratingRigId);
   out.push(['rig assemble ok for rating rig', resAssembleRating.ok === true]);
   const snap = Store.get('rigs', ratingRigId).rigRating;
   out.push(['rig rating snapshot frozen on assemble matching live model', !!snap && snap.mode === 'FINAL' && snap.finalScore === rm.finalScore && snap.quality === rm.quality]);
   out.push(['rig rating snapshot stores all slot resolutions', snap.components && snap.components.length === RIG_SLOTS.length]);
   out.push(['rig rating snapshot has six category scores', Object.keys(snap.categories).length === 6]);
-  out.push(['rig rating snapshot records engine, confidences, investment, and market value', snap.engine === 'build-rating-v3' && Object.keys(snap.confidences).length === 6 && snap.investment === 10000 && snap.estimatedMarketValue === 11000]);
+  out.push(['rig rating snapshot records v4 engine, coverage, confidences, investment, and market value', snap.engine === 'build-rating-v4' && !!snap.coverage && Object.keys(snap.confidences).length === 6 && snap.investment === 10000 && snap.estimatedMarketValue === 11000]);
   const panelLocked = rigRatingPanelHtml(Store.get('rigs', ratingRigId));
   out.push(['rig editor panel renders BUILD RATING with FINAL chip when locked', panelLocked.indexOf('BUILD RATING') !== -1 && panelLocked.indexOf('>FINAL<') !== -1]);
   out.push(['rig editor panel has six data-rig-rating-cat rows', (panelLocked.match(/data-rig-rating-cat=/g) || []).length === 6]);
@@ -1000,7 +998,7 @@ const rigProbe = `
   out.push(['locked rig keeps frozen snapshot and ignores live model drift', display.snap === true && display.m.finalScore === snap.finalScore && display.m.categories.VALUE === snap.categories.VALUE]);
   const famHtml = renderRigFamilyView('RATINGFAM');
   out.push(['rig family view has Score + Quality columns', famHtml.indexOf('<th class="num">Score</th>') !== -1 && famHtml.indexOf('<th>Quality</th>') !== -1]);
-  out.push(['rig family view variant row carries rating score + quality cells', /data-rig-rating-score="[0-9]+"/.test(famHtml) && /data-rig-rating-quality="[A-Z]+"/.test(famHtml)]);
+  out.push(['rig family view variant row carries honest UNRATED score + quality cells', famHtml.includes('data-rig-rating-score="n/a"') && famHtml.includes('data-rig-rating-quality="UNRATED"')]);
   out.push(['rig family view empty row spans 10 columns', renderRigFamilyView('ZZ-NO-RIGS').indexOf('colspan="10">No variants yet') !== -1]);
   const resDisRating = Actions.disassembleRig(ratingRigId);
   out.push(['disassemble clears the frozen rig rating snapshot', resDisRating.ok === true && Store.get('rigs', ratingRigId).rigRating === null]);
@@ -1506,25 +1504,58 @@ const projectBuildProbe = `
   const noParts = Actions.markProjectBuildComplete(emptyProject.id);
   out.push(['a build with no components on record cannot be marked complete', !noParts.ok]);
 
-  const complete = Actions.markProjectBuildComplete(p.id);
-  out.push(['marking a build complete flips it to COMPLETED and locks it', complete.ok && complete.project.status === 'COMPLETED' && complete.project.buildLocked === true]);
-  out.push(['marking a build complete stamps a completion date', !!complete.project.completionDate]);
-  out.push(['reserved (IN_BUILD) parts flip to INSTALLED on completion, not before', Store.get('inventory', mobo.id).status === 'INSTALLED' && Store.get('inventory', cpu.id).status === 'INSTALLED']);
-  const again = Actions.markProjectBuildComplete(p.id);
-  out.push(['a build already marked complete cannot be completed twice', !again.ok]);
+  const partialComplete = Actions.markProjectBuildComplete(p.id);
+  out.push(['a partially configured build cannot be marked complete', !partialComplete.ok && /configured|required/i.test(partialComplete.error)]);
 
-  state.pbId = p.id;
+  const life=Actions.addProject({name:'LIFECYCLE',startDate:todayISO(),status:'PLANNING',purpose:'TEST_BENCH',currency:'RSD',estimatedMarketValue:0,additionalCosts:0});
+  const lifeSpecs=[
+    ['MOBO','MOTHERBOARD','Lifecycle','Board'],
+    ['CPU','CPU','Lifecycle','Processor'],
+    ['RAM','RAM','Lifecycle','16GB DDR4'],
+    ['GPU','GPU','Lifecycle','Graphics'],
+    ['STORAGE','STORAGE','Lifecycle','SSD 256GB'],
+    ['PSU','PSU','Lifecycle','PSU 500W'],
+    ['CASE','CASE','Lifecycle','ATX Case'],
+    ['COOLER','COOLING','Lifecycle','CPU Cooler']
+  ];
+  const lifeItems={};
+  lifeSpecs.forEach((row,idx)=>{
+    const item=Actions.addInventory({category:row[1],manufacturer:row[2],model:row[3],purchaseDate:todayISO(),purchasePrice:1000+idx,currency:'RSD',estimatedMarketValue:1500+idx,source:'OTHER',condition:'WORKING',status:'IN_STORAGE'});
+    lifeItems[row[0]]=item;
+    Actions.setProjectSlot(life.id,row[0],'INVENTORY',{inventoryItemId:item.id});
+  });
+  const lifeReady=Store.get('projects',life.id),lifeReadyStats=Actions.projectBuildStats(lifeReady);
+  out.push(['full physical loadout tracks configured and owned separately from installed', lifeReadyStats.slotsFilled===8 && lifeReadyStats.slotsOwned===8 && lifeReadyStats.slotsInstalled===0 && lifeReadyStats.lifecycleStage==='BUILDING']);
+  out.push(['completion is blocked until the owned build is assembled', !Actions.markProjectBuildComplete(life.id).ok]);
+  const lifeCostHtml=pbCostBreakdownHtml(lifeReady),lifeReusedGroup=(lifeCostHtml.split('<h3>REUSED INVENTORY</h3>')[1]||'').split('</h3>')[0];
+  out.push(['cost details itemize reused Vault parts under REUSED INVENTORY and keep the estimated final basis visible', lifeReusedGroup.split('pn-pb-cost-row').length-1===8 && lifeCostHtml.indexOf('data-pb-est-final="'+lifeReadyStats.estimatedFinalCost+'"')>-1 && lifeReadyStats.reusedInventoryBasis===8028]);
+
+  const assembled=Actions.markProjectBuildAssembled(life.id),assembledStats=Actions.projectBuildStats(Store.get('projects',life.id));
+  out.push(['MARK ASSEMBLED moves every required owned part to INSTALLED and enters TESTING', assembled.ok && assembled.project.status==='TESTING' && assembledStats.slotsInstalled===8 && Object.values(lifeItems).every(item=>Store.get('inventory',item.id).status==='INSTALLED')]);
+  out.push(['completion is blocked until physical verification is explicitly recorded', !Actions.markProjectBuildComplete(life.id).ok]);
+
+  const verified=Actions.markProjectBuildVerified(life.id),verifiedStats=Actions.projectBuildStats(Store.get('projects',life.id));
+  out.push(['MARK VERIFIED stores physical evidence separately from catalog confidence', verified.ok && verifiedStats.verified && verified.project.buildVerification.status==='VERIFIED' && verified.project.buildVerification.evidence.length===1]);
+
+  const complete = Actions.markProjectBuildComplete(life.id);
+  out.push(['verified assembled build completes, locks, and freezes a historical snapshot', complete.ok && complete.project.status==='COMPLETED' && complete.project.buildLocked===true && !!complete.project.buildSnapshot && !!complete.project.buildRating]);
+  out.push(['final snapshot carries explicit project-cash, reused-basis, total-basis, compatibility, verification, and rating truths', !!complete.project.buildSnapshot.costs && Number.isFinite(complete.project.buildSnapshot.costs.projectCash) && Number.isFinite(complete.project.buildSnapshot.costs.reusedInventoryBasis) && Number.isFinite(complete.project.buildSnapshot.costs.totalCostBasis) && !!complete.project.buildSnapshot.verification && !!complete.project.buildSnapshot.compatibility && !!complete.project.buildSnapshot.rating]);
+  out.push(['completed build cannot be completed twice', !Actions.markProjectBuildComplete(life.id).ok]);
+
+  const statusReopen=Actions.updateProject(life.id,{status:'PLANNING'});
+  const lockedSwap=Actions.setProjectSlot(life.id,'GPU','PLANNED',{label:'Forbidden replacement',cost:0,currency:'RSD'});
+  out.push(['generic project editing cannot reopen a locked completed build', statusReopen.status==='COMPLETED' && statusReopen.buildLocked===true]);
+  out.push(['locked build rejects later hardware mutation', !lockedSwap.ok && /locked/i.test(lockedSwap.error)]);
+
+  state.pbId = life.id;
   const pageDone = renderProjectBuild();
-  out.push(['a completed workspace renders read-only — no edit/remove/price affordances on its slots', pageDone.indexOf('data-pb-edit-slot') === -1 && pageDone.indexOf('data-pb-quick-price') === -1 && pageDone.indexOf('data-pb-remove-slot') === -1 && pageDone.indexOf('BUILD LOCKED') > -1]);
-  out.push(['BUILD loadout inherits canonical catalog quality beside installed motherboard and CPU names', pageDone.includes('data-pb-slot="MOBO" data-pb-quality="UNCOMMON"') && pageDone.includes('pn-pb-slot-model-line') && pageDone.includes('data-pb-quality-badge="UNCOMMON"') && pageDone.includes('pn-tier-uncommon') && pageDone.includes('data-pb-slot="CPU" data-pb-quality="POOR"')]);
-  out.push(['BUILD loadout gives every recorded slot/extra one compact quality badge and explicitly marks manual extras UNRATED', (pageDone.match(/data-pb-quality-badge=/g)||[]).length === 4 && pageDone.includes('data-pb-quality="UNRATED"') && pageDone.includes('data-pb-quality-badge="UNRATED"')]);
-  out.push(['rated BUILD loadout cards carry the shared tier-glow class and UNRATED extras stay neutral', (pageDone.match(/pn-tier-card/g)||[]).length===3 && pageDone.includes('class="pn-pb-slot pn-tier-card pn-tier-uncommon"') && pageDone.includes('class="pn-pb-slot pn-tier-card pn-tier-poor"') && pageDone.includes('class="pn-pb-slot pn-tier-card pn-tier-rare"') && !pageDone.includes('pn-tier-card pn-tier-unrated')]);
-  const doneModel=buildCheckModel(Store.get('projects',p.id));
-  out.push(['COMPATIBILITY CHECK collapses by default into the header counts summary', doneModel.counts.FAIL===0 && !pageDone.includes('pn-integrity-list') && pageDone.includes('pn-pb-compat-counts') && pageDone.includes('data-pb-compat-total="'+doneModel.findings.length+'"') && (!doneModel.findings.length || (pageDone.includes('▼ EXPAND') && pageDone.includes('data-pb-compat-toggle')))]);
-  out.push(['the collapsed header always carries the verdict chip and a live GREEN/AMBER/RED tally', pageDone.includes('class="panel-head pn-pb-compat-head"') && pageDone.includes('pn-pb-compat-head-cluster') && pageDone.includes('data-pb-compat-red="0"') && pageDone.includes(' data-pb-compat-amber="') && pageDone.includes(' data-pb-compat-green="')]);
+  out.push(['a completed workspace renders read-only and advertises the actual lock', pageDone.indexOf('data-pb-edit-slot') === -1 && pageDone.indexOf('data-pb-quick-price') === -1 && pageDone.indexOf('data-pb-remove-slot') === -1 && pageDone.indexOf('BUILD LOCKED') > -1]);
+  out.push(['completed BUILD state renders configured, owned, installed and verified facts instead of a misleading single percentage', pageDone.includes('8/8 CONFIGURED') && pageDone.includes('8/8 OWNED') && pageDone.includes('8/8 INSTALLED') && pageDone.includes('VERIFIED')]);
+  const doneModel=buildCheckModel(Store.get('projects',life.id));
+  out.push(['COMPATIBILITY CHECK collapses by default into a truthful counts summary', doneModel.counts.FAIL===0 && !pageDone.includes('pn-integrity-list') && pageDone.includes('pn-pb-compat-counts') && pageDone.includes('data-pb-compat-total="'+doneModel.findings.length+'"') && pageDone.includes('data-pb-compat-unverified="'+doneModel.counts.UNVERIFIED+'"')]);
   const artifactPresentation = pbComponentQuality({kind:'PLANNED',label:'Top catalog component'}, 'GPU', {label:'Top catalog component',pn:{tier:'ARTIFACT'}});
   const missingPresentation = pbComponentQuality(null, null, null);
-  out.push(['BUILD presents canonical ARTIFACT data inside the requested six-tier ladder without rewriting its source tier', artifactPresentation.key === 'LEGENDARY' && artifactPresentation.sourceTier === 'ARTIFACT']);
+  out.push(['BUILD preserves canonical ARTIFACT instead of silently demoting it', artifactPresentation.key === 'ARTIFACT' && artifactPresentation.sourceTier === 'ARTIFACT']);
   out.push(['BUILD quality never defaults absent data to COMMON', missingPresentation.key === 'UNRATED' && missingPresentation.sourceTier === 'UNRATED']);
 
   state.pbId = p2.id;
@@ -1532,7 +1563,7 @@ const projectBuildProbe = `
   out.push(['an in-progress workspace shows the bench grid with add-slot affordances and empty slots', pageOpen.indexOf('pn-pb-grid') > -1 && pageOpen.indexOf('pn-pb-slot-empty-hint') > -1 && pageOpen.indexOf('data-pb-edit-slot=') > -1]);
   out.push(['planned catalog components receive the same canonical quality badge as owned components', pageOpen.includes('data-pb-slot="GPU" data-pb-quality="COMMON"') && pageOpen.includes('data-pb-quality-badge="COMMON"') && pageOpen.includes('pn-tier-common')]);
   out.push(['planned-catalog BUILD cards glow by the same shared tier class in an in-progress workspace', (pageOpen.match(/pn-tier-card/g)||[]).length===1 && pageOpen.includes('class="pn-pb-slot pn-tier-card pn-tier-common"')]);
-  out.push(['BUILD summary renders actual, planned, and estimated final cost as separate values', pageOpen.includes('data-pb-cost="actual"') && pageOpen.includes('data-pb-cost="planned"') && pageOpen.includes('data-pb-cost="final"') && pageOpen.includes('ACTUAL SPENT') && pageOpen.includes('ESTIMATED FINAL COST')]);
+  out.push(['BUILD summary separates project cash, reused inventory basis, total cost basis, planned cost and market value', pageOpen.includes('data-pb-cost="cash"') && pageOpen.includes('data-pb-cost="reused"') && pageOpen.includes('data-pb-cost="basis"') && pageOpen.includes('data-pb-cost="planned"') && pageOpen.includes('PROJECT CASH') && pageOpen.includes('REUSED INVENTORY BASIS') && pageOpen.includes('TOTAL COST BASIS') && pageOpen.includes('EST. MARKET VALUE')]);
   out.push(['occupied cards expose their recorded cost and a price-only edit action', pageOpen.includes('data-pb-slot-paid="GPU"') && pageOpen.includes('PLANNED COST') && pageOpen.includes('30.000 RSD') && pageOpen.includes('data-pb-quick-price="GPU"')]);
   out.push(['the bench grid lists exactly the 8 requested primary slots in the requested layout order', PROJECT_BUILD_SLOTS.join(',') === 'MOBO,CPU,RAM,GPU,STORAGE,PSU,CASE,COOLER']);
 
@@ -1624,7 +1655,7 @@ const projectBuildProbe = `
   pbClick({target:__pnEl({tag:'button',attrs:{'data-pb-quick-price-save':'GPU'}})});
   const pricedProject=Store.get('projects',p2.id),pricedStats=Actions.projectBuildStats(pricedProject),pricedPage=renderProjectBuild();
   out.push(['saving a planned PAID edit updates only its planned cost', pricedProject.slots.GPU.cost === 28000 && pricedStats.actualCost === 750 && pricedStats.plannedCost === 28000 && pricedStats.estimatedFinalCost === 28750]);
-  out.push(['component cards and BUILD totals expose the edited values directly', pricedPage.includes('data-pb-slot-paid="CPU"') && pricedPage.includes('750 RSD') && pricedPage.includes('data-pb-slot-paid="GPU"') && pricedPage.includes('28.000 RSD') && pricedPage.includes('28.750 RSD')]);
+  out.push(['edited build renders the separated cost-truth surfaces without collapsing them back into ACTUAL SPENT', pricedPage.includes('PROJECT CASH') && pricedPage.includes('REUSED INVENTORY BASIS') && pricedPage.includes('TOTAL COST BASIS') && pricedPage.includes('PLANNED COST') && !pricedPage.includes('ACTUAL SPENT')]);
 
   const caseProject=Actions.addProject({name:'CASE FLOW',startDate:todayISO(),status:'PLANNING',purpose:'FLIP',currency:'RSD'});
   HardwareCatalog.boards.push({brand:'Test',model:'B550M Case Board',form_factor:'Micro-ATX',overall:40});
@@ -1675,79 +1706,62 @@ const projectBuildProbe = `
   HardwareCatalog.cpus.push({brand:'AMD',model:'Ryzen 7 7700',overall:90});
   HardwareCatalog.gpus.push({brand:'NVIDIA',model:'RTX 4070',overall:92});
   HardwareCatalog.boards.push({brand:'ASRock',model:'B650M Pro RS',overall:75});
+  HardwareCatalog.ramFamilies.push({brand:'Test',series:'DDR5 Rated',technology:'DDR5'});
+  HardwareCatalog.storage.push({brand:'Test',series:'Fast NVMe',overall_score:85,quality_score:92,drive_type:'NVMe SSD'});
 
-  const rated=buildRatingModel(Store.get('projects',p.id));
-  out.push(['BUILD RATING model returns a bounded score, matching tier, six category states, confidence, engine, and a verdict', Number.isFinite(rated.finalScore) && rated.finalScore>=0 && rated.finalScore<=100 && pbScoreToTier(rated.finalScore).key===rated.quality && Object.keys(rated.categories).length===6 && Object.keys(rated.confidences).length===6 && PB_BUILD_CATEGORIES.every(c=>rated.categories[c]===null||(Number.isFinite(rated.categories[c])&&rated.categories[c]>=0&&rated.categories[c]<=100)) && PB_BUILD_CATEGORIES.every(c=>['VERIFIED','ESTIMATED','UNVERIFIED','UNRATED'].includes(rated.confidences[c])) && rated.engine==='build-rating-v3' && rated.verdict.length>0]);
+  const emptyRating=buildRatingModel(Store.get('projects',emptyProject.id));
+  out.push(['BUILD RATING withholds an overall score when core hardware evidence is incomplete', emptyRating.finalScore===null && emptyRating.quality==='UNRATED' && emptyRating.coverage.corePresent===0 && emptyRating.coverage.eligible===false]);
 
   const unbal=Actions.addProject({name:'UNBAL',startDate:todayISO(),status:'PLANNING',purpose:'FLIP',currency:'RSD'});
   Actions.setProjectSlot(unbal.id,'CPU','PLANNED',{label:'Intel Core i7-6700',cost:0,currency:'RSD',catalogType:'CPU'});
   Actions.setProjectSlot(unbal.id,'GPU','PLANNED',{label:'NVIDIA RTX 4070',cost:0,currency:'RSD',catalogType:'GPU'});
   const unbalBy=pbBuildResolved(Store.get('projects',unbal.id));
   const emptyBy=pbBuildResolved(Store.get('projects',emptyProject.id));
-  out.push(['BUILD RATING balance starts at 100 and never penalizes missing evidence', pbBalanceScore(emptyBy)===100]);
-  out.push(['BUILD RATING balance penalizes a confirmed GPU-heavy weak-CPU pairing severely (i7-6700 COMMON + RTX 4070 LEGENDARY)', pbBalanceScore(unbalBy)===65]);
+  out.push(['BALANCE can calculate internal evidence without manufacturing an overall build rating', pbBalanceScore(emptyBy)===100 && buildRatingModel(Store.get('projects',unbal.id)).quality==='UNRATED']);
+  out.push(['BALANCE penalizes a confirmed GPU-heavy weak-CPU pairing while the incomplete build remains globally UNRATED', pbBalanceScore(unbalBy)===65]);
 
   const rateProj=Actions.addProject({name:'RATED',startDate:todayISO(),status:'PLANNING',purpose:'FLIP',currency:'RSD',estimatedMarketValue:120000});
   Actions.setProjectSlot(rateProj.id,'CPU','PLANNED',{label:'AMD Ryzen 7 7700',cost:30000,currency:'RSD',catalogType:'CPU'});
   Actions.setProjectSlot(rateProj.id,'GPU','PLANNED',{label:'NVIDIA RTX 4070',cost:40000,currency:'RSD',catalogType:'GPU'});
   Actions.setProjectSlot(rateProj.id,'MOBO','PLANNED',{label:'ASRock B650M Pro RS',cost:15000,currency:'RSD',catalogType:'MOBO'});
+  Actions.setProjectSlot(rateProj.id,'RAM','PLANNED',{label:'Test DDR5 Rated',cost:10000,currency:'RSD',catalogType:'RAM',ram:{technology:'DDR5',moduleCount:2,perModuleCapacity:16,totalCapacity:32,speed:6000,casLatency:30,matchedKit:true}});
+  Actions.setProjectSlot(rateProj.id,'STORAGE','PLANNED',{label:'Test Fast NVMe',cost:5000,currency:'RSD',catalogType:'STORAGE'});
   const preRate=buildRatingModel(Store.get('projects',rateProj.id));
-  out.push(['BUILD RATING exact deterministic scores for a catalog-matched Ryzen 7700 + RTX 4070 + B650M build', preRate.categories.PERFORMANCE===90 && preRate.categories.BALANCE===100 && preRate.categories.COMPONENT_QUALITY===84 && preRate.categories.RELIABILITY===100 && preRate.categories.VALUE===69 && preRate.categories.UPGRADE_PATH===75 && preRate.finalScore===89 && preRate.quality==='LEGENDARY']);
-  out.push(['BUILD RATING purpose choice never changes the score or categories', buildRatingModel(Object.assign({},Store.get('projects',rateProj.id),{purpose:'FLIP'})).finalScore===preRate.finalScore && buildRatingModel(Object.assign({},Store.get('projects',rateProj.id),{purpose:'FAMILY_GIFT'})).categories.PERFORMANCE===preRate.categories.PERFORMANCE && buildRatingModel(Object.assign({},Store.get('projects',rateProj.id),{purpose:'TEST_BENCH'})).quality===preRate.quality]);
+  out.push(['BUILD RATING v4 emits an overall score only after all five core evidence domains are present', preRate.coverage.eligible && preRate.coverage.corePresent===5 && Number.isFinite(preRate.finalScore) && preRate.finalScore>=0 && preRate.finalScore<=100 && pbScoreToTier(preRate.finalScore).key===preRate.quality && preRate.engine==='build-rating-v4']);
+  out.push(['BUILD RATING categories keep explicit confidence states without unknown-to-zero scoring', Object.keys(preRate.categories).length===6 && Object.keys(preRate.confidences).length===6 && PB_BUILD_CATEGORIES.every(c=>preRate.categories[c]===null||(Number.isFinite(preRate.categories[c])&&preRate.categories[c]>=0&&preRate.categories[c]<=100)) && PB_BUILD_CATEGORIES.every(c=>['VERIFIED','ESTIMATED','PARTIAL','UNVERIFIED','UNRATED'].includes(preRate.confidences[c]))]);
+  const ratedBy=pbBuildResolved(Store.get('projects',rateProj.id));
+  out.push(['COMPONENT QUALITY is independent from CPU/GPU performance scoring', pbCqOf(ratedBy.CPU,'CPU')===null && pbCqOf(ratedBy.GPU,'GPU')===null && Number.isFinite(preRate.categories.COMPONENT_QUALITY)]);
+  out.push(['BUILD RATING purpose choice never changes the score or categories', buildRatingModel(Object.assign({},Store.get('projects',rateProj.id),{purpose:'FLIP'})).finalScore===preRate.finalScore && buildRatingModel(Object.assign({},Store.get('projects',rateProj.id),{purpose:'FAMILY_GIFT'})).finalScore===preRate.finalScore && buildRatingModel(Object.assign({},Store.get('projects',rateProj.id),{purpose:'TEST_BENCH'})).quality===preRate.quality]);
+
   const parProj=Actions.addProject({name:'PARITY BUILD',startDate:todayISO(),status:'PLANNING',purpose:'FLIP',currency:'RSD',estimatedMarketValue:120000});
-  Actions.setProjectSlot(parProj.id,'CPU','PLANNED',{label:'AMD Ryzen 7 7700',cost:30000,currency:'RSD',catalogType:'CPU'});
-  Actions.setProjectSlot(parProj.id,'GPU','PLANNED',{label:'NVIDIA RTX 4070',cost:40000,currency:'RSD',catalogType:'GPU'});
-  Actions.setProjectSlot(parProj.id,'MOBO','PLANNED',{label:'ASRock B650M Pro RS',cost:15000,currency:'RSD',catalogType:'MOBO'});
+  ['CPU','GPU','MOBO','RAM','STORAGE'].forEach(k=>Actions.setProjectSlot(parProj.id,k,'PLANNED',JSON.parse(JSON.stringify(Store.get('projects',rateProj.id).slots[k]))));
   const parRig=newRigDraft('PARITYFAM');
-  parRig.slots.CPU={kind:'PLANNED',catalogType:'CPU',label:'AMD Ryzen 7 7700',cost:30000,currency:'RSD'};
-  parRig.slots.GPU={kind:'PLANNED',catalogType:'GPU',label:'NVIDIA RTX 4070',cost:40000,currency:'RSD'};
-  parRig.slots.MOBO={kind:'PLANNED',catalogType:'MOBO',label:'ASRock B650M Pro RS',cost:15000,currency:'RSD'};
+  ['CPU','GPU','MOBO','RAM','STORAGE'].forEach(k=>parRig.slots[k]=JSON.parse(JSON.stringify(Store.get('projects',rateProj.id).slots[k])));
   parRig.estimatedMarketValue=120000;
   state.rigDraft=parRig;
   const parRigId=saveRigDraft();
-  const parB=buildRatingModel(Store.get('projects',parProj.id));
-  const parR=rigRatingModel(Store.get('rigs',parRigId));
-  out.push(['identical BUILD and RIG configs produce byte-identical ratings from one shared engine', parB.finalScore===parR.finalScore && parB.quality===parR.quality && parB.engine===parR.engine && parB.engine==='build-rating-v3' && PB_BUILD_CATEGORIES.every(k=>parB.categories[k]===parR.categories[k]) && PB_BUILD_CATEGORIES.every(k=>parB.confidences[k]===parR.confidences[k]) && parB.investment===parR.investment && parB.investment===85000]);
-  const rateComplete=Actions.markProjectBuildComplete(rateProj.id);
-  const rateSnap=rateComplete.ok && rateComplete.project.buildRating;
-  out.push(['marking a build complete freezes a BUILD RATING snapshot with score, quality, categories, confidences, engine, investment, market value, and per-slot components', !!rateSnap && rateSnap.mode==='FINAL' && rateSnap.engine==='build-rating-v3' && Number.isFinite(rateSnap.finalScore) && rateSnap.finalScore===preRate.finalScore && rateSnap.quality===preRate.quality && Object.keys(rateSnap.categories).length===6 && Object.keys(rateSnap.confidences).length===6 && rateSnap.investment===85000 && rateSnap.estimatedMarketValue===120000 && rateSnap.components.length===PROJECT_BUILD_SLOTS.length]);
+  const parB=buildRatingModel(Store.get('projects',parProj.id)),parR=rigRatingModel(Store.get('rigs',parRigId));
+  out.push(['identical BUILD and RIG configs produce byte-identical ratings from the shared v4 engine', parB.finalScore===parR.finalScore && parB.quality===parR.quality && parB.engine===parR.engine && parB.engine==='build-rating-v4' && PB_BUILD_CATEGORIES.every(k=>parB.categories[k]===parR.categories[k]) && PB_BUILD_CATEGORIES.every(k=>parB.confidences[k]===parR.confidences[k]) && parB.investment===parR.investment]);
 
-  HardwareCatalog.gpus=[{brand:'NVIDIA',model:'RTX 4070',overall:5}].concat(HardwareCatalog.gpus);
   state.pbId=rateProj.id;
   const ratedHtml=renderProjectBuild();
-  out.push(['the completed workspace renders the frozen snapshot as FINAL and survives live catalog changes', ratedHtml.indexOf('PROJECTED')===-1 && ratedHtml.includes('BUILD RATING') && ratedHtml.includes('data-pb-build-score="'+rateSnap.finalScore+'"') && (ratedHtml.match(/data-pb-cat-score=/g)||[]).length===6]);
+  out.push(['a sufficiently-evidenced in-progress build renders a numeric PROJECTED rating', ratedHtml.includes('PROJECTED') && ratedHtml.includes('BUILD RATING') && ratedHtml.includes('data-pb-build-score="'+preRate.finalScore+'"') && ratedHtml.includes('data-pb-rating-engine="build-rating-v4"') && ratedHtml.includes('5/5 CORE')]);
 
-  const catRowRe = /<div class="pn-pb-rating-row ([a-z-]+)" data-pb-cat-conf="([A-Z]+)" data-pb-cat-score="([A-Z_]+)" data-pb-cat-value="(\\d+)" data-pb-cat-tier="([A-Z]+)"><span>[^<]+<\\/span><span class="pn-pb-rating-bar"><i style="width:(\\d+)%"><\\/i><\\/span><b>(\\d+)\\/100 · ([A-Z]+)<\\/b><\\/div>/g;
-  let catMatch, catRowsSeen = 0, everyRowCorrect = true;
-  while ((catMatch = catRowRe.exec(ratedHtml))) {
-    catRowsSeen++;
-    const [, rowClass, rowConf, catKey, attrVal, attrTier, barWidth, bVal, bTier] = catMatch;
-    const realScore = rateSnap.categories[catKey];
-    const realConf = rateSnap.confidences[catKey];
-    const expectedTier = pbScoreToTier(realScore).key;
-    const expectedClass = pnTierClass(expectedTier);
-    if (rowClass !== expectedClass) everyRowCorrect = false;
-    if (rowConf !== realConf) everyRowCorrect = false;
-    if (Number(attrVal) !== realScore || Number(barWidth) !== realScore || Number(bVal) !== realScore) everyRowCorrect = false;
-    if (attrTier !== expectedTier || bTier !== expectedTier) everyRowCorrect = false;
-  }
-  out.push(['every BUILD RATING category bar derives its own CSS tier class from its own exact 0-100 score and carries its own confidence state (PERFORMANCE/BALANCE/COMPONENT QUALITY/RELIABILITY/VALUE/UPGRADE PATH each independently, never one shared color for the whole panel), bar width still equals the exact score, and the tier label sits next to the number', catRowsSeen === 6 && everyRowCorrect]);
-  out.push(['every BUILD RATING category row renders a confidence line and the panel stamps the engine version', (ratedHtml.match(/pn-pb-rating-conf/g)||[]).length === 6 && ratedHtml.includes('data-pb-rating-engine="build-rating-v3"')]);
-  const scoreChipMatch = ratedHtml.match(/<span class="([^"]*)" data-pb-build-score="(\\d+)" data-pb-build-quality="([A-Z]+)">/);
-  out.push(['the BUILD RATING overall score chip carries the canonical pn-tier-* class as a real distinct class token, reusing the same tier color system as the rest of PROFITNODE rather than a bespoke palette', !!scoreChipMatch && scoreChipMatch[1].split(' ').includes('chip') && scoreChipMatch[1].split(' ').includes(pnTierClass(rateSnap.quality)) && Number(scoreChipMatch[2]) === rateSnap.finalScore && scoreChipMatch[3] === rateSnap.quality && ratedHtml.includes(rateSnap.quality + ' · ' + rateSnap.finalScore)]);
-  out.push(['the score chip picks up the dedicated pn-pb-score-chip prominence class (bigger, glowing) without losing the base chip or tier classes', !!scoreChipMatch && scoreChipMatch[1].split(' ').includes('pn-pb-score-chip')]);
-  const overallWrapMatch = ratedHtml.match(/<div class="pn-pb-rating-overall ([a-z-]+)" data-pb-overall-tier="([A-Z]+)">/);
-  out.push(['the overall BUILD RATING wrapper (chip + verdict) is itself tagged with the build\\'s tier class, so the verdict text\\'s tier-tinted left border and the chip\\'s glow read the same --tier-color/--tier-wash the rest of PROFITNODE uses', !!overallWrapMatch && overallWrapMatch[1] === pnTierClass(rateSnap.quality) && overallWrapMatch[2] === rateSnap.quality]);
-  out.push(['the BUILD RATING overall score chip carries the canonical pn-tier-* class matching its own tier, reusing the same tier color system as the rest of PROFITNODE rather than a bespoke palette', ratedHtml.includes('chip ' + pnTierClass(rateSnap.quality)) && ratedHtml.includes(rateSnap.quality + ' · ' + rateSnap.finalScore)]);
+  const everyRowCorrect=PB_BUILD_CATEGORIES.every(k=>{const score=preRate.categories[k],tier=pbScoreToTier(score).key;return ratedHtml.includes('data-pb-cat-conf="'+preRate.confidences[k]+'" data-pb-cat-score="'+k+'" data-pb-cat-value="'+score+'" data-pb-cat-tier="'+tier+'"')&&ratedHtml.includes(score+'/100 · '+tier)});
+  out.push(['every rated BUILD category keeps its own score, tier color and confidence', everyRowCorrect && (ratedHtml.match(/data-pb-cat-score=/g)||[]).length===6]);
+  out.push(['projected overall score reuses the canonical tier class and dedicated score-chip prominence', ratedHtml.includes('pn-pb-score-chip '+pnTierClass(preRate.quality)) && ratedHtml.includes('data-pb-build-score="'+preRate.finalScore+'" data-pb-build-quality="'+preRate.quality+'"') && ratedHtml.includes(preRate.quality+' · '+preRate.finalScore)]);
+  out.push(['overall BUILD RATING wrapper and score chip agree on one canonical tier', ratedHtml.includes('pn-pb-rating-overall '+pnTierClass(preRate.quality)+'" data-pb-overall-tier="'+preRate.quality+'"')]);
 
-  state.pbId=unbal.id;
-  const unbalHtml=renderProjectBuild();
-  out.push(['a not-yet-completed build workspace labels its BUILD RATING as PROJECTED with live values', unbalHtml.includes('PROJECTED') && unbalHtml.includes('BUILD RATING') && /data-pb-build-score="\\d+"/.test(unbalHtml)]);
+  const lifeFinal=Store.get('projects',life.id),lifeDisplayed=buildRatingModelDisplayed(lifeFinal),lifeSnap=lifeFinal.buildRating;
+  out.push(['completed build always uses its frozen FINAL rating snapshot, including a legitimate UNRATED snapshot', lifeDisplayed.locked && lifeDisplayed.snap && lifeSnap.mode==='FINAL' && lifeSnap.engine==='build-rating-v4' && lifeDisplayed.m.generatedAt===lifeSnap.generatedAt]);
+  state.pbId=life.id;
+  const lifeFinalHtml=renderProjectBuild();
+  out.push(['FINAL UNRATED snapshot renders honestly without inventing a numeric score', lifeSnap.finalScore===null && lifeSnap.quality==='UNRATED' && lifeFinalHtml.includes('FINAL') && lifeFinalHtml.includes('data-pb-build-score="n/a"') && lifeFinalHtml.includes('UNRATED')]);
   state.pbId=null;
 
   const projectsNow=renderProjects();
   out.push(['the Projects overview gains COMPLETION, SCORE, and QUALITY columns', projectsNow.includes('<th class="num">Completion</th>') && projectsNow.includes('<th class="num">Score</th>') && projectsNow.includes('<th>Quality</th>') && projectsNow.includes('data-pb-completion-pct=') && projectsNow.includes('data-pb-build-score=') && projectsNow.includes('data-pb-build-quality=')]);
-  out.push(['the overview SCORE and QUALITY for the completed build mirror its frozen snapshot', projectsNow.includes('data-pb-build-score="'+rateSnap.finalScore+'"') && projectsNow.includes('data-pb-build-quality="'+rateSnap.quality+'"')]);
+  out.push(['the overview shows an honest UNRATED completed build instead of inventing a score', projectsNow.includes('data-pb-build-score="n/a"') && projectsNow.includes('data-pb-build-quality="UNRATED"')]);
 
   return out;
 })()

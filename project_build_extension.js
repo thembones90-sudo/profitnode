@@ -10,7 +10,7 @@ const PB_BUILD_CASE_SIZES=[
   {id:"other-custom",label:"Other / Custom",formFactors:[]}
 ];
 const PB_CATALOG_SLOTS=["CPU","GPU","MOBO","RAM","STORAGE","PSU","COOLER"];
-const PB_QUALITY_TIERS=["POOR","COMMON","UNCOMMON","RARE","EPIC","LEGENDARY"];
+const PB_QUALITY_TIERS=["POOR","COMMON","UNCOMMON","RARE","EPIC","LEGENDARY","ARTIFACT"];
 function pbCaseSizeById(id){return PB_BUILD_CASE_SIZES.find(c=>c.id===id)||null}
 const PBUI={slotKey:null,slot:null,query:"",results:[],catalogHits:[],ramHits:[],quickPrice:null,caseDraft:null,extraDraft:null,notice:null};
 // COMPATIBILITY CHECK expand/filter state, tracked per project id so a
@@ -163,7 +163,8 @@ function pbVerdictMeta(level){
   if("FAIL"===level)return{word:"RED",chip:"chip-red"};
   if("WARNING"===level||"WARN"===level)return{word:"AMBER",chip:"chip-amber"};
   if("PASS"===level)return{word:"GREEN",chip:"chip-green"};
-  return{word:"AMBER",chip:"chip-amber-outline"}
+  if("INFO"===level)return{word:"INFO",chip:"chip-blue-outline"};
+  return{word:"UNVERIFIED",chip:"chip-muted"}
 }
 function pbNoticeHtml(){const n=PBUI.notice;return n?'<div class="pn-myrig-notice'+("ok"===n.tone?" ok":"")+'">'+escHtml(n.text)+"</div>":""}
 function pbFocusSlotField(k){
@@ -221,7 +222,7 @@ function pbComponentQuality(slot,slotKey,resolved){
     sourceTier=visual&&visual.key?String(visual.key).toUpperCase():"";
     source=visual&&visual.source==="catalog"?"PARTS VAULT CATALOG":"PARTS VAULT QUALITY";
   }
-  const key="ARTIFACT"===sourceTier?"LEGENDARY":PB_QUALITY_TIERS.includes(sourceTier)?sourceTier:"UNRATED";
+  const key=PB_QUALITY_TIERS.includes(sourceTier)?sourceTier:"UNRATED";
   return{key:key,sourceTier:sourceTier||"UNRATED",source:source||"NO CANONICAL RATING",className:pnTierClass(key)};
 }
 function pbQualityChipHtml(quality){
@@ -242,7 +243,7 @@ function pbExtraQuality(extra){
 function pbPaidAmount(project,slot){
   if(!slot)return 0
   if("INVENTORY"===slot.kind){const item=Store.get("inventory",slot.inventoryItemId);return item?inventoryAcquisitionCost(item,project.currency):0}
-  return Math.round(Number(slot.cost)||0)
+  return Math.round(convert(Number(slot.cost)||0,slot.currency||project.currency,project.currency))
 }
 function pbRamConfigLine(slot){
   const ram=slot&&slot.ram
@@ -398,25 +399,25 @@ function pbExtrasHtml(project,locked){
   const rows=extras.length?extras.map(x=>{const quality=pbExtraQuality(x);return'<div class="pn-pb-extra-row'+(quality.key&&"UNRATED"!==quality.key?" pn-tier-card "+quality.className:"")+'" data-pb-quality="'+quality.key+'"><span class="pn-pb-extra-name pn-pb-quality-name '+quality.className+'">'+escHtml(x.label)+"</span>"+pbQualityChipHtml(quality)+(x.inventoryItemId?'<button type="button" class="pn-pb-vault-link" data-open-entity="inventory" data-id="'+escAttr(x.inventoryItemId)+'">VAULT ↗</button>':'<span class="chip chip-blue-outline">PLANNED</span>')+"<span>"+money(x.cost,x.currency||project.currency)+"</span>"+(locked?"":'<button type="button" class="btn btn-sm btn-ghost" data-pb-extra-remove="'+x.id+'">REMOVE</button>')+"</div>"}).join(""):'<p class="hint">No optional or extra parts added.</p>'
   return'<div class="panel" data-pb-extras style="margin-top:8px"><div class="panel-head"><h2>OPTIONAL / EXTRA PARTS</h2>'+(locked?"":'<button type="button" class="btn btn-sm" data-pb-extra-new>+ ADD PART</button>')+'</div><div class="panel-body"><div class="pn-pb-extra-list">'+rows+"</div></div></div>"+(PBUI.extraDraft?pbExtraFormHtml(project):"")
 }
-function pbCompatRank(s){return"FAIL"===s?0:"WARN"===s?1:"PASS"===s?2:"INFO"===s?3:4}
-function pbCompatMatch(f,k){const s=bcStatus(f.status);return"ALL"===k||("RED"===k&&s==="FAIL")||("AMBER"===k&&s==="WARN")||("GREEN"===k&&s==="PASS")}
+function pbCompatRank(s){return"FAIL"===s?0:"WARN"===s?1:"UNVERIFIED"===s?2:"PASS"===s?3:"INFO"===s?4:5}
+function pbCompatMatch(f,k){const s=bcStatus(f.status);return"ALL"===k||("RED"===k&&s==="FAIL")||("AMBER"===k&&s==="WARN")||("GREEN"===k&&s==="PASS")||("UNVERIFIED"===k&&s==="UNVERIFIED")||("INFO"===k&&s==="INFO")}
 function pbCompatHtml(project){
   const model=buildCheckModel({id:project.id,currency:project.currency,slots:project.slots||emptyRigSlots()}),v=pbVerdictMeta(model.verdict)
   const st=PB_COMPAT_STATE[project.id],open=st?st.open:model.counts.FAIL>0,filter=st&&st.filter?st.filter:"ALL"
-  const tot=model.findings.length,r=model.counts.FAIL,a=model.counts.WARN,g=model.counts.PASS,other=tot-r-a-g
+  const tot=model.findings.length,r=model.counts.FAIL,a=model.counts.WARN,g=model.counts.PASS,u=model.counts.UNVERIFIED||0,info=model.counts.INFO||0
   // Collapsed by default; the header alone carries the verdict chip plus a
   // live three-bucket tally. Auto-expands only on a RED (FAIL) verdict and
   // only until the user toggles — AMBER never forces it open.
-  const counts='<span class="pn-pb-compat-counts" data-pb-compat-total="'+tot+'" data-pb-compat-red="'+r+'" data-pb-compat-amber="'+a+'" data-pb-compat-green="'+g+'"><b>'+tot+'</b> CHECKS · <b class="c-green">'+g+'</b> GREEN · <b class="c-amber">'+a+'</b> AMBER · <b class="c-red">'+r+'</b> RED'+(other?' · <span class="c-other">'+other+' OTHER</span>':"")+"</span>"
+  const counts='<span class="pn-pb-compat-counts" data-pb-compat-total="'+tot+'" data-pb-compat-red="'+r+'" data-pb-compat-amber="'+a+'" data-pb-compat-green="'+g+'" data-pb-compat-unverified="'+u+'"><b>'+tot+'</b> CHECKS · <b class="c-green">'+g+'</b> GREEN · <b class="c-amber">'+a+'</b> AMBER · <b class="c-red">'+r+'</b> RED · <b class="c-other">'+u+'</b> UNVERIFIED'+(info?' · '+info+' INFO':"")+"</span>"
   const toggle=model.findings.length?'<button type="button" class="btn btn-sm pn-pb-compat-toggle-btn" data-pb-compat-toggle>'+(open?"▲ COLLAPSE":"▼ EXPAND")+"</button>":""
   const head='<div class="panel-head pn-pb-compat-head"'+(model.findings.length?' data-pb-compat-toggle':"")+'><h2>COMPATIBILITY CHECK</h2><span class="pn-pb-compat-head-cluster"><span class="chip '+v.chip+'">'+v.word+" — "+model.verdict+"</span>"+counts+"</span>"+toggle+"</div>"
   // No findings at all means nothing to itemize — the header chip already
   // says PASS, so keep it header-only instead of a redundant "all fine" row.
   if(!model.findings.length)return'<div class="panel" data-pb-compat style="margin-top:8px">'+head+"</div>"
   const view=model.findings.slice().filter(f=>pbCompatMatch(f,filter)).sort((x,y)=>pbCompatRank(bcStatus(x.status))-pbCompatRank(bcStatus(y.status)))
-  const rows=view.map(f=>{const lv=bcStatus(f.status),vm=pbVerdictMeta("FAIL"===lv?"FAIL":"WARN"===lv?"WARNING":"UNVERIFIED"===lv?"UNVERIFIED":"PASS")
+  const rows=view.map(f=>{const lv=bcStatus(f.status),vm=pbVerdictMeta("FAIL"===lv?"FAIL":"WARN"===lv?"WARNING":lv)
     return'<div class="pn-integrity-row is-'+lv.toLowerCase()+'"><b>'+escHtml(String(f.label).toUpperCase())+" — "+vm.word+'</b><span>'+escHtml(f.detail)+"</span></div>"}).join("")
-  const filters='<div class="pn-pb-compat-filters">'+[["ALL",tot],["RED",r],["AMBER",a],["GREEN",g]].map(x=>'<button type="button" class="pn-pb-compat-filter'+(filter===x[0]?" is-active":"")+'" data-pb-compat-filter="'+x[0]+'">'+x[0]+" <b>"+x[1]+"</b></button>").join("")+"</div>"
+  const filters='<div class="pn-pb-compat-filters">'+[["ALL",tot],["RED",r],["AMBER",a],["GREEN",g],["UNVERIFIED",u],["INFO",info]].map(x=>'<button type="button" class="pn-pb-compat-filter'+(filter===x[0]?" is-active":"")+'" data-pb-compat-filter="'+x[0]+'">'+x[0]+" <b>"+x[1]+"</b></button>").join("")+"</div>"
   const body=open?'<div class="panel-body">'+filters+'<div class="pn-integrity-list">'+(rows||'<p class="hint">No '+filter+' checks in this build.</p>')+"</div></div>":""
   return'<div class="panel" data-pb-compat style="margin-top:8px">'+head+body+"</div>"
 }
@@ -426,53 +427,47 @@ function pbCompatHtml(project){
 // touch projectTotalInvestment/projectPlannedCost (used elsewhere for
 // Treasury/profit accounting, left untouched per spec). ----
 function pbBuildCostRows(project){
-  const owned=[],planned=[]
+  const direct=[],reused=[],planned=[]
   PROJECT_BUILD_SLOTS.forEach(k=>{
     const slot=project.slots&&project.slots[k];if(!slot)return
-    const r=rigSlotResolved(slot,project.currency,k)
-    const name=(slot.genericCaseSizeId?slot.label:(r?r.label:""))||RIG_SLOT_LABELS[k]
-    const amount=pbPaidAmount(project,slot)
-    const row={label:RIG_SLOT_LABELS[k]+" — "+name,amount}
-    if("INVENTORY"===slot.kind)owned.push(row);else planned.push(row)
+    const r=rigSlotResolved(slot,project.currency,k),name=(slot.genericCaseSizeId?slot.label:(r?r.label:""))||RIG_SLOT_LABELS[k],amount=pbPaidAmount(project,slot),row={label:RIG_SLOT_LABELS[k]+" — "+name,amount}
+    if("INVENTORY"===slot.kind){const ids=Actions.projectSlotInventoryIds(slot),isDirect=ids.length&&ids.every(id=>{const item=Store.get("inventory",id);return item&&item.acquisitionProjectId===project.id});(isDirect?direct:reused).push(row)}else planned.push(row)
   })
   ;(project.extras||[]).forEach(x=>{
-    if(x.inventoryItemId){const item=Store.get("inventory",x.inventoryItemId);owned.push({label:x.label,amount:item?inventoryAcquisitionCost(item,project.currency):Math.round(Number(x.cost)||0)})}
-    else planned.push({label:x.label,amount:Math.round(Number(x.cost)||0)})
+    if(x.inventoryItemId){const item=Store.get("inventory",x.inventoryItemId),row={label:x.label,amount:item?inventoryAcquisitionCost(item,project.currency):convert(Number(x.cost)||0,x.currency||project.currency,project.currency)};(item&&item.acquisitionProjectId===project.id?direct:reused).push(row)}
+    else planned.push({label:x.label,amount:convert(Number(x.cost)||0,x.currency||project.currency,project.currency)})
   })
-  return{owned,planned}
+  if(Number(project.additionalCosts)>0)direct.push({label:"PROJECT ADDITIONAL COSTS",amount:Number(project.additionalCosts)})
+  return{direct,reused,planned}
 }
 function pbCostBreakdownHtml(project){
-  const{owned,planned}=pbBuildCostRows(project)
-  const actualSpent=owned.reduce((s,r)=>s+r.amount,0),plannedCost=planned.reduce((s,r)=>s+r.amount,0),estFinal=actualSpent+plannedCost
+  const{direct,reused,planned}=pbBuildCostRows(project),stats=Actions.projectBuildStats(project)
   const rowsHtml=rows=>rows.length?rows.map(r=>'<div class="pn-pb-cost-row"><span>'+escHtml(r.label)+'</span><span>'+money(r.amount,project.currency)+"</span></div>").join(""):'<p class="hint">None yet.</p>'
-  // The three totals here are the same numbers already shown in the hero
-  // KPI strip (BUILD COST/PLANNED COST) and, per-part, on every slot card —
-  // so only the totals stay always-visible; the itemized OWNED/PLANNED
-  // line-by-line list (which just re-states what the cards above already
-  // show) sits behind a closed-by-default <details> for when it's wanted.
-  const totalsRow='<div class="pn-pb-cost-totals"><div class="pn-pb-cost-total" data-pb-actual-spent="'+actualSpent+'">ACTUAL SPENT<b>'+money(actualSpent,project.currency)+'</b></div><div class="pn-pb-cost-total" data-pb-planned-cost="'+plannedCost+'">PLANNED COST<b>'+money(plannedCost,project.currency)+'</b></div><div class="pn-pb-cost-total pn-pb-cost-final" data-pb-est-final="'+estFinal+'">ESTIMATED FINAL COST<b>'+money(estFinal,project.currency)+"</b></div></div>"
-  const itemized='<details class="pn-pb-cost-details"><summary>ITEMIZED BREAKDOWN</summary><div class="pn-pb-cost-cols"><div class="pn-pb-cost-group"><h3>OWNED</h3>'+rowsHtml(owned)+'</div><div class="pn-pb-cost-group"><h3>PLANNED</h3>'+rowsHtml(planned)+"</div></div></details>"
+  const totalsRow='<div class="pn-pb-cost-totals"><div class="pn-pb-cost-total" data-pb-project-cash="'+stats.projectCash+'">PROJECT CASH<b>'+money(stats.projectCash,project.currency)+'</b></div><div class="pn-pb-cost-total" data-pb-reused-basis="'+stats.reusedInventoryBasis+'">REUSED INVENTORY BASIS<b>'+money(stats.reusedInventoryBasis,project.currency)+'</b></div><div class="pn-pb-cost-total pn-pb-cost-final" data-pb-total-basis="'+stats.totalCostBasis+'">TOTAL COST BASIS<b>'+money(stats.totalCostBasis,project.currency)+'</b></div><div class="pn-pb-cost-total" data-pb-planned-cost="'+stats.plannedCost+'">PLANNED COST<b>'+money(stats.plannedCost,project.currency)+'</b></div><div class="pn-pb-cost-total" data-pb-est-final="'+stats.estimatedFinalCost+'">EST. FINAL BASIS<b>'+money(stats.estimatedFinalCost,project.currency)+"</b></div></div>"
+  const itemized='<details class="pn-pb-cost-details"><summary>ITEMIZED BREAKDOWN</summary><div class="pn-pb-cost-cols"><div class="pn-pb-cost-group"><h3>PROJECT CASH</h3>'+rowsHtml(direct)+'</div><div class="pn-pb-cost-group"><h3>REUSED INVENTORY</h3>'+rowsHtml(reused)+'</div><div class="pn-pb-cost-group"><h3>PLANNED</h3>'+rowsHtml(planned)+"</div></div></details>"
   return'<div class="panel" data-pb-cost-breakdown style="margin-top:8px"><div class="panel-head"><h2>BUILD COST BREAKDOWN</h2></div><div class="panel-body">'+totalsRow+itemized+"</div></div>"
 }
 
 function renderProjectBuild(){
   const p=pbProject()
   if(!p)return pageHeader("BUILD WORKSPACE","","")+'<div class="content"><div class="panel"><div class="panel-body"><p class="hint">This project could not be found — it may have been deleted.</p><button type="button" class="btn" data-pb-back style="margin-top:10px">BACK TO PROJECTS</button></div></div></div>'
-  const purp=PROJECT_PURPOSES.includes(p.purpose)?p.purpose:"FLIP",locked="COMPLETED"===p.status
-  const stats=Actions.projectBuildStats(p),invested=stats.actualCost,planned=stats.plannedCost,finalCost=stats.estimatedFinalCost
+  const purp=PROJECT_PURPOSES.includes(p.purpose)?p.purpose:"FLIP",locked=!!p.buildLocked||"COMPLETED"===p.status
+  const stats=Actions.projectBuildStats(p),invested=stats.totalCostBasis,planned=stats.plannedCost,projectCash=stats.projectCash,reusedBasis=stats.reusedInventoryBasis
   const grid=PROJECT_BUILD_SLOTS.map(k=>pbSlotCardHtml(p,k,locked)).join("")
   const tierLine=locked&&p.finalTier?'<div class="pn-myrig-meta-item">FINAL TIER: '+escHtml(p.finalTier)+"</div>":""
-  const hero='<div class="panel pn-pb-hero"><div class="pn-pb-eyebrow">BUILD WORKSPACE</div><h1 class="pn-pb-name">'+escHtml(p.name)+'</h1><div class="pn-myrig-meta"><span class="chip '+PROJECT_STATUS_META[p.status].chip+'">'+STATUS_LABEL(p.status)+'</span><span class="chip '+PROJECT_PURPOSE_META[purp].chip+'">'+PROJECT_PURPOSE_LABEL[purp]+"</span>"+tierLine+'</div><div class="pn-pb-hero-actions"><button type="button" class="btn btn-sm" data-pb-back>← BACK TO PROJECTS</button><button type="button" class="btn btn-sm" data-pb-edit-details>EDIT DETAILS</button>'+(locked?'<span class="chip chip-green-outline">BUILD LOCKED</span>':'<button type="button" class="btn btn-sm btn-primary" data-pb-mark-complete>MARK BUILD COMPLETE</button>')+"</div></div>"
+  const lifecycleAction=locked?'<span class="chip chip-green-outline">BUILD LOCKED</span>':stats.slotsFilled<stats.slotsTotal?'<span class="chip chip-muted">CONFIGURE '+stats.slotsFilled+'/'+stats.slotsTotal+'</span>':stats.slotsOwned<stats.slotsTotal?'<span class="chip chip-amber-outline">OWNED '+stats.slotsOwned+'/'+stats.slotsTotal+'</span>':stats.slotsInstalled<stats.slotsTotal?'<button type="button" class="btn btn-sm btn-primary" data-pb-mark-assembled>MARK ASSEMBLED</button>':!stats.verified?'<button type="button" class="btn btn-sm btn-primary" data-pb-mark-verified>MARK VERIFIED</button>':'<button type="button" class="btn btn-sm btn-primary" data-pb-mark-complete>MARK BUILD COMPLETE</button>'
+  const hero='<div class="panel pn-pb-hero"><div class="pn-pb-eyebrow">BUILD WORKSPACE</div><h1 class="pn-pb-name">'+escHtml(p.name)+'</h1><div class="pn-myrig-meta"><span class="chip '+PROJECT_STATUS_META[p.status].chip+'">'+STATUS_LABEL(p.status)+'</span><span class="chip '+PROJECT_PURPOSE_META[purp].chip+'">'+PROJECT_PURPOSE_LABEL[purp]+"</span>"+tierLine+'</div><div class="pn-pb-hero-actions"><button type="button" class="btn btn-sm" data-pb-back>← BACK TO PROJECTS</button><button type="button" class="btn btn-sm" data-pb-edit-details>EDIT DETAILS</button>'+lifecycleAction+"</div></div>"
   // Reuses the app's own compact 4-tile .kpi-grid (Dashboard/Analytics)
   // instead of the bespoke pn-myrig-vstats/pn-myrig-vstat classes this
   // page used to reference — those were never actually defined anywhere,
   // so this row was rendering as unstyled stacked text, not a tile row.
   const statsRow='<div class="kpi-grid pn-pb-stats" style="margin:8px 0">'
-    +'<div class="kpi" data-pb-cost="actual"><div class="kpi-label">ACTUAL SPENT</div><div class="kpi-value">'+money(invested,p.currency)+'</div><div class="kpi-sub">parts on hand + additional</div></div>'
+    +'<div class="kpi" data-pb-cost="cash"><div class="kpi-label">PROJECT CASH</div><div class="kpi-value">'+money(projectCash,p.currency)+'</div><div class="kpi-sub">new purchases + project costs</div></div>'
+    +'<div class="kpi" data-pb-cost="reused"><div class="kpi-label">REUSED INVENTORY BASIS</div><div class="kpi-value">'+money(reusedBasis,p.currency)+'</div><div class="kpi-sub">historical basis of existing stock</div></div>'
+    +'<div class="kpi" data-pb-cost="basis"><div class="kpi-label">TOTAL COST BASIS</div><div class="kpi-value">'+money(invested,p.currency)+'</div><div class="kpi-sub">project cash + reused inventory basis</div></div>'
     +'<div class="kpi" data-pb-cost="planned"><div class="kpi-label">PLANNED COST</div><div class="kpi-value">'+(planned?money(planned,p.currency):"—")+'</div><div class="kpi-sub">not yet purchased</div></div>'
-    +'<div class="kpi" data-pb-cost="final"><div class="kpi-label">ESTIMATED FINAL COST</div><div class="kpi-value">'+money(finalCost,p.currency)+'</div><div class="kpi-sub">actual spent + planned</div></div>'
-    +'<div class="kpi"><div class="kpi-label">EST. VALUE</div><div class="kpi-value">'+(p.estimatedMarketValue?money(p.estimatedMarketValue,p.currency):"—")+'</div><div class="kpi-sub">manual estimate</div></div>'
-    +'<div class="kpi"><div class="kpi-label">COMPLETION</div><div class="kpi-value">'+stats.completionPct+'%</div><div class="kpi-sub">'+stats.slotsFilled+" / "+stats.slotsTotal+' slots</div></div>'
+    +'<div class="kpi"><div class="kpi-label">EST. MARKET VALUE</div><div class="kpi-value">'+(p.estimatedMarketValue?money(p.estimatedMarketValue,p.currency):"—")+'</div><div class="kpi-sub">manual current estimate</div></div>'
+    +'<div class="kpi" data-pb-lifecycle="'+stats.lifecycleStage+'"><div class="kpi-label">BUILD STATE</div><div class="kpi-value">'+escHtml(stats.lifecycleStage)+'</div><div class="kpi-sub pn-pb-lifecycle-sub"><span>'+stats.slotsFilled+'/'+stats.slotsTotal+' CONFIGURED</span> · <span>'+stats.slotsOwned+'/'+stats.slotsTotal+' OWNED</span> · <span>'+stats.slotsInstalled+'/'+stats.slotsTotal+' INSTALLED</span> · <span>'+(stats.verified?'VERIFIED':'UNVERIFIED')+'</span></div></div>'
     +"</div>"
   return pageHeader("BUILD WORKSPACE",p.name,"")+'<div class="content pn-pb-page">'+pbNoticeHtml()+hero+(typeof buildRatingPanelHtml==="function"?buildRatingPanelHtml(p):"")+statsRow+'<div class="panel" data-pb-loadout style="margin-top:8px"><div class="panel-head"><h2>COMPONENT LOADOUT</h2></div><div class="panel-body"><div class="pn-pb-grid">'+grid+"</div></div></div>"+(PBUI.slotKey?pbSlotEditorHtml(p):"")+pbCostBreakdownHtml(p)+pbExtrasHtml(p,locked)+pbCompatHtml(p)+"</div>"
 }
@@ -594,6 +589,14 @@ function pbClick(e){
     return PBUI.extraDraft=res.ok?null:PBUI.extraDraft,pbSetNotice(res.ok?"ok":"err",res.ok?"Part added.":res.error),void render()}
   const er=e.target.closest("[data-pb-extra-remove]");if(er){const p=pbProject();if(!p)return;const res=Actions.removeProjectExtra(p.id,er.dataset.pbExtraRemove)
     return pbSetNotice(res.ok?"ok":"err",res.ok?"Part removed.":res.error),void render()}
+  if(e.target.closest("[data-pb-mark-assembled]")){const btn=e.target.closest("[data-pb-mark-assembled]")
+    if("1"!==btn.dataset.armed)return btn.dataset.armed="1",btn.textContent="CONFIRM ASSEMBLED?",void 0
+    const p=pbProject();if(!p)return;const res=Actions.markProjectBuildAssembled(p.id)
+    return pbSetNotice(res.ok?"ok":"err",res.ok?"Build marked assembled. Hardware moved to INSTALLED.":res.error),void render()}
+  if(e.target.closest("[data-pb-mark-verified]")){const btn=e.target.closest("[data-pb-mark-verified]")
+    if("1"!==btn.dataset.armed)return btn.dataset.armed="1",btn.textContent="CONFIRM VERIFIED?",void 0
+    const p=pbProject();if(!p)return;const res=Actions.markProjectBuildVerified(p.id)
+    return pbSetNotice(res.ok?"ok":"err",res.ok?"Physical verification recorded.":res.error),void render()}
   if(e.target.closest("[data-pb-mark-complete]")){const btn=e.target.closest("[data-pb-mark-complete]")
     if("1"!==btn.dataset.armed)return btn.dataset.armed="1",btn.textContent="CONFIRM — LOCK BUILD?",void 0
     const p=pbProject();if(!p)return;const res=Actions.markProjectBuildComplete(p.id)

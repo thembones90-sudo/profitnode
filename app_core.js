@@ -95,17 +95,23 @@ Store.get("inventory",e)&&(Store.all("projects").forEach(t=>{t.componentIds&&t.c
 updateRepair:(e,t)=>Store.update("repairs",e,t),removeRepair(e){Store.remove("repairs",e)},addProject(e){const purpose=PROJECT_PURPOSES.includes(e.purpose)?e.purpose:"FLIP"
 ;const t=Store.insert("projects",Object.assign({componentIds:[],slots:emptyRigSlots(),extras:[]},e,{purpose:purpose}))
 ;return Timeline.log("PROJECT_CREATED",t.name+" opened","Status: "+STATUS_LABEL(t.status),t.startDate,"project",t.id),this.syncProjectComponents(t.id,e.componentIds||[]),t},
-updateProject(e,t){const a=Store.get("projects",e);t.purpose&&!PROJECT_PURPOSES.includes(t.purpose)&&delete t.purpose;t.componentIds&&this.syncProjectComponents(e,t.componentIds);const r=Store.update("projects",e,t)
+updateProject(e,t){const a=Store.get("projects",e);if(!a)return null;t=Object.assign({},t);t.purpose&&!PROJECT_PURPOSES.includes(t.purpose)&&delete t.purpose
+;if(a.buildLocked){if(t.status&&!["COMPLETED","LISTED","SOLD"].includes(t.status))delete t.status;delete t.componentIds;delete t.slots;delete t.extras;delete t.buildLocked;delete t.buildRating;delete t.buildSnapshot}
+;t.componentIds&&this.syncProjectComponents(e,t.componentIds);const r=Store.update("projects",e,t)
 ;return a&&a.status!==r.status&&(Timeline.log("PROJECT_STATUS",r.name+" → "+STATUS_LABEL(r.status),"",todayISO(),"project",r.id),"SOLD"===r.status&&this.finalizeProjectSale(r)),r},
 syncProjectComponents(e,t){Store.all("inventory").forEach(a=>{const r=t.includes(a.id),n=a.assignedProjectId===e;r&&!n?Store.update("inventory",a.id,{assignedProjectId:e,
-status:"SOLD"===a.status?a.status:"IN_BUILD"}):!r&&n&&Store.update("inventory",a.id,{assignedProjectId:null,status:"SOLD"===a.status?a.status:"IN_STORAGE"})})},projectTotalInvestment(e){const t=Store.all("inventory").filter(t=>t.assignedProjectId===e.id)
-;return t.reduce((t,a)=>t+inventoryAcquisitionCost(a),0)+(e.additionalCosts||0)},
-projectPlannedCost(e){let a=0;PROJECT_BUILD_SLOTS.forEach(r=>{const n=e.slots&&e.slots[r];n&&"PLANNED"===n.kind&&(a+=n.cost||0)})
-;return a+=(e.extras||[]).filter(e=>!e.inventoryItemId).reduce((e,a)=>e+(a.cost||0),0),a},
-projectBuildStats(e){const filled=PROJECT_BUILD_SLOTS.filter(t=>e.slots&&e.slots[t]),owned=filled.filter(t=>"INVENTORY"===e.slots[t].kind),plannedCost=this.projectPlannedCost(e),actualCost=this.projectTotalInvestment(e)
-;return{slotsTotal:PROJECT_BUILD_SLOTS.length,slotsFilled:filled.length,slotsOwned:owned.length,slotsPlanned:filled.length-owned.length,
-completionPct:Math.round(100*filled.length/PROJECT_BUILD_SLOTS.length),actualCost:actualCost,plannedCost:plannedCost,estimatedFinalCost:actualCost+plannedCost,hardware:rigHardwareProfile({slots:e.slots||emptyRigSlots(),currency:e.currency||"RSD"})}},
+status:"SOLD"===a.status?a.status:"IN_BUILD"}):!r&&n&&Store.update("inventory",a.id,{assignedProjectId:null,status:"SOLD"===a.status?a.status:"IN_STORAGE"})})},
+projectInventoryCostBasis(e){const cur=e.currency||"RSD";return Store.all("inventory").filter(item=>item.assignedProjectId===e.id).reduce((sum,item)=>sum+inventoryAcquisitionCost(item,cur),0)},
+projectDirectCashSpend(e){const cur=e.currency||"RSD",items=Store.all("inventory").filter(item=>item.assignedProjectId===e.id&&item.acquisitionProjectId===e.id);return items.reduce((sum,item)=>sum+inventoryAcquisitionCost(item,cur),0)+(Number(e.additionalCosts)||0)},
+projectReusedInventoryBasis(e){const cur=e.currency||"RSD";return Store.all("inventory").filter(item=>item.assignedProjectId===e.id&&item.acquisitionProjectId!==e.id).reduce((sum,item)=>sum+inventoryAcquisitionCost(item,cur),0)},
+projectTotalInvestment(e){return this.projectInventoryCostBasis(e)+(Number(e.additionalCosts)||0)},
+projectPlannedCost(e){const cur=e.currency||"RSD";let a=0;PROJECT_BUILD_SLOTS.forEach(r=>{const n=e.slots&&e.slots[r];n&&"PLANNED"===n.kind&&(a+=convert(Number(n.cost)||0,n.currency||cur,cur))})
+;return a+=(e.extras||[]).filter(e=>!e.inventoryItemId).reduce((sum,x)=>sum+convert(Number(x.cost)||0,x.currency||cur,cur),0),a},
+projectSlotInventoryIds(slot){if(!slot||"INVENTORY"!==slot.kind)return[];const ids=[];slot.inventoryItemId&&ids.push(slot.inventoryItemId);Array.isArray(slot.ramVaultItemIds)&&slot.ramVaultItemIds.forEach(id=>id&&!ids.includes(id)&&ids.push(id));return ids},
+projectBuildStats(e){const total=PROJECT_BUILD_SLOTS.length,filled=PROJECT_BUILD_SLOTS.filter(k=>e.slots&&e.slots[k]),owned=filled.filter(k=>{const ids=this.projectSlotInventoryIds(e.slots[k]);return ids.length>0&&ids.every(id=>!!Store.get("inventory",id))}),installed=owned.filter(k=>this.projectSlotInventoryIds(e.slots[k]).every(id=>{const item=Store.get("inventory",id);return item&&item.status==="INSTALLED"})),verified=!!(e.buildVerification&&e.buildVerification.status==="VERIFIED"),plannedCost=this.projectPlannedCost(e),inventoryBasis=this.projectInventoryCostBasis(e),projectCash=this.projectDirectCashSpend(e),reusedBasis=this.projectReusedInventoryBasis(e),totalCostBasis=this.projectTotalInvestment(e),configuredPct=Math.round(100*filled.length/total),ownedPct=Math.round(100*owned.length/total),installedPct=Math.round(100*installed.length/total),verifiedSlots=verified?installed.length:0
+;return{slotsTotal:total,slotsFilled:filled.length,slotsOwned:owned.length,slotsPlanned:filled.length-owned.length,slotsInstalled:installed.length,slotsVerified:verifiedSlots,configuredPct:configuredPct,ownedPct:ownedPct,installedPct:installedPct,verifiedPct:verified?Math.round(100*verifiedSlots/total):0,completionPct:configuredPct,verified:verified,lifecycleStage:e.buildLocked?"COMPLETED":verified?"VERIFIED":installed.length===total?"ASSEMBLED":owned.length?"BUILDING":"PLANNING",actualCost:totalCostBasis,projectCash:projectCash,inventoryCostBasis:inventoryBasis,reusedInventoryBasis:reusedBasis,totalCostBasis:totalCostBasis,plannedCost:plannedCost,estimatedFinalCost:totalCostBasis+plannedCost,hardware:rigHardwareProfile({slots:e.slots||emptyRigSlots(),currency:e.currency||"RSD"})}},
 setProjectSlot(e,t,a,r){const n=Store.get("projects",e);if(!n)return{ok:!1,error:"Project not found."}
+;if(n.buildLocked)return{ok:!1,error:"Completed build is locked. Create a new revision instead of changing its hardware."}
 ;const s=n.slots&&n.slots[t]||null
 ;let l=null
 ;if("INVENTORY"===a&&r&&r.inventoryItemId){l=Store.get("inventory",r.inventoryItemId)
@@ -113,15 +119,16 @@ setProjectSlot(e,t,a,r){const n=Store.get("projects",e);if(!n)return{ok:!1,error
 ;if(l.assignedProjectId&&l.assignedProjectId!==e)return{ok:!1,error:l.manufacturer+" "+l.model+" is already reserved on another build."}
 ;if("SOLD"===l.status)return{ok:!1,error:l.manufacturer+" "+l.model+" is already marked SOLD."}
 ;if(PROJECT_BUILD_SLOTS.some(a=>a!==t&&n.slots&&n.slots[a]&&n.slots[a].inventoryItemId===l.id)||(n.extras||[]).some(e=>e.inventoryItemId===l.id))return{ok:!1,error:l.manufacturer+" "+l.model+" is already used on this build."}}
-;if(s&&"INVENTORY"===s.kind&&s.inventoryItemId&&("INVENTORY"!==a||!r||r.inventoryItemId!==s.inventoryItemId)){const o=Store.get("inventory",s.inventoryItemId)
-;o&&o.assignedProjectId===e&&Store.update("inventory",o.id,{assignedProjectId:null,status:"SOLD"===o.status?o.status:"IN_STORAGE"})}
+;if(s&&"INVENTORY"===s.kind){const keep=l&&l.id||null;this.projectSlotInventoryIds(s).filter(id=>id!==keep).forEach(id=>{const o=Store.get("inventory",id);o&&o.assignedProjectId===e&&Store.update("inventory",o.id,{assignedProjectId:null,status:"SOLD"===o.status?o.status:"IN_STORAGE"})})}
 let i=null
-;if(l){i={kind:"INVENTORY",inventoryItemId:l.id},Store.update("inventory",l.id,{assignedProjectId:e,status:"COMPLETED"===n.status?"INSTALLED":"IN_BUILD"})}
+;if(l){i={kind:"INVENTORY",inventoryItemId:l.id,ownershipSource:l.acquisitionProjectId===e?"PURCHASED_NOW":"EXISTING_INVENTORY"},Store.update("inventory",l.id,{assignedProjectId:e,status:"IN_BUILD"})}
 else if("PLANNED"===a)i=Object.assign({kind:"PLANNED",label:"",cost:0,currency:n.currency},r||{})
-;const c=Object.assign({},n.slots,{[t]:i}),d=Store.all("inventory").filter(t=>t.assignedProjectId===e).map(e=>e.id)
-;return{ok:!0,project:Store.update("projects",e,{slots:c,componentIds:d})}},
+;const c=Object.assign({},n.slots,{[t]:i}),d=Store.all("inventory").filter(t=>t.assignedProjectId===e).map(e=>e.id),invalidated=!!(n.assembledAt||n.buildVerification)
+;if(invalidated)Store.all("inventory").filter(item=>item.assignedProjectId===e&&item.status==="INSTALLED").forEach(item=>Store.update("inventory",item.id,{status:"IN_BUILD"}))
+;return{ok:!0,project:Store.update("projects",e,{slots:c,componentIds:d,assembledAt:invalidated?null:n.assembledAt||null,verifiedAt:invalidated?null:n.verifiedAt||null,buildVerification:invalidated?null:n.buildVerification||null,status:invalidated?"BUILDING":n.status})}},
 clearProjectSlot(e,t){return this.setProjectSlot(e,t,"EMPTY",null)},
 addProjectExtra(e,t){const a=Store.get("projects",e);if(!a)return{ok:!1,error:"Project not found."}
+;if(a.buildLocked)return{ok:!1,error:"Completed build is locked."}
 ;let r=null,n=Math.round(Number(t.cost)||0),s=String(t.label||"").trim()
 ;if(t.inventoryItemId){const l=Store.get("inventory",t.inventoryItemId);if(!l)return{ok:!1,error:"Selected inventory item no longer exists."}
 ;if(l.assignedProjectId&&l.assignedProjectId!==e)return{ok:!1,error:l.manufacturer+" "+l.model+" is already reserved on another build."}
@@ -131,17 +138,34 @@ addProjectExtra(e,t){const a=Store.get("projects",e);if(!a)return{ok:!1,error:"P
 ;const l={id:crypto.randomUUID(),label:s,notes:String(t.notes||"").trim(),inventoryItemId:r,cost:n,currency:t.currency||a.currency},o=(a.extras||[]).concat([l]),i=Store.all("inventory").filter(t=>t.assignedProjectId===e).map(e=>e.id)
 ;return{ok:!0,project:Store.update("projects",e,{extras:o,componentIds:i})}},
 removeProjectExtra(e,t){const a=Store.get("projects",e);if(!a)return{ok:!1,error:"Project not found."}
+;if(a.buildLocked)return{ok:!1,error:"Completed build is locked."}
 ;const r=(a.extras||[]).find(e=>e.id===t)
 ;if(r&&r.inventoryItemId){const t=Store.get("inventory",r.inventoryItemId);t&&t.assignedProjectId===e&&Store.update("inventory",t.id,{assignedProjectId:null,status:"SOLD"===t.status?t.status:"IN_STORAGE"})}
 ;const n=(a.extras||[]).filter(e=>e.id!==t),s=Store.all("inventory").filter(t=>t.assignedProjectId===e).map(e=>e.id)
 ;return{ok:!0,project:Store.update("projects",e,{extras:n,componentIds:s})}},
+markProjectBuildAssembled(e){const t=Store.get("projects",e);if(!t)return{ok:!1,error:"Project not found."}
+;if(t.buildLocked)return{ok:!1,error:"Completed build is locked."}
+;const stats=this.projectBuildStats(t);if(stats.slotsFilled!==stats.slotsTotal)return{ok:!1,error:"Configure all "+stats.slotsTotal+" required hardware domains before assembly."}
+;if(stats.slotsOwned!==stats.slotsTotal)return{ok:!1,error:"Every required hardware domain must be owned and assigned from Parts Vault before assembly."}
+;Store.all("inventory").filter(item=>item.assignedProjectId===e&&item.status!=="SOLD").forEach(item=>Store.update("inventory",item.id,{status:"INSTALLED"}))
+;const at=nowISO(),p=Store.update("projects",e,{status:"TESTING",assembledAt:at,verifiedAt:null,buildVerification:null})
+;Timeline.log("PROJECT_STATUS",t.name+" assembled","All required owned hardware marked INSTALLED.",at.slice(0,10),"project",e);return{ok:!0,project:p}},
+markProjectBuildVerified(e){const t=Store.get("projects",e);if(!t)return{ok:!1,error:"Project not found."}
+;if(t.buildLocked)return{ok:!1,error:"Completed build is locked."}
+;const stats=this.projectBuildStats(t);if(stats.slotsInstalled!==stats.slotsTotal)return{ok:!1,error:"Assemble the full owned build before verification."}
+;const compat=typeof buildCheckModel==="function"?buildCheckModel({id:t.id,currency:t.currency,slots:t.slots||emptyRigSlots()}):null;if(compat&&compat.verdict==="FAIL")return{ok:!1,error:"Build Check contains a confirmed compatibility failure. Resolve it before verification."}
+;const at=nowISO(),verification={status:"VERIFIED",method:"MANUAL_CONFIRMATION",at:at,evidence:[{type:"MANUAL_CONFIRMATION",at:at,note:"Physical build operation and testing confirmed by user."}]},p=Store.update("projects",e,{status:"TESTING",verifiedAt:at,buildVerification:verification})
+;Timeline.log("PROJECT_STATUS",t.name+" verified","Physical build verification recorded.",at.slice(0,10),"project",e);return{ok:!0,project:p}},
 markProjectBuildComplete(e){const t=Store.get("projects",e);if(!t)return{ok:!1,error:"Project not found."}
-;if("COMPLETED"===t.status)return{ok:!1,error:"Build is already marked complete."}
-;if(!PROJECT_BUILD_SLOTS.some(e=>t.slots&&t.slots[e]))return{ok:!1,error:"Add at least one component before marking the build complete."}
-;const a=rigHardwareProfile({slots:t.slots||emptyRigSlots(),currency:t.currency||"RSD"})
-;Store.all("inventory").filter(t=>t.assignedProjectId===e&&"IN_BUILD"===t.status).forEach(e=>Store.update("inventory",e.id,{status:"INSTALLED"}))
-;const r=t.completionDate||todayISO(),n=Store.update("projects",e,{status:"COMPLETED",completionDate:r,buildLocked:!0,finalTier:a.complete?a.tier:null,finalPerformance:a.complete?a.performance:null,buildRating:typeof buildRatingSnapshot==="function"?buildRatingSnapshot(t):null})
-;return Timeline.log("PROJECT_STATUS",t.name+" build marked COMPLETE",a.complete?"Final tier: "+a.tier:"Completed without full CPU/GPU/motherboard tier data.",r,"project",e),{ok:!0,project:n}},
+;if(t.buildLocked)return{ok:!1,error:"Build is already complete and locked."}
+;const stats=this.projectBuildStats(t);if(stats.slotsFilled!==stats.slotsTotal)return{ok:!1,error:"Build cannot be completed until all required hardware domains are configured."}
+;if(stats.slotsOwned!==stats.slotsTotal)return{ok:!1,error:"Build cannot be completed while required parts are still PLANNED / NOT OWNED."}
+;if(stats.slotsInstalled!==stats.slotsTotal)return{ok:!1,error:"Mark the owned hardware ASSEMBLED before completion."}
+;if(!stats.verified)return{ok:!1,error:"Mark the assembled build VERIFIED before completion."}
+;const compat=typeof buildCheckModel==="function"?buildCheckModel({id:t.id,currency:t.currency,slots:t.slots||emptyRigSlots()}):null;if(compat&&compat.verdict==="FAIL")return{ok:!1,error:"Build Check contains a confirmed compatibility failure."}
+;const hardware=rigHardwareProfile({slots:t.slots||emptyRigSlots(),currency:t.currency||"RSD"}),rating=typeof buildRatingSnapshot==="function"?buildRatingSnapshot(t):null,completedAt=nowISO(),date=completedAt.slice(0,10),snapshot={version:1,generatedAt:completedAt,currency:t.currency||"RSD",slots:JSON.parse(JSON.stringify(t.slots||{})),extras:JSON.parse(JSON.stringify(t.extras||[])),componentIds:(t.componentIds||[]).slice(),costs:{projectCash:stats.projectCash,reusedInventoryBasis:stats.reusedInventoryBasis,inventoryCostBasis:stats.inventoryCostBasis,totalCostBasis:stats.totalCostBasis,plannedCost:stats.plannedCost,estimatedFinalCost:stats.estimatedFinalCost,estimatedMarketValue:Number(t.estimatedMarketValue)||0},verification:JSON.parse(JSON.stringify(t.buildVerification)),compatibility:compat?JSON.parse(JSON.stringify(compat)):null,rating:rating?JSON.parse(JSON.stringify(rating)):null}
+;const n=Store.update("projects",e,{status:"COMPLETED",completionDate:t.completionDate||date,completedAt:completedAt,buildLocked:!0,finalTier:hardware.complete?hardware.tier:null,finalPerformance:hardware.complete?hardware.performance:null,buildRating:rating,buildSnapshot:snapshot})
+;Timeline.log("PROJECT_STATUS",t.name+" build marked COMPLETE",rating&&rating.quality!=="UNRATED"?"Final rating: "+rating.quality+" "+rating.finalScore:"Final hardware snapshot stored; rating remains UNRATED due to incomplete rating evidence.",date,"project",e);return{ok:!0,project:n}},
 removeProject(e){
 Store.all("inventory").forEach(t=>{t.assignedProjectId===e&&Store.update("inventory",t.id,{assignedProjectId:null,status:"SOLD"===t.status?t.status:"IN_STORAGE"})}),Store.remove("projects",e)},finalizeProjectSale(e){
 const t=Store.all("sales").find(t=>t.projectId===e.id),a=this.projectTotalInvestment(e),r=e.completionDate||todayISO(),n={projectId:e.id,inventoryItemId:null,itemName:e.name,
@@ -183,12 +207,12 @@ Store.update("rigs",e,{status:"SOLD",salePrice:r,saleDate:n}),{ok:!0}},
 copySlotToFamily(e,t){const a=Store.get("rigs",e);if(!a)return{ok:!1,error:"Rig not found."}
 ;const r=a.slots[t]?JSON.parse(JSON.stringify(a.slots[t])):null,n=Store.all("rigs").filter(r=>r.id!==e&&r.family===a.family)
 ;return n.forEach(e=>Store.update("rigs",e.id,{slots:Object.assign({},e.slots,{[t]:r})})),{ok:!0,count:n.length}}
-};function repairCostForItem(e){return Store.all("repairs").filter(t=>t.inventoryItemId===e).reduce((e,a)=>e+a.cost,0)}function inventoryAcquisitionCost(e){if(!e)return 0;const r=Number(e.purchasePrice)||0;return r+repairCostForItem(e.id)}function saleDerived(e){const t=(e.originalInvestment||0)+(e.additionalCosts||0),a=Calc.profit(e.buyerPrice,t);return{totalCost:t,profit:a,roi:Calc.roi(a,t),margin:Calc.profitMargin(a,e.buyerPrice),daysHeld:Calc.daysHeld(e.referenceStartDate,e.saleDate)}}function projectDerived(e){const t=Actions.projectTotalInvestment(e),a="SOLD"===e.status&&null!=e.salePrice,r=a?Calc.profit(e.salePrice,t):null;return{totalInvestment:t,profit:r,roi:a?Calc.roi(r,t):null,daysHeld:Calc.daysHeld(e.startDate,e.completionDate||(a?todayISO():null)),componentCount:Store.all("inventory").filter(t=>t.assignedProjectId===e.id).length}}
+};function repairCostForItem(e,currency){const repairs=Store.all("repairs").filter(t=>t.inventoryItemId===e);if(!repairs.length)return 0;const target=currency||repairs[0].currency||"RSD";return repairs.reduce((sum,repair)=>sum+convert(Number(repair.cost)||0,repair.currency||target,target),0)}function inventoryAcquisitionCost(e,currency){if(!e)return 0;const target=currency||e.currency||"RSD",purchase=convert(Number(e.purchasePrice)||0,e.currency||target,target);return purchase+repairCostForItem(e.id,target)}function saleDerived(e){const t=(e.originalInvestment||0)+(e.additionalCosts||0),a=Calc.profit(e.buyerPrice,t);return{totalCost:t,profit:a,roi:Calc.roi(a,t),margin:Calc.profitMargin(a,e.buyerPrice),daysHeld:Calc.daysHeld(e.referenceStartDate,e.saleDate)}}function projectDerived(e){const t=Actions.projectTotalInvestment(e),a="SOLD"===e.status&&null!=e.salePrice,r=a?Calc.profit(e.salePrice,t):null;return{totalInvestment:t,profit:r,roi:a?Calc.roi(r,t):null,daysHeld:Calc.daysHeld(e.startDate,e.completionDate||(a?todayISO():null)),componentCount:Store.all("inventory").filter(t=>t.assignedProjectId===e.id).length}}
 function emptyRigSlots(){return RIG_SLOTS.reduce((e,t)=>(e[t]=null,e),{})}
 function rigPriceField(e){return["cost","originalPrice"].includes(e)}
 function rigSlotResolved(e,a,b){if(!e)return null;const st=b||("RSD"!==a&&"EUR"!==a?a:null);if("INVENTORY"===e.kind){const r=Store.get("inventory",e.inventoryItemId)
 ;if(!r)return{label:"(deleted inventory item)",cost:0,originalPrice:0,missing:!0};const n=r.manufacturer+" "+r.model,s=st||("MOTHERBOARD"===r.category?"MOBO":r.category),l=catalogFind(s,n)
-;return{label:n,cost:inventoryAcquisitionCost(r),originalPrice:r.estimatedMarketValue||0,category:r.category,condition:r.condition,status:r.status,item:r,pn:l?{type:s,data:l,performance:Number(l.overall)||0,tierIndex:catalogTier(s,l),tier:pnTier(catalogTier(s,l))}:null}}
+;const cur="RSD"===a||"EUR"===a?a:r.currency||"RSD";return{label:n,cost:inventoryAcquisitionCost(r,cur),originalPrice:convert(Number(r.estimatedMarketValue)||0,r.currency||cur,cur),category:r.category,condition:r.condition,status:r.status,item:r,pn:l?{type:s,data:l,performance:Number(l.overall)||0,tierIndex:catalogTier(s,l),tier:pnTier(catalogTier(s,l))}:null}}
 if("CATALOG"===e.kind||"PLANNED"===e.kind&&e.catalogType){const r=e.catalogType||st,n=catalogFind(r,e.label);if("RAM"===r){const a=ramRating(e.ram),ddr=n?n.technology||"DDR4":"DDR4";return{label:(e.label||"(select RAM family)")+" "+ddr+(e.ram&&e.ram.mixed?"":(ramConfigText(e.ram)?" "+ramConfigText(e.ram):""))+(e.ram&&e.ram.speed?" "+e.ram.speed+" CL"+(e.ram.casLatency||"?"):""),cost:e.cost||0,originalPrice:e.originalPrice||0,planned:!0,catalog:!!n,pn:n&&a.overall?{type:r,data:n,performance:a.overall,tierIndex:a.tierIndex,tier:a.tier,ram:{moduleCount:e.ram.moduleCount,perModuleCapacity:e.ram.perModuleCapacity,totalCapacity:e.ram.totalCapacity,speed:e.ram.speed,casLatency:e.ram.casLatency,voltage:e.ram.voltage,partNumber:e.ram.partNumber,matchedKit:e.ram.matchedKit,rgb:e.ram.rgb,xmp:e.ram.xmp,expo:e.ram.expo,technology:e.ram.technology}}:null}}const s=n?catalogTier(r,n):null,l=n&&isStorageSlot(r)?n.overall_score:n&&n.overall;return{label:e.label||"(select planned part)",cost:e.cost||0,originalPrice:e.originalPrice||0,planned:!0,catalog:!!n,pn:n?{type:r,data:n,performance:Number(l)||0,tierIndex:s,tier:pnTier(s)}:null}}
 return{label:e.label||"(unnamed part)",cost:e.cost||0,originalPrice:e.originalPrice||0,planned:!0}}function rigSlotTierClass(e){const t=e&&e.pn&&e.pn.tier?String(e.pn.tier).toUpperCase():"";return t&&"UNRATED"!==t?" pn-tier-card "+pnTierClass(t):""}
 function rigPenaltyProfile(e){let a=0;const r=[],n=s=>{const l=rigSlotResolved(e.slots[s]);return pnNorm(l&&l.label)},s=n("RAM"),l=n("PSU"),o=n("STORAGE"),i=n("COOLER"),c=rigSlotResolved(e.slots.CPU,"CPU"),d=rigSlotResolved(e.slots.GPU,"GPU"),u=e.slots.RAM&&e.slots.RAM.ram

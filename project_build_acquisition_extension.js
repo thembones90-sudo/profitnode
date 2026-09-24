@@ -175,6 +175,8 @@ function pbaPurchasedInventoryData(project,slotKey,hit){
     source: source,
     sourceDetail: sourceDetail,
     notes: note,
+    acquisitionProjectId: project.id,
+    ownershipSource: "PURCHASED_NOW",
     assignedProjectId: null
   };
 

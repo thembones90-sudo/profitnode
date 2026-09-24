@@ -91,6 +91,22 @@ const results = env.run(sandbox, `
     Actions.removeSale(sale.id); Actions.removeProject(proj.id); Actions.removeInventory(item.id);
   })();
 
+  // --- H. Cross-currency acquisition / repair / sale basis ---
+  (function(){
+    const item = Actions.addInventory({category:'GPU',manufacturer:'X',model:'FX Mix',purchaseDate:'2026-06-10',purchasePrice:100,currency:'EUR',estimatedMarketValue:0,source:'OTHER',condition:'WORKING',status:'IN_STORAGE',notes:''});
+    Actions.addRepair({inventoryItemId:item.id,cost:1000,currency:'RSD',description:'repair',date:'2026-06-10'});
+    const project = Actions.addProject({name:'Integrity H',startDate:'2026-06-10',status:'PLANNING',currency:'RSD',componentIds:[item.id],additionalCosts:0});
+    log('H: EUR purchase plus RSD repair converts into project RSD cost', Math.abs(Actions.projectTotalInvestment(project)-12750) < 0.001);
+    log('H: acquisition basis converts into requested currency before adding repair cost', Math.abs(inventoryAcquisitionCost(item,'EUR')-(100+1000/117.5)) < 0.001);
+    Actions.removeProject(project.id);
+    Actions.removeInventory(item.id);
+
+    const saleItem = Actions.addInventory({category:'GPU',manufacturer:'X',model:'FX Sale',purchaseDate:'2026-06-11',purchasePrice:10000,currency:'RSD',estimatedMarketValue:0,source:'OTHER',condition:'WORKING',status:'IN_STORAGE',notes:''});
+    const sold = Actions.markInventorySold(saleItem.id,{salePrice:100,saleCurrency:'EUR',saleDate:'2026-06-12'});
+    const sale = Store.get('sales', sold.saleId || sold.transactionId);
+    log('H: component sale stores acquisition basis in sale currency', !!sale && Math.abs(sale.originalInvestment-(10000/117.5)) < 0.001 && Math.abs(saleDerived(sale).profit-(100-10000/117.5)) < 0.001);
+  })();
+
   // --- Zero / empty / invalid handling ---
   (function(){
     const item = Actions.addInventory({category:'OTHER',manufacturer:'X',model:'Y',purchaseDate:'2026-06-01',purchasePrice:'abc',currency:'RSD',estimatedMarketValue:100,source:'OTHER',condition:'WORKING',status:'IN_STORAGE',notes:''});
@@ -122,6 +138,50 @@ const results = env.run(sandbox, `
 `);
 
 for (const [name, ok] of results) {
+  if (assert(name, ok)) passed++; else failed++;
+}
+
+// --- V5. Missing acquisition repair is scoped: post-cutoff only, never re-charges V4 refunds, runs once ---
+function bootWith(raw){
+  const sb = env.createSandbox();
+  if (raw) sb.localStorage.setItem('profitnode_ledger_v1', raw);
+  env.loadAll(sb, DIR);
+  return sb;
+}
+function cashRsd(sb){ return env.run(sb, `(Store.load().treasury.balances.find(b=>b.sourceKey==='CASH_RSD')||{}).amount||0`); }
+function hasAcq(sb, id){ return env.run(sb, `!!findTreasuryFlow(Store.load().treasury,'inventory','${id}','ACQUISITION')`); }
+const seedSb = bootWith(null);
+const seed = env.run(seedSb, `(function(){
+  const add = model => Actions.addInventory({category:'CPU',manufacturer:'Intel',model:model,purchaseDate:'2026-09-01',purchasePrice:1000,currency:'RSD',estimatedMarketValue:1500,source:'OTHER',condition:'WORKING',status:'IN_STORAGE',notes:''});
+  const legacy = add('Legacy Missing'), recent = add('Recent Missing'), late = add('Late Flow');
+  const L = Store.load(), old = '2026-09-01T10:00:00.000Z';
+  const byId = id => L.inventory.find(x => x.id === id);
+  byId(legacy.id).createdAt = old;
+  L.timeline.filter(ev => ev.relatedId === legacy.id).forEach(ev => { ev.createdAt = old; });
+  [legacy.id, recent.id].forEach(id => removeTreasuryFlow(L.treasury, 'inventory', id, 'ACQUISITION'));
+  const lateFlow = findTreasuryFlow(L.treasury, 'inventory', late.id, 'ACQUISITION');
+  lateFlow.createdAt = new Date(Date.parse(byId(late.id).createdAt) + 3600e3).toISOString();
+  delete L.meta.treasuryAcquisitionRepairV5At;
+  Store.persist();
+  return {legacy: legacy.id, recent: recent.id, late: late.id};
+})()`);
+const seedRaw = seedSb.localStorage.getItem('profitnode_ledger_v1');
+const cashBefore = cashRsd(seedSb);
+const boot1 = bootWith(seedRaw);
+const raw1 = boot1.localStorage.getItem('profitnode_ledger_v1');
+const cash1 = cashRsd(boot1);
+const v5 = [
+  ['V5: pre-cutoff inventory without a flow stays uncharged', !hasAcq(boot1, seed.legacy)],
+  ['V5: post-cutoff inventory missing its flow is charged', hasAcq(boot1, seed.recent)],
+  ['V5: an item V4 refunded is not re-charged', !hasAcq(boot1, seed.late)],
+  ['V5: net cash moves by exactly one recharge minus one V4 refund', cash1 === cashBefore],
+  ['V5: records its one-shot marker in ledger meta', !!JSON.parse(raw1).meta.treasuryAcquisitionRepairV5At]
+];
+const reseed = JSON.parse(raw1);
+reseed.treasury.flows = reseed.treasury.flows.filter(f => f.refId !== seed.recent);
+const boot2 = bootWith(JSON.stringify(reseed));
+v5.push(['V5: does not run again once its marker is set', !hasAcq(boot2, seed.recent)]);
+for (const [name, ok] of v5) {
   if (assert(name, ok)) passed++; else failed++;
 }
 

@@ -12,10 +12,11 @@ const PB_BUILD_CATEGORIES=["PERFORMANCE","BALANCE","COMPONENT_QUALITY","RELIABIL
 const PB_CAT_LABELS={PERFORMANCE:"PERFORMANCE",BALANCE:"BALANCE",COMPONENT_QUALITY:"COMPONENT QUALITY",RELIABILITY:"RELIABILITY",VALUE:"VALUE",UPGRADE_PATH:"UPGRADE PATH"};
 const PB_UNIVERSAL_WEIGHTS={PERFORMANCE:30,BALANCE:20,COMPONENT_QUALITY:15,RELIABILITY:15,VALUE:15,UPGRADE_PATH:5};
 const PB_BUILD_PURPOSES=["FLIP","PERSONAL","FAMILY_GIFT","CLIENT","TEST_BENCH"];
-const PB_ENGINE_VERSION="build-rating-v3";
+const PB_ENGINE_VERSION="build-rating-v4";
 const PB_PERF_SLOT_WEIGHTS={CPU:.35,GPU:.35,RAM:.15,STORAGE:.10,MOBO:.05};
-const PB_CQ_SLOT_WEIGHTS={CPU:.11,GPU:.11,RAM:.10,MOBO:.16,STORAGE:.14,PSU:.20,CASE:.05,COOLER:.08};
-const PB_EXTRA_DRIVE_WEIGHT=.02;
+const PB_CQ_SLOT_WEIGHTS={CPU:0,GPU:0,RAM:.10,MOBO:.25,STORAGE:.20,PSU:.25,CASE:.10,COOLER:.10};
+const PB_EXTRA_DRIVE_WEIGHT=.03;
+const PB_CASE_BUILD_QUALITY={PREMIUM:95,SOLID:78,BASIC:55};
 const PB_CONF_ORDER={UNRATED:0,UNVERIFIED:1,PARTIAL:2,ESTIMATED:3,VERIFIED:4};
 const PB_CONF_LABEL={VERIFIED:"VERIFIED",ESTIMATED:"ESTIMATED",PARTIAL:"PARTIAL DATA",UNVERIFIED:"UNVERIFIED — limited data",UNRATED:"UNRATED — excluded"};
 const PB_VERDICT_WORDS={
@@ -93,11 +94,32 @@ function pbBalanceScore(by){
   }
   return clamp(Math.round(s),0,100);
 }
-function pbCqOf(resolved){
-  const p=pbPerfOf(resolved);
-  if(p!==null)return p;
-  const t=pbTierIndexOf(resolved);
-  if(t!==null)return Math.round(t*100/6);
+function pbCqOf(resolved,slotKey){
+  if(!resolved||resolved.missing)return null;
+  const data=resolved.pn&&resolved.pn.data||null;
+  if(slotKey==="MOBO"&&data&&Number.isFinite(Number(data.overall)))return clamp(Math.round(Number(data.overall)),0,100);
+  if((slotKey==="STORAGE"||(typeof isStorageSlot==="function"&&isStorageSlot(slotKey)))&&data&&Number.isFinite(Number(data.quality_score)))return clamp(Math.round(Number(data.quality_score)),0,100);
+  if(slotKey==="PSU"&&data){
+    const q=Number(data.quality_score);
+    if(Number.isFinite(q))return clamp(Math.round(q>10?q:q*10),0,100);
+  }
+  if(slotKey==="COOLER"&&data){
+    const q=Number(data.qualityScore!==undefined?data.qualityScore:data.pn_score);
+    if(Number.isFinite(q))return clamp(Math.round(q),0,100);
+  }
+  if(slotKey==="CASE"&&data&&data.caps){
+    const q=PB_CASE_BUILD_QUALITY[String(data.caps.buildQuality||"").toUpperCase()];
+    if(Number.isFinite(q))return q;
+  }
+  if(slotKey==="RAM"&&resolved.pn&&resolved.pn.ram){
+    const ram=resolved.pn.ram,n=Number(ram.moduleCount)||0,cap=Number(ram.totalCapacity)||0;
+    let q=65;
+    if(n>=2)q+=10;
+    if(ram.matchedKit===true)q+=10;
+    if(ram.mixed===true)q-=8;
+    if(cap>=16)q+=5;
+    return clamp(Math.round(q),0,100);
+  }
   return null;
 }
 function pbComponentQualityScore(by){
@@ -106,7 +128,7 @@ function pbComponentQualityScore(by){
     const slotW="STORAGE"===k?PB_CQ_SLOT_WEIGHTS.STORAGE:typeof isStorageSlot==="function"&&isStorageSlot(k)?PB_EXTRA_DRIVE_WEIGHT:(PB_CQ_SLOT_WEIGHTS[k]||0);
     const r=by[k];
     if(!slotW||!r||r.missing||!r.label)return;
-    const q=pbCqOf(r);
+    const q=pbCqOf(r,k);
     if(q!==null){num+=q*slotW;den+=slotW}
   });
   return den?Math.round(num/den):null;
@@ -191,7 +213,7 @@ function pbComponentQualityCoverage(by){
     const r=by&&by[k];
     if(!slotW||!r||r.missing||!r.label)return;
     total++;
-    if(pbCqOf(r)===null)return;
+    if(pbCqOf(r,k)===null)return;
     rated++;
     const c=pbFactorConfidence(r);
     if(c==="VERIFIED")verified++;
@@ -233,7 +255,7 @@ function pbRatingConfidences(categories,by,perf,val){
       ?"PARTIAL"
       :(pbWeakest(RIG_SLOTS.filter(k=>{
         const r=by[k];
-        return r&&!r.missing&&r.label&&pbCqOf(r)!==null;
+        return r&&!r.missing&&r.label&&pbCqOf(r,k)!==null;
       }).map(k=>pbFactorConfidence(by[k])))||"UNVERIFIED"));
   out.RELIABILITY=RIG_SLOTS.some(k=>{const r=by[k];return r&&(r.item!==undefined||r.pn)})?"VERIFIED":"UNVERIFIED";
   out.VALUE=categories.VALUE===null?"UNRATED":(perf!==null&&val>0?"VERIFIED":(perf!==null||val>0?"ESTIMATED":"UNVERIFIED"));
@@ -277,6 +299,7 @@ function pbModifierClause(key,v){
   return null;
 }
 function pbBuildVerdict(model){
+  if(!model||model.quality==="UNRATED")return"Rating withheld — core hardware evidence is incomplete.";
   const c=model.categories,words=PB_VERDICT_WORDS[model.quality]||"Unclassified machine construct";
   const balanceLow=c.BALANCE!==null&&c.BALANCE!==undefined&&c.BALANCE<50;
   const reliabilityLow=c.RELIABILITY!==null&&c.RELIABILITY!==undefined&&c.RELIABILITY<60;
@@ -285,6 +308,16 @@ function pbBuildVerdict(model){
   const positives=PB_POS_PRIORITY.map(k=>({k:k,clause:pbModifierClause(k,c[k])})).filter(x=>x.clause&&x.clause.sign==="pos");
   const bits=negatives.concat(positives).slice(0,3).map(x=>x.clause.text);
   return words+" — "+intro+(bits.length?" · "+bits.join("; "):"");
+}
+function pbRatingCorePresence(r){return!!(r&&!r.missing&&r.label)}
+function pbRatingCoreCoverage(by,categories,confidences){
+  const cpu=pbRatingCorePresence(by.CPU),ram=pbRatingCorePresence(by.RAM),mobo=pbRatingCorePresence(by.MOBO),storage=pbRatingCorePresence(by.STORAGE);
+  let graphics=pbRatingCorePresence(by.GPU);
+  if(!graphics&&cpu&&typeof cpuLikelyHasIGPU==="function")graphics=cpuLikelyHasIGPU(String(by.CPU.label||"").toUpperCase())===true;
+  const core={CPU:cpu,GRAPHICS:graphics,RAM:ram,MOBO:mobo,STORAGE:storage};
+  const corePresent=Object.values(core).filter(Boolean).length,coreTotal=Object.keys(core).length;
+  const ratedCategories=PB_BUILD_CATEGORIES.filter(k=>categories[k]!==null&&Number.isFinite(categories[k])&&confidences[k]!=="UNRATED"&&confidences[k]!=="UNVERIFIED");
+  return{eligible:corePresent===coreTotal&&ratedCategories.length>=3,core:core,corePresent:corePresent,coreTotal:coreTotal,ratedCategories:ratedCategories.length,totalCategories:PB_BUILD_CATEGORIES.length};
 }
 function pbRatingCore(by,source,keys){
   const cur=(source&&source.currency)||"RSD";
@@ -299,15 +332,15 @@ function pbRatingCore(by,source,keys){
     VALUE:pbValueRating(perf,inv,val,cur),
     UPGRADE_PATH:pbUpgradePathScore(by,source)
   };
-  const confidences=pbRatingConfidences(categories,by,perf,val);
+  const confidences=pbRatingConfidences(categories,by,perf,val),coverage=pbRatingCoreCoverage(by,categories,confidences);
   let num=0,den=0;
-  PB_BUILD_CATEGORIES.forEach(k=>{
-    const s=categories[k];
-    if(s!==null&&Number.isFinite(s)){num+=s*PB_UNIVERSAL_WEIGHTS[k];den+=PB_UNIVERSAL_WEIGHTS[k]}
+  if(coverage.eligible)PB_BUILD_CATEGORIES.forEach(k=>{
+    const s=categories[k],conf=confidences[k];
+    if(s!==null&&Number.isFinite(s)&&conf!=="UNRATED"&&conf!=="UNVERIFIED"){num+=s*PB_UNIVERSAL_WEIGHTS[k];den+=PB_UNIVERSAL_WEIGHTS[k]}
   });
-  const finalScore=den?clamp(Math.round(num/den),0,100):0;
-  const quality=pbScoreToTier(finalScore).key;
-  return{purpose:pbPurposeOf(source),engine:PB_ENGINE_VERSION,finalScore:finalScore,quality:quality,categories:categories,confidences:confidences,confidenceDetails:{COMPONENT_QUALITY:pbComponentQualityCoverage(by)},investment:inv,estimatedMarketValue:val,verdict:pbBuildVerdict({quality:quality,categories:categories})};
+  const finalScore=coverage.eligible&&den?clamp(Math.round(num/den),0,100):null;
+  const quality=finalScore===null?"UNRATED":pbScoreToTier(finalScore).key;
+  return{purpose:pbPurposeOf(source),engine:PB_ENGINE_VERSION,finalScore:finalScore,quality:quality,categories:categories,confidences:confidences,confidenceDetails:{COMPONENT_QUALITY:pbComponentQualityCoverage(by)},coverage:coverage,investment:inv,estimatedMarketValue:val,verdict:pbBuildVerdict({quality:quality,categories:categories})};
 }
 function pbConfFromCategories(categories){
   const out={};
@@ -319,14 +352,15 @@ function buildRatingModel(project){
 }
 function buildRatingSnapshot(project){
   const m=buildRatingModel(project),slots=project&&project.slots||emptyRigSlots(),cur=project&&project.currency||"RSD";
-  return{mode:"FINAL",engine:m.engine,generatedAt:nowISO(),finalScore:m.finalScore,quality:m.quality,verdict:m.verdict,categories:m.categories,confidences:m.confidences,confidenceDetails:m.confidenceDetails,purpose:m.purpose,investment:m.investment,estimatedMarketValue:m.estimatedMarketValue,components:PROJECT_BUILD_SLOTS.map(k=>{const r=rigSlotResolved(slots[k],cur,k);return{slotKey:k,label:r&&r.label||null,kind:slots[k]&&slots[k].kind||null,perf:pbPerfOf(r),tier:r&&r.pn&&r.pn.tier||null}})};
+  return{mode:"FINAL",engine:m.engine,generatedAt:nowISO(),finalScore:m.finalScore,quality:m.quality,verdict:m.verdict,categories:m.categories,confidences:m.confidences,confidenceDetails:m.confidenceDetails,coverage:m.coverage,purpose:m.purpose,investment:m.investment,estimatedMarketValue:m.estimatedMarketValue,components:PROJECT_BUILD_SLOTS.map(k=>{const r=rigSlotResolved(slots[k],cur,k);return{slotKey:k,label:r&&r.label||null,kind:slots[k]&&slots[k].kind||null,perf:pbPerfOf(r),tier:r&&r.pn&&r.pn.tier||null}})};
 }
 function buildRatingModelDisplayed(project){
-  const locked="COMPLETED"===project.status,snap=locked&&project.buildRating&&Number.isFinite(project.buildRating.finalScore)?project.buildRating:null;
+  const locked=!!(project&&project.buildLocked)||"COMPLETED"===project.status,snap=locked&&project.buildRating&&project.buildRating.mode==="FINAL"?project.buildRating:null;
   const m=snap?Object.assign({},snap,{engine:snap.engine||"build-rating-v1",purpose:snap.purpose||pbPurposeOf(project),confidences:snap.confidences||pbConfFromCategories(snap.categories),confidenceDetails:snap.confidenceDetails||{COMPONENT_QUALITY:pbComponentQualityCoverage(pbBuildResolved(project))}}):buildRatingModel(project);
   return{locked:locked,snap:!!snap,m:m};
 }
 function pbRatingChipHtml(score){
+  if(score===null||score===undefined||!Number.isFinite(Number(score)))return'<span class="chip pn-pb-score-chip '+(typeof pnTierClass==="function"?pnTierClass("UNRATED"):"")+'" data-pb-build-score="n/a" data-pb-build-quality="UNRATED">UNRATED</span>';
   const t=pbScoreToTier(score);
   return'<span class="chip pn-pb-score-chip '+(typeof pnTierClass==="function"?pnTierClass(t.key):"")+'" data-pb-build-score="'+score+'" data-pb-build-quality="'+t.key+'">'+t.key+" · "+score+"</span>";
 }
@@ -342,17 +376,18 @@ function pbRatingRowHtml(k,hooks,label,score,conf,detail){
 }
 function buildRatingPanelHtml(project){
   const d=buildRatingModelDisplayed(project),label=d.locked?(d.snap?"FINAL":"FINAL · LIVE"):"PROJECTED";
-  const overallTier=pbScoreToTier(d.m.finalScore),overallClass=typeof pnTierClass==="function"?pnTierClass(overallTier.key):"";
+  const overallRated=d.m.finalScore!==null&&d.m.finalScore!==undefined&&Number.isFinite(Number(d.m.finalScore)),overallTier=overallRated?pbScoreToTier(d.m.finalScore):null,overallClass=typeof pnTierClass==="function"?pnTierClass(overallTier?overallTier.key:"UNRATED"):"";
   const rows=PB_BUILD_CATEGORIES.map(k=>pbRatingRowHtml(k,"",PB_CAT_LABELS[k],d.m.categories[k],d.m.confidences&&d.m.confidences[k],d.m.confidenceDetails&&d.m.confidenceDetails[k])).join("");
-  return'<div class="panel pn-pb-rating" data-pb-rating-engine="'+(d.m.engine||"build-rating-v1")+'" style="margin-top:8px"><div class="panel-head"><h2>BUILD RATING</h2><span class="chip chip-muted">'+label+'</span></div><div class="panel-body"><div class="pn-pb-rating-overall '+overallClass+'" data-pb-overall-tier="'+overallTier.key+'"><div class="pn-pb-rating-score">'+pbRatingChipHtml(d.m.finalScore)+'</div><p class="pn-pb-rating-verdict">'+escHtml(d.m.verdict)+'</p></div><div class="pn-pb-rating-cats">'+rows+"</div></div></div>";
+  const coverage=d.m.coverage?'<span class="pn-pb-rating-coverage">'+d.m.coverage.corePresent+'/'+d.m.coverage.coreTotal+' CORE · '+d.m.coverage.ratedCategories+'/'+d.m.coverage.totalCategories+' CATEGORIES</span>':"";
+  return'<div class="panel pn-pb-rating" data-pb-rating-engine="'+(d.m.engine||"build-rating-v1")+'" style="margin-top:8px"><div class="panel-head"><h2>BUILD RATING</h2><span class="chip chip-muted">'+label+'</span>'+coverage+'</div><div class="panel-body"><div class="pn-pb-rating-overall '+overallClass+'" data-pb-overall-tier="'+(overallTier?overallTier.key:"UNRATED")+'"><div class="pn-pb-rating-score">'+pbRatingChipHtml(d.m.finalScore)+'</div><p class="pn-pb-rating-verdict">'+escHtml(d.m.verdict)+'</p></div><div class="pn-pb-rating-cats">'+rows+"</div></div></div>";
 }
 function pbRatingCells(project){
   const completion=typeof Actions!=="undefined"&&Actions.projectBuildStats?Actions.projectBuildStats(project).completionPct:0;
-  const d=buildRatingModelDisplayed(project);
-  return'<td class="num" data-pb-completion-pct="'+completion+'">'+completion+'%</td><td class="num"><b data-pb-build-score="'+d.m.finalScore+'">'+d.m.finalScore+'</b></td><td><span class="chip '+(typeof pnTierClass==="function"?pnTierClass(d.m.quality):"")+'" data-pb-build-quality="'+d.m.quality+'">'+d.m.quality+"</span></td>";
+  const d=buildRatingModelDisplayed(project),rated=d.m.finalScore!==null&&d.m.finalScore!==undefined&&Number.isFinite(Number(d.m.finalScore)),scoreText=rated?d.m.finalScore:"—";
+  return'<td class="num" data-pb-completion-pct="'+completion+'">'+completion+'%</td><td class="num"><b data-pb-build-score="'+(rated?d.m.finalScore:"n/a")+'">'+scoreText+'</b></td><td><span class="chip '+(typeof pnTierClass==="function"?pnTierClass(d.m.quality):"")+'" data-pb-build-quality="'+d.m.quality+'">'+d.m.quality+"</span></td>";
 }
 if(typeof document!=="undefined"&&document.createElement){
   const s=document.createElement("style");
-  s.textContent=".pn-pb-rating-overall{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.pn-pb-rating-verdict{font:11px var(--mono);color:var(--text-dim);margin:0;max-width:640px;border-left:2px solid var(--tier-color,var(--border-strong));padding-left:10px}.pn-pb-score-chip{font-size:13px;padding:6px 14px;letter-spacing:.1em;box-shadow:0 0 16px var(--tier-wash)}.pn-pb-rating-cats{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;margin-top:12px}.pn-pb-rating-item{min-width:0}.pn-pb-rating-row{display:grid;grid-template-columns:150px 1fr 132px;gap:10px;align-items:center;border-left:2px solid var(--tier-color,transparent);padding-left:8px}.pn-pb-rating-row>span,.pn-pb-rating-row>b{font:9px var(--mono);letter-spacing:.08em;color:var(--muted);white-space:nowrap}.pn-pb-rating-row>b{text-align:right;font-weight:700;color:var(--tier-color,var(--text-dim))}.pn-pb-rating-bar{height:9px;border-radius:4px;background:var(--tier-wash,var(--bg-alt));overflow:hidden}.pn-pb-rating-bar i{display:block;height:100%;background:var(--tier-color,var(--performance));border-radius:4px;transition:width .2s ease;box-shadow:0 0 10px var(--tier-wash)}.pn-pb-rating-conf{font:9px var(--mono);letter-spacing:.08em;color:var(--text-dim);opacity:.8;margin:2px 0 0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}.pn-pb-rating-conf.verified{color:var(--green,var(--text-dim))}.pn-pb-rating-conf.partial{color:#c69a54;opacity:.92}@media(max-width:820px){.pn-pb-rating-cats{grid-template-columns:1fr}.pn-pb-rating-row{grid-template-columns:110px 1fr 112px}}";
+  s.textContent=".pn-pb-rating-overall{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.pn-pb-rating-verdict{font:11px var(--mono);color:var(--text-dim);margin:0;max-width:640px;border-left:2px solid var(--tier-color,var(--border-strong));padding-left:10px}.pn-pb-score-chip{font-size:13px;padding:6px 14px;letter-spacing:.1em;box-shadow:0 0 16px var(--tier-wash)}.pn-pb-rating-cats{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;margin-top:12px}.pn-pb-rating-item{min-width:0}.pn-pb-rating-row{display:grid;grid-template-columns:150px 1fr 132px;gap:10px;align-items:center;border-left:2px solid var(--tier-color,transparent);padding-left:8px}.pn-pb-rating-row>span,.pn-pb-rating-row>b{font:9px var(--mono);letter-spacing:.08em;color:var(--muted);white-space:nowrap}.pn-pb-rating-row>b{text-align:right;font-weight:700;color:var(--tier-color,var(--text-dim))}.pn-pb-rating-bar{height:9px;border-radius:4px;background:var(--tier-wash,var(--bg-alt));overflow:hidden}.pn-pb-rating-bar i{display:block;height:100%;background:var(--tier-color,var(--performance));border-radius:4px;transition:width .2s ease;box-shadow:0 0 10px var(--tier-wash)}.pn-pb-rating-conf{font:9px var(--mono);letter-spacing:.08em;color:var(--text-dim);opacity:.8;margin:2px 0 0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}.pn-pb-rating-conf.verified{color:var(--green,var(--text-dim))}.pn-pb-rating-conf.partial{color:#c69a54;opacity:.92}.pn-pb-rating-coverage{margin-left:auto;font:800 8px var(--mono);letter-spacing:.08em;color:var(--text-mute)}@media(max-width:820px){.pn-pb-rating-cats{grid-template-columns:1fr}.pn-pb-rating-row{grid-template-columns:110px 1fr 112px}}";
   document.head.appendChild(s);
 }
