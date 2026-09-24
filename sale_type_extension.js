@@ -38,6 +38,10 @@ function saleTypeResolved(sale){
   return "RIG";
 }
 
+function saleDispositionResolved(sale){
+  return String((sale && sale.disposition) || "SALE").toUpperCase() === "GIFT" ? "GIFT" : "SALE";
+}
+
 function saleSourceResolved(sale){
   const explicit = String((sale && sale.saleSource) || "").toUpperCase();
   if (explicit) return explicit;
@@ -90,6 +94,7 @@ function saleSummary(currency){
   let profit = 0;
   let cost = 0;
   let rigs = 0;
+  let gifts = 0;
   let components = 0;
 
   sales.forEach(sale=>{
@@ -99,12 +104,15 @@ function saleSummary(currency){
     cost += convert(d.totalCost || 0, sale.currency, currency);
 
     const type = saleTypeResolved(sale);
-    if (type === "RIG") rigs++;
+    const disposition = saleDispositionResolved(sale);
+    if (type === "RIG" && disposition === "GIFT") gifts++;
+    else if (type === "RIG") rigs++;
     if (type === "COMPONENT") components++;
   });
 
   return {
     rigs,
+    gifts,
     components,
     revenue,
     profit,
@@ -135,6 +143,7 @@ function renderSales(){
     const d = saleDerived(sale);
     const type = saleTypeResolved(sale);
     const source = saleSourceResolved(sale);
+    const disposition = saleDispositionResolved(sale);
     const held = saleDaysHeldResolved(sale);
 
     return '<tr class="clickable" data-open-entity="sale" data-id="'+sale.id+'">'+
@@ -143,6 +152,7 @@ function renderSales(){
           '<div class="sale-item-with-type">'+
             '<b>'+escHtml(sale.itemName)+'</b>'+
             '<span class="chip '+saleTypeChipClass(type)+'">'+escHtml(type)+'</span>'+
+            (disposition==='GIFT'?'<span class="chip chip-green-outline">GIFT</span>':'')+
           '</div>'+
           '<div class="pn-sale-origin">'+escHtml(source)+'</div>'+
         '</div>'+
@@ -155,7 +165,7 @@ function renderSales(){
       '<td class="num" style="color:'+(d.roi>=0?"var(--green)":"var(--red)")+'">'+pct(d.roi)+'</td>'+
       '<td class="num">'+(held!=null?held:"\u2014")+'</td>'+
     '</tr>';
-  }).join("") : '<tr class="empty-row"><td colspan="8">No completed sales match this filter.</td></tr>';
+  }).join("") : '<tr class="empty-row"><td colspan="8">No completed ledger entries match this filter.</td></tr>';
 
   const pendingRows = pending.length ? pending.map(sale=>{
     const d = saleDerived(sale);
@@ -177,7 +187,8 @@ function renderSales(){
 
   const summaryHtml =
     '<div class="pn-sales-summary">'+
-      '<div class="pn-sales-summary-cell"><span>RIGS SOLD</span><b>'+summary.rigs+'</b></div>'+
+      '<div class="pn-sales-summary-cell"><span>RIGS SOLD</span><b>'+summary.rigs+'</b></div>'+ 
+      '<div class="pn-sales-summary-cell"><span>GIFTED RIGS</span><b>'+summary.gifts+'</b></div>'+
       '<div class="pn-sales-summary-cell"><span>COMPONENTS</span><b>'+summary.components+'</b></div>'+
       '<div class="pn-sales-summary-cell"><span>REVENUE</span><b>'+money(summary.revenue,currency)+'</b></div>'+
       '<div class="pn-sales-summary-cell"><span>PROFIT</span><b class="'+(summary.profit>=0?"pos":"neg")+'">'+money(summary.profit,currency)+'</b></div>'+
@@ -205,7 +216,7 @@ function renderSales(){
     '<div class="panel pn-pending-sales-panel"><div class="panel-head"><h2>PENDING SALES</h2><span class="badge-count">'+pending.length+' LISTED · '+money(pendingAsking,currency)+' ASKING</span></div><div class="table-scroll"><table><thead><tr>'+
       '<th>Sale Item</th><th>Listed</th><th class="num">Asking Price</th><th class="num">Total Cost</th><th class="num">Potential Profit</th><th class="num">Margin</th><th class="num">ROI</th><th class="num">Action</th>'+
     '</tr></thead><tbody>'+pendingRows+'</tbody></table></div></div>'+
-    '<div class="panel pn-completed-sales-panel"><div class="panel-head"><h2>COMPLETED SALES</h2><span class="badge-count">'+completed.length+' REALIZED</span></div><div class="table-scroll"><table><thead><tr>'+
+    '<div class="panel pn-completed-sales-panel"><div class="panel-head"><h2>COMPLETED LEDGER</h2><span class="badge-count">'+completed.length+' REALIZED</span></div><div class="table-scroll"><table><thead><tr>'+
       '<th>Sale Item</th>'+
       '<th>Sale Date</th>'+
       '<th class="num">Sale Price</th>'+
@@ -229,7 +240,8 @@ const PNCoreDashboardStatsSaleTypes = dashboardStats;
 dashboardStats = function(currency){
   const out = PNCoreDashboardStatsSaleTypes(currency);
   const sales = Store.all("sales").filter(saleIsCompleted);
-  out.pcsSold = sales.filter(s=>saleTypeResolved(s)==="RIG").length;
+  out.pcsSold = sales.filter(s=>saleTypeResolved(s)==="RIG" && saleDispositionResolved(s)!=="GIFT").length;
+  out.giftedRigs = sales.filter(s=>saleTypeResolved(s)==="RIG" && saleDispositionResolved(s)==="GIFT").length;
   out.componentsSold = sales.filter(s=>saleTypeResolved(s)==="COMPONENT").length;
   return out;
 };
@@ -243,6 +255,11 @@ if (typeof CSV_EXPORTS !== "undefined" && CSV_EXPORTS.sales){
   if (!cols.some(c=>c.label==="Workflow Source")){
     const typeIndex = cols.findIndex(c=>c.label==="Type");
     cols.splice(typeIndex+1,0,{label:"Workflow Source",get:saleSourceResolved});
+  }
+
+  if (!cols.some(c=>c.label==="Disposition")){
+    const typeIndex = cols.findIndex(c=>c.label==="Type");
+    cols.splice(typeIndex+1,0,{label:"Disposition",get:saleDispositionResolved});
   }
 
   if (!cols.some(c=>c.label==="State")){

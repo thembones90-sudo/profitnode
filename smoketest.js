@@ -359,7 +359,7 @@ const probe = `
   log('pending sale is excluded from realized dashboard totals', pendingStatsAfter.totalRevenue === pendingStatsBefore.totalRevenue && pendingStatsAfter.realizedProfit === pendingStatsBefore.realizedProfit && pendingStatsAfter.componentsSold === pendingStatsBefore.componentsSold);
   log('pending sale is excluded from completed ledger summary', pendingSummaryAfter.revenue === pendingSummaryBefore.revenue && pendingSummaryAfter.profit === pendingSummaryBefore.profit && pendingSummaryAfter.components === pendingSummaryBefore.components);
   const pendingLedgerHtml = renderSales();
-  log('LEDGER renders pending and completed sales as separate sections', pendingLedgerHtml.includes('PENDING SALES') && pendingLedgerHtml.includes('COMPLETED SALES') && pendingLedgerHtml.includes('EVGA Pending Test GPU'));
+  log('LEDGER renders pending sales and the completed ledger as separate sections', pendingLedgerHtml.includes('PENDING SALES') && pendingLedgerHtml.includes('COMPLETED LEDGER') && pendingLedgerHtml.includes('EVGA Pending Test GPU'));
   log('pending sale exposes an explicit completion action', pendingLedgerHtml.includes('data-complete-pending-sale="'+pendingSale.id+'"'));
   Actions.updateSale(pendingSale.id,{saleState:'COMPLETED'});
   const completedStats = dashboardStats('RSD');
@@ -1762,6 +1762,17 @@ const projectBuildProbe = `
   const projectsNow=renderProjects();
   out.push(['the Projects overview gains COMPLETION, SCORE, and QUALITY columns', projectsNow.includes('<th class="num">Completion</th>') && projectsNow.includes('<th class="num">Score</th>') && projectsNow.includes('<th>Quality</th>') && projectsNow.includes('data-pb-completion-pct=') && projectsNow.includes('data-pb-build-score=') && projectsNow.includes('data-pb-build-quality=')]);
   out.push(['the overview shows an honest UNRATED completed build instead of inventing a score', projectsNow.includes('data-pb-build-score="n/a"') && projectsNow.includes('data-pb-build-quality="UNRATED"')]);
+
+  const gift=Actions.addProject({name:'GIFT TEST',startDate:todayISO(),status:'PLANNING',purpose:'FAMILY_GIFT',currency:'RSD',estimatedMarketValue:0,additionalCosts:500});
+  const giftItems={};
+  lifeSpecs.forEach((row,idx)=>{const item=Actions.addInventory({category:row[1],manufacturer:'Gift',model:row[3],purchaseDate:todayISO(),purchasePrice:2000+idx,currency:'RSD',estimatedMarketValue:0,source:'OTHER',condition:'WORKING',status:'IN_STORAGE'});giftItems[row[0]]=item;Actions.setProjectSlot(gift.id,row[0],'INVENTORY',{inventoryItemId:item.id});});
+  Actions.markProjectBuildAssembled(gift.id);Actions.markProjectBuildVerified(gift.id);
+  const beforeGiftProfit=dashboardStats('RSD').realizedProfit;
+  const giftDone=Actions.markProjectBuildComplete(gift.id),giftFinal=Store.get('projects',gift.id),giftSale=Store.all('sales').find(s=>s.projectId===gift.id&&s.disposition==='GIFT'),giftCost=Actions.projectTotalInvestment(giftFinal),afterGiftProfit=dashboardStats('RSD').realizedProfit,giftHtml=renderSales();
+  out.push(['FAMILY / GIFT completion ends in GIFTED rather than SOLD/COMPLETED', giftDone.ok && giftFinal.status==='GIFTED' && giftFinal.buildLocked===true]);
+  out.push(['GIFTED rig creates one completed RIG ledger entry marked GIFT with zero revenue', !!giftSale && saleIsCompleted(giftSale) && saleTypeResolved(giftSale)==='RIG' && giftSale.buyerPrice===0 && saleDispositionResolved(giftSale)==='GIFT']);
+  out.push(['GIFTED rig reduces realized profit by its full cost basis exactly once', afterGiftProfit===beforeGiftProfit-giftCost]);
+  out.push(['LEDGER visually distinguishes GIFT from sold rigs and tracks gifted count', giftHtml.includes('GIFTED RIGS') && giftHtml.includes('>GIFT</span>')]);
 
   return out;
 })()
