@@ -98,6 +98,7 @@ updateRepair:(e,t)=>Store.update("repairs",e,t),removeRepair(e){Store.remove("re
 updateProject(e,t){const a=Store.get("projects",e);if(!a)return null;t=Object.assign({},t);t.purpose&&!PROJECT_PURPOSES.includes(t.purpose)&&delete t.purpose
 ;if(a.buildLocked){if(t.status&&!["COMPLETED","LISTED","SOLD"].includes(t.status))delete t.status;delete t.componentIds;delete t.slots;delete t.extras;delete t.buildLocked;delete t.buildRating;delete t.buildSnapshot}
 ;t.componentIds&&this.syncProjectComponents(e,t.componentIds);const r=Store.update("projects",e,t)
+;"SOLD"===a.status&&"SOLD"===r.status&&(a.salePrice!==r.salePrice||a.currency!==r.currency)&&this.finalizeProjectSale(r);"SOLD"===a.status&&"SOLD"!==r.status&&this.reverseProjectSale(r)
 ;return a&&a.status!==r.status&&(Timeline.log("PROJECT_STATUS",r.name+" → "+STATUS_LABEL(r.status),"",todayISO(),"project",r.id),"SOLD"===r.status&&this.finalizeProjectSale(r)),r},
 syncProjectComponents(e,t){Store.all("inventory").forEach(a=>{const r=t.includes(a.id),n=a.assignedProjectId===e;r&&!n?Store.update("inventory",a.id,{assignedProjectId:e,
 status:"SOLD"===a.status?a.status:"IN_BUILD"}):!r&&n&&Store.update("inventory",a.id,{assignedProjectId:null,status:"SOLD"===a.status?a.status:"IN_STORAGE"})})},
@@ -167,7 +168,7 @@ markProjectBuildComplete(e){const t=Store.get("projects",e);if(!t)return{ok:!1,e
 ;const n=Store.update("projects",e,{status:"COMPLETED",completionDate:t.completionDate||date,completedAt:completedAt,buildLocked:!0,finalTier:hardware.complete?hardware.tier:null,finalPerformance:hardware.complete?hardware.performance:null,buildRating:rating,buildSnapshot:snapshot})
 ;Timeline.log("PROJECT_STATUS",t.name+" build marked COMPLETE",rating&&rating.quality!=="UNRATED"?"Final rating: "+rating.quality+" "+rating.finalScore:"Final hardware snapshot stored; rating remains UNRATED due to incomplete rating evidence.",date,"project",e);return{ok:!0,project:n}},
 removeProject(e){
-Store.all("inventory").forEach(t=>{t.assignedProjectId===e&&Store.update("inventory",t.id,{assignedProjectId:null,status:"SOLD"===t.status?t.status:"IN_STORAGE"})}),Store.remove("projects",e)},finalizeProjectSale(e){
+Store.all("inventory").forEach(t=>{t.assignedProjectId===e&&Store.update("inventory",t.id,{assignedProjectId:null,status:"SOLD"===t.status?t.status:"IN_STORAGE"})}),Store.remove("projects",e)},reverseProjectSale(e){const t=Store.all("sales").find(t=>t.projectId===e.id);t&&this.removeSale(t.id);Store.all("inventory").filter(t=>t.assignedProjectId===e.id&&"SOLD"===t.status).forEach(t=>Store.update("inventory",t.id,{status:e.buildLocked?"INSTALLED":"IN_BUILD"}))},finalizeProjectSale(e){
 const t=Store.all("sales").find(t=>t.projectId===e.id),a=this.projectTotalInvestment(e),r=e.completionDate||todayISO(),n={projectId:e.id,inventoryItemId:null,itemName:e.name,
 saleDate:r,buyerPrice:e.salePrice||0,originalInvestment:a-(e.additionalCosts||0),additionalCosts:e.additionalCosts||0,currency:e.currency,referenceStartDate:e.startDate,
 notes:"Auto-recorded from project sale."};if(t)Store.update("sales",t.id,n);else{const t=Store.insert("sales",n)

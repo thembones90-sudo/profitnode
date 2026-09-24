@@ -206,6 +206,11 @@
       console.warn("Blocked direct status=" + data.status + " on " + id + "; use Actions.markInventorySold()/markInventoryDelivered()");
       return item;
     }
+    if (item && data && data.status && inventoryIsSold(item) && data.status !== item.status && data.status !== "SOLD" && data.status !== "SOLD_IN_TRANSIT"){
+      console.warn("Kept " + item.status + " on " + id + "; delete its sale in the Ledger to undo a sale");
+      data = Object.assign({}, data);
+      delete data.status;
+    }
     return origUpdateInventory.call(this, id, data);
   };
 
@@ -216,7 +221,9 @@
       const schema = origInventorySchema(rec);
       const statusField = schema.fields.find(f => f.key === "status");
       if (statusField && Array.isArray(statusField.options)){
-        statusField.options = statusField.options.filter(s => s !== "SOLD" && s !== "SOLD_IN_TRANSIT");
+        statusField.options = rec && inventoryIsSold(rec)
+          ? [rec.status]
+          : statusField.options.filter(s => s !== "SOLD" && s !== "SOLD_IN_TRANSIT");
       }
       return schema;
     };

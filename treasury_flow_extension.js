@@ -256,7 +256,8 @@ const PNCoreRemoveInventoryTreasuryFlow = Actions.removeInventory;
 Actions.removeInventory = function(id){
   const item = Store.get("inventory", id);
   const ledger = Store.load();
-  if (item) removeTreasuryFlow(ledger.treasury, "inventory", item.id, "ACQUISITION");
+  const sold = !!item && (item.status === "SOLD" || item.status === "SOLD_IN_TRANSIT" || Store.all("sales").some(s => s.inventoryItemId === item.id && saleStateResolved(s) === "COMPLETED"));
+  if (item && !sold) removeTreasuryFlow(ledger.treasury, "inventory", item.id, "ACQUISITION");
   Store.persist();
   return PNCoreRemoveInventoryTreasuryFlow.call(this, id);
 };
@@ -279,7 +280,9 @@ Actions.updateMail = function(id, data){
   if (result && before){
     const treasury = Store.load().treasury;
     const kind = result.direction === "incoming" ? "SHIPPING_IN" : "SHIPPING_OUT";
+    const oldKind = before.direction === "incoming" ? "SHIPPING_IN" : "SHIPPING_OUT";
     const amt = Number(result.shippingCost) || 0;
+    if (oldKind !== kind && removeTreasuryFlow(treasury, "mail", id, oldKind)) Store.persist();
     if (amt > 0 || findTreasuryFlow(treasury, "mail", id, kind)){
       const existing = findTreasuryFlow(treasury, "mail", id, kind);
       const currencyChanged = !!existing && String(existing.currency || "RSD").toUpperCase() !== String(result.currency || "RSD").toUpperCase();
@@ -302,6 +305,7 @@ Actions.removeMail = function(id){
 
 
 /* PN TREASURY SINGLE AUTHORITY V4 REPAIR */
+const PN_TREASURY_V4_LEGACY_FLOWS_BEFORE = "2026-09-17T07:18:02Z";
 (function pnRepairRetroactiveLegacyAcquisitionFlowsV4(){
   const ledger = Store.load();
   const treasury = ledger && ledger.treasury;
@@ -315,8 +319,10 @@ Actions.removeMail = function(id){
     row itself is created. The old bug created ACQUISITION flows days/weeks
     later during unrelated edits (LISTED -> SOLD, notes, assignment, etc.).
     Those late-created flows are invalid for legacy inventory and must be
-    refunded exactly once.
+    refunded exactly once. The bug was fixed when V4 shipped, so any flow
+    created after that (currency edits, missing-flow repairs) is legitimate.
   */
+  const legacyBefore = Date.parse(PN_TREASURY_V4_LEGACY_FLOWS_BEFORE);
   const suspicious = treasury.flows.slice().filter(flow => {
     if (!flow || flow.refType !== "inventory" || flow.kind !== "ACQUISITION") return false;
     const item = inventory.find(x => x && x.id === flow.refId);
@@ -324,7 +330,7 @@ Actions.removeMail = function(id){
     const itemTs = Date.parse(item.createdAt);
     const flowTs = Date.parse(flow.createdAt);
     if (!Number.isFinite(itemTs) || !Number.isFinite(flowTs)) return false;
-    return flowTs - itemTs > 10 * 60 * 1000;
+    return flowTs < legacyBefore && flowTs - itemTs > 10 * 60 * 1000;
   });
 
   suspicious.forEach(flow => {
@@ -381,4 +387,36 @@ function pnTreasuryV5Candidates(ledger){
   ledger.meta.treasuryAcquisitionRepairV5At = nowISO();
   Store.persist();
   console.info("[PROFITNODE] TREASURY SINGLE AUTHORITY V5 active · repaired", candidates.length, "missing canonical acquisition flow(s).");
+})();
+
+/* PN TREASURY SINGLE AUTHORITY V6 WRONG-REFUND REPAIR */
+function pnTreasuryV6Candidates(ledger){
+  const treasury = ledger && ledger.treasury;
+  if (!treasury || !Array.isArray(treasury.flows)) return [];
+  const refunded = ledger.meta && Array.isArray(ledger.meta.treasuryV4RefundedAcquisitions) ? ledger.meta.treasuryV4RefundedAcquisitions : [];
+  const since = Date.parse(PN_TREASURY_ACQUISITION_CHARGING_SINCE);
+  return (Array.isArray(ledger.inventory) ? ledger.inventory : []).filter(item => {
+    if (!item || !refunded.includes(item.id) || findTreasuryFlow(treasury, "inventory", item.id, "ACQUISITION")) return false;
+    const itemTs = Date.parse(item.createdAt || "");
+    return Number.isFinite(itemTs) && itemTs >= since && (Number(item.purchasePrice) || 0) > 0;
+  });
+}
+(function pnRepairWrongV4RefundsV6(){
+  const ledger = Store.load();
+  if (!ledger || !ledger.treasury || !Array.isArray(ledger.treasury.flows)) return;
+  if (ledger.meta && ledger.meta.treasuryAcquisitionRepairV6At) return;
+  const candidates = pnTreasuryV6Candidates(ledger);
+
+  candidates.forEach(item => {
+    const price = Number(item.purchasePrice) || 0;
+    applyTreasuryChange(ledger.treasury, "inventory", item.id, "ACQUISITION", price, item.currency || "RSD", "Inventory purchase");
+    console.warn("[PROFITNODE] Restored wrongly refunded acquisition deduction:", ((item.manufacturer || "") + " " + (item.model || "")).trim(), price, item.currency || "RSD");
+  });
+
+  ledger.meta = ledger.meta || {};
+  const restored = candidates.map(item => item.id);
+  ledger.meta.treasuryV4RefundedAcquisitions = (ledger.meta.treasuryV4RefundedAcquisitions || []).filter(id => !restored.includes(id));
+  ledger.meta.treasuryAcquisitionRepairV6At = nowISO();
+  Store.persist();
+  console.info("[PROFITNODE] TREASURY SINGLE AUTHORITY V6 active · restored", candidates.length, "wrongly refunded acquisition flow(s).");
 })();

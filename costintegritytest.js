@@ -160,8 +160,11 @@ const seed = env.run(seedSb, `(function(){
   L.timeline.filter(ev => ev.relatedId === legacy.id).forEach(ev => { ev.createdAt = old; });
   [legacy.id, recent.id].forEach(id => removeTreasuryFlow(L.treasury, 'inventory', id, 'ACQUISITION'));
   const lateFlow = findTreasuryFlow(L.treasury, 'inventory', late.id, 'ACQUISITION');
-  lateFlow.createdAt = new Date(Date.parse(byId(late.id).createdAt) + 3600e3).toISOString();
+  byId(late.id).createdAt = old;
+  L.timeline.filter(ev => ev.relatedId === late.id).forEach(ev => { ev.createdAt = old; });
+  lateFlow.createdAt = '2026-09-16T10:00:00.000Z';
   delete L.meta.treasuryAcquisitionRepairV5At;
+  delete L.meta.treasuryAcquisitionRepairV6At;
   Store.persist();
   return {legacy: legacy.id, recent: recent.id, late: late.id};
 })()`);
@@ -228,6 +231,70 @@ const acq = [
   ['ACQ: deleting the item refunds its purchase and removes the flow', a8.rsd === 90000 + 2700 && a8.flows === 0]
 ];
 for (const [name, ok] of acq) {
+  if (assert(name, ok)) passed++; else failed++;
+}
+
+// --- MONEY. Audit fixes: V4 spares legitimate late flows, V6 restores wrong refunds, mail direction, sold project price ---
+const moneySb = bootWith(null);
+env.run(moneySb, `(()=>{const t=pnTreasuryCoreDraft(Store.load().treasury);t.balances.find(b=>b.sourceKey==='CASH_RSD').amount=100000;t.balances.find(b=>b.sourceKey==='CASH_EUR').amount=1000;Store.load().treasury=t;Store.persist()})()`);
+const moneyCash = (sb, cur) => env.run(sb, `(Store.load().treasury.balances.find(b=>b.sourceKey==='CASH_${cur}')||{}).amount`);
+const moneySeed = env.run(moneySb, `(function(){
+  const add = (model, price, cur) => Actions.addInventory({category:'GPU',manufacturer:'Money',model:model,purchaseDate:'2026-09-20',purchasePrice:price,currency:cur,estimatedMarketValue:price,source:'OTHER',condition:'WORKING',status:'IN_STORAGE',notes:''});
+  const repaired = add('V5 Repaired', 2700, 'RSD'), currency = add('Currency Edit', 50, 'RSD'), wrong = add('Wrong Refund', 1500, 'RSD');
+  const L = Store.load(), older = '2026-09-20T10:00:00.000Z';
+  [repaired, currency, wrong].forEach(x => { L.inventory.find(i => i.id === x.id).createdAt = older; L.timeline.filter(ev => ev.relatedId === x.id).forEach(ev => { ev.createdAt = older; }); });
+  removeTreasuryFlow(L.treasury, 'inventory', repaired.id, 'ACQUISITION');
+  removeTreasuryFlow(L.treasury, 'inventory', wrong.id, 'ACQUISITION');
+  L.meta.treasuryV4RefundedAcquisitions = [wrong.id];
+  delete L.meta.treasuryAcquisitionRepairV5At; delete L.meta.treasuryAcquisitionRepairV6At;
+  Store.persist();
+  Actions.updateInventory(currency.id, {currency:'EUR'});
+  return {repaired: repaired.id, currency: currency.id, wrong: wrong.id};
+})()`);
+const moneyRsd0 = moneyCash(moneySb, 'RSD'), moneyEur0 = moneyCash(moneySb, 'EUR');
+let moneyBoot = bootWith(moneySb.localStorage.getItem('profitnode_ledger_v1'));
+const moneyRsd1 = moneyCash(moneyBoot, 'RSD');
+moneyBoot = bootWith(moneyBoot.localStorage.getItem('profitnode_ledger_v1'));
+moneyBoot = bootWith(moneyBoot.localStorage.getItem('profitnode_ledger_v1'));
+const moneyRsd3 = moneyCash(moneyBoot, 'RSD');
+const moneyFlow = id => env.run(moneyBoot, `Store.load().treasury.flows.filter(f=>f.refType==='inventory'&&f.refId==='${id}'&&f.kind==='ACQUISITION').length`);
+const moneyMeta = env.run(moneyBoot, `JSON.stringify(Store.load().meta.treasuryV4RefundedAcquisitions||[])`);
+const mailRun = JSON.parse(env.run(moneyBoot, `(()=>{const cash=()=>Store.load().treasury.balances.find(b=>b.sourceKey==='CASH_RSD').amount,c0=cash(),m=Actions.addMail({direction:'incoming',linkedType:'none',linkedId:null,shippingCost:500,currency:'RSD',status:'IN_TRANSIT',dateSent:todayISO()});Actions.updateMail(m.id,{direction:'outgoing'});const switched=c0-cash(),kinds=Store.load().treasury.flows.filter(f=>f.refId===m.id).map(f=>f.kind);Actions.removeMail(m.id);return JSON.stringify({switched,kinds,afterDelete:c0-cash()})})()`));
+const projRun = JSON.parse(env.run(moneyBoot, `(()=>{const cash=()=>Store.load().treasury.balances.find(b=>b.sourceKey==='CASH_RSD').amount,c0=cash(),p=Actions.addProject({name:'Money Sold',startDate:todayISO(),status:'LISTED',purpose:'FLIP',currency:'RSD'});Actions.updateProject(p.id,{status:'SOLD',salePrice:20000});const sold=cash()-c0;Actions.updateProject(p.id,{salePrice:25000});return JSON.stringify({sold,edited:cash()-c0,sales:Store.all('sales').filter(s=>s.projectId===p.id).map(s=>s.buyerPrice)})})()`));
+const money = [
+  ['MONEY: a V5 repair charge on an older item survives later loads', moneyRsd1 === moneyRsd0 - 2700 - 1500 && moneyRsd3 === moneyRsd1 && moneyFlow(moneySeed.repaired) === 1],
+  ['MONEY: changing an older item currency moves its charge and survives reloads', moneyEur0 === 950 && moneyCash(moneyBoot, 'EUR') === 950 && moneyFlow(moneySeed.currency) === 1],
+  ['MONEY: V6 re-charges a post-cutoff item V4 wrongly refunded, once, and clears it from the refund list', moneyFlow(moneySeed.wrong) === 1 && moneyMeta === '[]'],
+  ['MONEY: switching a shipment direction keeps exactly one shipping charge', mailRun.switched === 500 && mailRun.kinds.join() === 'SHIPPING_OUT'],
+  ['MONEY: deleting a direction-switched shipment refunds it fully', mailRun.afterDelete === 0],
+  ['MONEY: editing a sold project sale price updates its single sale and cash credit', projRun.sold === 20000 && projRun.edited === 25000 && projRun.sales.join() === '25000']
+];
+for (const [name, ok] of money) {
+  if (assert(name, ok)) passed++; else failed++;
+}
+
+// --- SOLD. Marked SOLD means sold for the entered amount; leaving SOLD reverses it ---
+const soldRun = JSON.parse(env.run(moneyBoot, `(()=>{const cash=()=>Store.load().treasury.balances.find(b=>b.sourceKey==='CASH_RSD').amount,out={};
+const it=Actions.addInventory({category:'GPU',manufacturer:'Sold',model:'Rule GPU',purchaseDate:todayISO(),purchasePrice:5000,currency:'RSD',estimatedMarketValue:9000,source:'OTHER',condition:'WORKING',status:'IN_STORAGE',notes:''});
+let c0=cash();Actions.markInventorySold(it.id,{salePrice:9000,saleCurrency:'RSD',saleDate:todayISO()});Actions.markInventoryDelivered(it.id);out.invSold=cash()-c0;
+out.formOptions=FORM_SCHEMAS.inventory(Store.get('inventory',it.id)).fields.find(f=>f.key==='status').options;
+Actions.updateInventory(it.id,{status:'INCOMING',notes:'edited'});const after=Store.get('inventory',it.id);out.invEdit={status:after.status,notes:after.notes,credit:cash()-c0};
+const p=Actions.addProject({name:'Sold Rule',startDate:todayISO(),status:'LISTED',purpose:'FLIP',currency:'RSD'}),part=Actions.addInventory({category:'CPU',manufacturer:'Sold',model:'Rule CPU',purchaseDate:todayISO(),purchasePrice:1000,currency:'RSD',estimatedMarketValue:1500,source:'OTHER',condition:'WORKING',status:'IN_STORAGE',notes:''});
+Actions.setProjectSlot(p.id,'CPU','INVENTORY',{inventoryItemId:part.id});c0=cash();Actions.updateProject(p.id,{status:'SOLD',salePrice:20000});out.projSold={credit:cash()-c0,part:Store.get('inventory',part.id).status};
+Actions.updateProject(p.id,{status:'LISTED'});out.projUnsold={credit:cash()-c0,sales:Store.all('sales').filter(s=>s.projectId===p.id).length,part:Store.get('inventory',part.id).status};
+Actions.updateProject(p.id,{status:'SOLD',salePrice:22000});out.projResold={credit:cash()-c0,sales:Store.all('sales').filter(s=>s.projectId===p.id).length};
+return JSON.stringify(out)})()`));
+const sold = [
+  ['SOLD: marking an inventory item sold credits exactly the entered 9000', soldRun.invSold === 9000],
+  ['SOLD: a sold item edit form offers only its sold status', soldRun.formOptions.join() === 'SOLD'],
+  ['SOLD: a generic edit keeps a sold item SOLD, applies other fields, and keeps its credit', soldRun.invEdit.status === 'SOLD' && soldRun.invEdit.notes === 'edited' && soldRun.invEdit.credit === 9000],
+  ['SOLD: marking a project SOLD credits its sale price and marks its parts SOLD', soldRun.projSold.credit === 20000 && soldRun.projSold.part === 'SOLD'],
+  ['SOLD: moving a project off SOLD removes its sale and credit and returns its parts', soldRun.projUnsold.credit === 0 && soldRun.projUnsold.sales === 0 && soldRun.projUnsold.part === 'IN_BUILD'],
+  ['SOLD: re-selling a project records one new sale at the new price', soldRun.projResold.credit === 22000 && soldRun.projResold.sales === 1]
+];
+const soldDelete = env.run(moneyBoot, `(()=>{const cash=()=>Store.load().treasury.balances.find(b=>b.sourceKey==='CASH_RSD').amount,c0=cash(),it=Actions.addInventory({category:'GPU',manufacturer:'Sold',model:'Deleted After Sale',purchaseDate:todayISO(),purchasePrice:3000,currency:'RSD',estimatedMarketValue:5000,source:'OTHER',condition:'WORKING',status:'IN_STORAGE',notes:''});Actions.markInventorySold(it.id,{salePrice:5000,saleCurrency:'RSD',saleDate:todayISO()});Actions.removeInventory(it.id);return cash()-c0})()`);
+sold.push(['SOLD: deleting a sold item keeps both its purchase and its sale (net +2000)', soldDelete === 2000]);
+for (const [name, ok] of sold) {
   if (assert(name, ok)) passed++; else failed++;
 }
 

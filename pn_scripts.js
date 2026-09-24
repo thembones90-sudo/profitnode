@@ -1,6 +1,6 @@
 "use strict";
 window.__PN_SCRIPTS = [
-  "app_core.js?v=build-lifecycle-fx-v1",
+  "app_core.js?v=project-sold-status-truth-v1",
   "cpu_revaluation_extension.js?v=v3-stack-20260912b",
   "gpu_revaluation_extension.js?v=v3-stack-20260912b",
   "motherboard_revaluation_extension.js?v=v3-stack-20260912b",
@@ -27,12 +27,12 @@ window.__PN_SCRIPTS = [
   "my_rig_cleanup_v1.js?v=my-rig-cleanup-v1",
   "sidebar_cleanup_extension.js?v=product-refinement-v3",
   "mail_extension.js?v=posta-widget-caption-fix-v1",
-  "treasury_flow_extension.js?v=treasury-acquisition-repair-v6-scoped",
+  "treasury_flow_extension.js?v=treasury-money-audit-v2",
   "monthly_tribute_extension.js?v=tribute-picture-icons-override-fix-v2",
   "official_tribute_icons_v1.js?v=official-tribute-icons-v1",
   "official_tribute_icon_scale_v2.js?v=official-tribute-icon-scale-v2",
   "tribute_icon_normalize_v1.js?v=tribute-icon-normalize-v1",
-  "sold_transaction_extension.js?v=sold-in-transit-v1",
+  "sold_transaction_extension.js?v=sold-status-locked-v1",
   "project_build_extension.js?v=build-lifecycle-ui-v1",
   "project_build_acquisition_extension.js?v=build-cost-provenance-v1",
   "project_delete_extension.js?v=project-delete-v1",
