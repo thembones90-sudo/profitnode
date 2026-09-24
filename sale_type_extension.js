@@ -120,6 +120,10 @@ function saleSummary(currency){
   };
 }
 
+function giftBadgeImageHtml(){
+  return '<span class="pn-gift-badge-image" aria-label="GIFT" title="Gifted rig"></span>';
+}
+
 function saleFilterButton(label,value,current){
   return '<button type="button" class="pn-sales-filter'+(current===value?" active":"")+'" data-sale-type-filter="'+value+'">'+label+'</button>';
 }
@@ -152,7 +156,7 @@ function renderSales(){
           '<div class="sale-item-with-type">'+
             '<b>'+escHtml(sale.itemName)+'</b>'+
             '<span class="chip '+saleTypeChipClass(type)+'">'+escHtml(type)+'</span>'+
-            (disposition==='GIFT'?'<span class="chip chip-green-outline">GIFT</span>':'')+
+            (disposition==='GIFT'?giftBadgeImageHtml():'')+
           '</div>'+
           '<div class="pn-sale-origin">'+escHtml(source)+'</div>'+
         '</div>'+
