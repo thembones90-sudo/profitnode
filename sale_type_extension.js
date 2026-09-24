@@ -121,7 +121,15 @@ function saleSummary(currency){
 }
 
 function giftBadgeImageHtml(){
-  return '<img class="pn-gift-badge-image" src="gift_badge_ui.svg?v=gift-present-v3" alt="GIFT" title="Gifted rig">';
+  return '<span class="pn-gift-present" aria-label="GIFT" title="Gifted rig">'+
+    '<span class="pn-gift-bow pn-gift-bow-left"></span>'+
+    '<span class="pn-gift-bow pn-gift-bow-right"></span>'+
+    '<span class="pn-gift-box">'+
+      '<span class="pn-gift-ribbon-v"></span>'+
+      '<span class="pn-gift-ribbon-h"></span>'+
+      '<span class="pn-gift-label">GIFT</span>'+
+    '</span>'+
+  '</span>';
 }
 
 function saleFilterButton(label,value,current){

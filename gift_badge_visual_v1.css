@@ -1,10 +1,73 @@
-.pn-gift-badge-image{
-  display:inline-block;
-  width:88px;
+.pn-gift-present{
+  position:relative;
+  display:inline-flex;
+  align-items:flex-end;
+  justify-content:center;
+  width:74px;
   height:30px;
   margin-left:8px;
   vertical-align:middle;
-  object-fit:contain;
   flex:0 0 auto;
 }
-.pn-sale-item .pn-gift-badge-image{position:relative;top:0}
+.pn-gift-box{
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:68px;
+  height:22px;
+  border:1.5px solid #29ef92;
+  border-radius:4px;
+  background:linear-gradient(180deg,#0b1713,#07100d);
+  box-shadow:0 0 5px rgba(41,239,146,.28),inset 0 0 8px rgba(41,239,146,.06);
+  overflow:hidden;
+}
+.pn-gift-ribbon-v{
+  position:absolute;
+  top:0;bottom:0;
+  left:50%;
+  width:5px;
+  transform:translateX(-50%);
+  background:rgba(41,239,146,.16);
+  border-left:1px solid rgba(41,239,146,.65);
+  border-right:1px solid rgba(41,239,146,.65);
+}
+.pn-gift-ribbon-h{
+  position:absolute;
+  left:0;right:0;
+  top:7px;
+  height:4px;
+  background:rgba(41,239,146,.14);
+  border-top:1px solid rgba(41,239,146,.5);
+  border-bottom:1px solid rgba(41,239,146,.5);
+}
+.pn-gift-bow{
+  position:absolute;
+  top:0;
+  width:14px;
+  height:9px;
+  border:1.5px solid #29ef92;
+  background:#08130f;
+  box-shadow:0 0 5px rgba(41,239,146,.35);
+  z-index:2;
+}
+.pn-gift-bow-left{
+  left:24px;
+  border-radius:10px 10px 2px 10px;
+  transform:rotate(24deg);
+}
+.pn-gift-bow-right{
+  right:24px;
+  border-radius:10px 10px 10px 2px;
+  transform:rotate(-24deg);
+}
+.pn-gift-label{
+  position:relative;
+  z-index:3;
+  color:#42ff9f;
+  font-size:9px;
+  line-height:1;
+  font-weight:900;
+  letter-spacing:.13em;
+  text-shadow:0 0 4px rgba(66,255,159,.45);
+}
