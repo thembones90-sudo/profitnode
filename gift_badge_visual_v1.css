@@ -1,10 +1,10 @@
 .pn-gift-badge-image{
   display:inline-block;
-  width:72px;
-  height:24px;
+  width:88px;
+  height:30px;
   margin-left:8px;
   vertical-align:middle;
   object-fit:contain;
-  filter:drop-shadow(0 0 5px rgba(62,207,126,.35));
+  flex:0 0 auto;
 }
-.pn-sale-item .pn-gift-badge-image{position:relative;top:1px}
+.pn-sale-item .pn-gift-badge-image{position:relative;top:0}

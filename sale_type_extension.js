@@ -121,7 +121,7 @@ function saleSummary(currency){
 }
 
 function giftBadgeImageHtml(){
-  return '<img class="pn-gift-badge-image" src="gift_badge_ui.png?v=gift-present-v2" alt="GIFT" title="Gifted rig">';
+  return '<img class="pn-gift-badge-image" src="gift_badge_ui.svg?v=gift-present-v3" alt="GIFT" title="Gifted rig">';
 }
 
 function saleFilterButton(label,value,current){
