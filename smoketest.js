@@ -1772,7 +1772,7 @@ const projectBuildProbe = `
   out.push(['FAMILY / GIFT completion ends in GIFTED rather than SOLD/COMPLETED', giftDone.ok && giftFinal.status==='GIFTED' && giftFinal.buildLocked===true]);
   out.push(['GIFTED rig creates one completed RIG ledger entry marked GIFT with zero revenue', !!giftSale && saleIsCompleted(giftSale) && saleTypeResolved(giftSale)==='RIG' && giftSale.buyerPrice===0 && saleDispositionResolved(giftSale)==='GIFT']);
   out.push(['GIFTED rig reduces realized profit by its full cost basis exactly once', afterGiftProfit===beforeGiftProfit-giftCost]);
-  out.push(['LEDGER visually distinguishes GIFT from sold rigs and tracks gifted count', giftHtml.includes('GIFTED RIGS') && giftHtml.includes('pn-gift-badge-image')]);
+  out.push(['LEDGER visually distinguishes GIFT from sold rigs and tracks gifted count', giftHtml.includes('GIFTED RIGS') && giftHtml.includes('pn-gift-present') && giftHtml.includes('pn-gift-box')]);
 
   return out;
 })()
