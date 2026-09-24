@@ -185,6 +185,52 @@ for (const [name, ok] of v5) {
   if (assert(name, ok)) passed++; else failed++;
 }
 
+// --- ACQ. Genuine purchases deduct exactly once and survive reloads, edits and a recount opened before the purchase ---
+const acqSb = bootWith(null);
+env.run(acqSb, `(()=>{const t=pnTreasuryCoreDraft(Store.load().treasury);t.balances.find(b=>b.sourceKey==='CASH_RSD').amount=100000;t.balances.find(b=>b.sourceKey==='CASH_EUR').amount=500;Store.load().treasury=t;Store.persist()})()`);
+const acqState = (sb, id) => env.run(sb, `(()=>{const T=Store.load().treasury,bal=k=>(T.balances.find(b=>b.sourceKey===k)||{}).amount,fl=T.flows.filter(f=>f.refType==='inventory'&&f.refId==='${id}'&&f.kind==='ACQUISITION');return {rsd:bal('CASH_RSD'),eur:bal('CASH_EUR'),flows:fl.length,signed:fl[0]&&fl[0].signedDelta,rsdPools:T.balances.filter(b=>b.sourceKey==='CASH_RSD').length}})()`);
+const acqAdd = (sb, model, price, cur) => env.run(sb, `Actions.addInventory({category:'GPU',manufacturer:'Test',model:'${model}',purchaseDate:todayISO(),purchasePrice:${price},currency:'${cur}',estimatedMarketValue:${price},source:'OTHER',condition:'WORKING',status:'IN_STORAGE',notes:''}).id`);
+const acqSave = sb => env.run(sb, `(()=>{const ledger=Store.load();ledger.treasury=normalizeTreasury(pnTreasuryRebaseDraft(state.treasuryDraft,state.treasuryDraftBase,pnTreasuryData()));Store.persist();state.treasuryDraft=null})()`);
+const acqOpen = sb => env.run(sb, `(()=>{state.treasuryDraft=pnTreasuryClone();state.treasuryDraftBase=pnTreasuryDraftBase(state.treasuryDraft)})()`);
+const rsdId = acqAdd(acqSb, 'Acq 2700', 2700, 'RSD');
+const a1 = acqState(acqSb, rsdId);
+const eurId = acqAdd(acqSb, 'Acq 50', 50, 'EUR');
+const a2 = acqState(acqSb, eurId);
+const proj = env.run(acqSb, `Actions.addProject({name:'ACQ',startDate:todayISO(),status:'PLANNING',purpose:'FLIP',currency:'RSD'}).id`);
+env.run(acqSb, `(()=>{Actions.updateInventory('${rsdId}',{notes:'edited'});Actions.updateInventory('${rsdId}',{status:'LISTED'});Actions.setProjectSlot('${proj}','GPU','INVENTORY',{inventoryItemId:'${rsdId}'})})()`);
+const a3 = acqState(acqSb, rsdId);
+const acqReload = bootWith(acqSb.localStorage.getItem('profitnode_ledger_v1'));
+const a4 = acqState(acqReload, rsdId);
+acqOpen(acqReload);
+const lateId = acqAdd(acqReload, 'Acq During Recount', 2700, 'RSD');
+acqSave(acqReload);
+const a5 = acqState(acqReload, lateId);
+acqOpen(acqReload);
+env.run(acqReload, `state.treasuryDraft.balances.find(b=>b.sourceKey==='CASH_RSD').amount=90000`);
+const typedId = acqAdd(acqReload, 'Acq Before Typed Recount', 1000, 'RSD');
+acqSave(acqReload);
+const a6 = acqState(acqReload, typedId);
+const freshSb = bootWith(null);
+acqOpen(freshSb);
+const freshId = acqAdd(freshSb, 'Acq New Pool', 2700, 'RSD');
+acqSave(freshSb);
+const a7 = acqState(freshSb, freshId);
+env.run(acqReload, `Actions.removeInventory('${lateId}')`);
+const a8 = acqState(acqReload, lateId);
+const acq = [
+  ['ACQ: a 2700 RSD purchase deducts CASH_RSD once with a single -2700 ACQUISITION flow', a1.rsd === 97300 && a1.flows === 1 && a1.signed === -2700],
+  ['ACQ: a 50 EUR purchase deducts CASH_EUR only', a2.eur === 450 && a2.rsd === 97300 && a2.flows === 1 && a2.signed === -50],
+  ['ACQ: note, status and build-assignment edits never deduct again', a3.rsd === 97300 && a3.flows === 1],
+  ['ACQ: the deduction survives a reload', a4.rsd === 97300 && a4.flows === 1],
+  ['ACQ: saving a recount opened before a purchase keeps that purchase deduction and flow', a5.rsd === 94600 && a5.flows === 1 && a5.signed === -2700],
+  ['ACQ: a retyped recount amount still wins while the purchase flow is kept', a6.rsd === 90000 && a6.flows === 1],
+  ['ACQ: a cash pool first created during an open recount is merged, not duplicated or reset', a7.rsd === -2700 && a7.rsdPools === 1 && a7.flows === 1],
+  ['ACQ: deleting the item refunds its purchase and removes the flow', a8.rsd === 90000 + 2700 && a8.flows === 0]
+];
+for (const [name, ok] of acq) {
+  if (assert(name, ok)) passed++; else failed++;
+}
+
 console.log('');
 console.log('COST INTEGRITY: ' + passed + ' passed, ' + failed + ' failed');
 process.exit(failed === 0 ? 0 : 1);
