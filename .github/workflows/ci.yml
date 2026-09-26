@@ -18,6 +18,7 @@ jobs:
       - run: node rendertest.js
       - run: node hardwaretest.js
       - run: node costintegritytest.js
+      - run: node auditintegritytest.js
       - run: node mailparsertest.js
       - run: node mailworkflowtest.js
       - id: setup-chrome
