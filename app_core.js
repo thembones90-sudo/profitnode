@@ -182,7 +182,7 @@ estimatedMarketValue:a.estimatedMarketValue,expectedSalePrice:a.expectedSalePric
 removeRig(e){const t=Store.get("rigs",e);if(!t)return;RIG_SLOTS.forEach(a=>{const r=t.slots[a]
 ;if(r&&"INVENTORY"===r.kind){const t=Store.get("inventory",r.inventoryItemId)
 ;t&&t.assignedRigId===e&&Store.update("inventory",t.id,{assignedRigId:null,status:"SOLD"===t.status?t.status:"IN_STORAGE"})}}),Store.remove("rigs",e)},
-assembleRig(e){const t=Store.get("rigs",e);if(!t)return{ok:!1,error:"Rig not found."}
+assembleRig(e){const t=Store.get("rigs",e);if(!t)return{ok:!1,error:"Rig not found."};if(t.status==="ASSEMBLED")return{ok:!1,error:"Rig is already assembled."};if(t.status==="SOLD")return{ok:!1,error:"Sold rigs cannot be assembled."}
 ;const a=RIG_SLOTS.filter(e=>t.slots[e]&&"INVENTORY"===t.slots[e].kind);for(const r of a){const a=t.slots[r],n=Store.get("inventory",a.inventoryItemId)
 ;if(!n)return{ok:!1,error:"A selected inventory item no longer exists ("+r+")."}
 ;const avail=this.inventoryAvailability(n,{rigId:e});if(!avail.ok)return{ok:!1,error:avail.error}}
