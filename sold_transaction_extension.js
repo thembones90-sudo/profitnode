@@ -181,22 +181,28 @@
     return {ok:!0, id};
   };
 
-  Store.all("inventory").filter(item =>
-    inventoryIsSold(item) && inventorySaleTransactionId(item) &&
-    !inventorySaleRecord(item) && Number(item.salePrice) > 0
-  ).forEach(item => {
-    const result = Actions.markInventorySold(item.id, {
-      salePrice: item.salePrice,
-      saleCurrency: item.saleCurrency || item.currency,
-      saleDate: item.saleDate || todayISO(),
-      saleChannel: item.saleChannel || "",
-      saleDetail: item.saleDetail || "",
-      saleNotes: item.saleNotes || ""
+  const soldMigrationLedger = Store.load();
+  soldMigrationLedger.meta = soldMigrationLedger.meta || {};
+  if (!soldMigrationLedger.meta.soldTransactionMigrationV3){
+    Store.all("inventory").filter(item =>
+      inventoryIsSold(item) && inventorySaleTransactionId(item) &&
+      !inventorySaleRecord(item) && Number(item.salePrice) > 0
+    ).forEach(item => {
+      const result = Actions.markInventorySold(item.id, {
+        salePrice: item.salePrice,
+        saleCurrency: item.saleCurrency || item.currency,
+        saleDate: item.saleDate || todayISO(),
+        saleChannel: item.saleChannel || "",
+        saleDetail: item.saleDetail || "",
+        saleNotes: item.saleNotes || ""
+      });
+      if (result.ok){
+        Timeline.log("SALE_MIGRATED", ((item.manufacturer || "")+" "+(item.model || "")).trim()+" SALE RECORD MIGRATED", "Linked the confirmed legacy sale to the Sales Ledger; Treasury cash was preserved.", todayISO(), "sale", result.saleId);
+      }
     });
-    if (result.ok){
-      Timeline.log("SALE_MIGRATED", ((item.manufacturer || "")+" "+(item.model || "")).trim()+" SALE RECORD MIGRATED", "Linked the confirmed legacy sale to the Sales Ledger; Treasury cash was preserved.", todayISO(), "sale", result.saleId);
-    }
-  });
+    soldMigrationLedger.meta.soldTransactionMigrationV3 = nowISO();
+    Store.persist();
+  }
 
   // ---- block direct status=SOLD/SOLD_IN_TRANSIT through generic update ----
   const origUpdateInventory = Actions.updateInventory;
