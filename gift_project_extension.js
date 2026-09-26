@@ -10,6 +10,12 @@
   if (typeof PROJECT_STATUS_META !== "undefined") {
     PROJECT_STATUS_META[GIFT_STATUS] = {chip:"chip-green-outline"};
   }
+  if (typeof INVENTORY_STATUSES !== "undefined" && !INVENTORY_STATUSES.includes(GIFT_STATUS)) {
+    INVENTORY_STATUSES.push(GIFT_STATUS);
+  }
+  if (typeof INVENTORY_STATUS_META !== "undefined") {
+    INVENTORY_STATUS_META[GIFT_STATUS] = {chip:"chip-green-outline"};
+  }
 
   function isGiftProject(project){
     return !!project && project.purpose === "FAMILY_GIFT";
@@ -89,6 +95,9 @@
         completionDate:completed.completionDate || giftedAt.slice(0,10),
         buildLocked:true
       });
+      Store.all("inventory").filter(item=>item.assignedProjectId===projectId).forEach(item=>{
+        Store.update("inventory",item.id,{status:GIFT_STATUS});
+      });
       ensureGiftLedgerEntry(gifted);
       return {ok:true,project:gifted};
     };
@@ -97,26 +106,36 @@
   }
 
   let repaired = 0;
-  Store.all("projects").forEach(project => {
-    if (!isGiftProject(project) || !project.completionDate) return;
-    const looksFinished = project.buildLocked || ["BUILDING","TESTING","COMPLETED","GIFTED"].includes(project.status);
-    if (!looksFinished) return;
+  const giftLedger = Store.load();
+  giftLedger.meta = giftLedger.meta || {};
+  if (!giftLedger.meta.giftLifecycleV3RepairedAt) {
+    Store.all("projects").forEach(project => {
+      if (!isGiftProject(project) || !project.completionDate || !project.buildLocked) return;
+      if (!["COMPLETED","GIFTED"].includes(project.status)) return;
 
-    let current = project;
-    if (project.status !== GIFT_STATUS) {
-      current = Store.update("projects",project.id,{
-        status:GIFT_STATUS,
-        giftedAt:project.giftedAt || String(project.completionDate)+"T00:00:00.000Z",
-        buildLocked:true
+      let current = project;
+      if (project.status !== GIFT_STATUS) {
+        current = Store.update("projects",project.id,{
+          status:GIFT_STATUS,
+          giftedAt:project.giftedAt || String(project.completionDate)+"T00:00:00.000Z",
+          buildLocked:true
+        });
+        repaired++;
+      }
+      Store.all("inventory").filter(item=>item.assignedProjectId===current.id).forEach(item=>{
+        if (item.status !== GIFT_STATUS) {
+          Store.update("inventory",item.id,{status:GIFT_STATUS});
+          repaired++;
+        }
       });
-      repaired++;
-    }
-    if (!giftSaleForProject(current.id)) {
-      ensureGiftLedgerEntry(current);
-      repaired++;
-    }
-  });
+      if (!giftSaleForProject(current.id)) {
+        ensureGiftLedgerEntry(current);
+        repaired++;
+      }
+    });
+    giftLedger.meta.giftLifecycleV3RepairedAt = nowISO();
+    Store.persist();
+  }
 
-  if (repaired) Store.persist();
-  console.info("[PROFITNODE] GIFT PROJECT LIFECYCLE V2 active · repaired",repaired,"gift lifecycle/ledger item(s).");
+  console.info("[PROFITNODE] GIFT PROJECT LIFECYCLE V3 active · repaired",repaired,"gift lifecycle/ledger item(s).");
 })();
