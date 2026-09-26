@@ -60,10 +60,9 @@ const results = env.run(sandbox, `
   (function(){
     reset();
     const now = new Date();
-    const futureH = Math.min(23, now.getHours()+2);
-    const todayStr = now.toISOString().slice(0,10) + 'T' + String(futureH).padStart(2,'0') + ':00';
-    const yesterday = new Date(now); yesterday.setDate(now.getDate()-1);
-    const yestStr = yesterday.toISOString().slice(0,10) + 'T18:00';
+    const todayStr = todayISO() + 'T23:59:59';
+    const yesterday = new Date(now.getFullYear(),now.getMonth(),now.getDate()-1);
+    const yestStr = String(yesterday.getFullYear())+'-'+String(yesterday.getMonth()+1).padStart(2,'0')+'-'+String(yesterday.getDate()).padStart(2,'0')+'T18:00';
     const overdue = Actions.addMail({direction:'incoming', status:'ready_for_pickup', pickupDeadline:yestStr, pickupDeadlineSource:'explicit', description:'overdue'});
     const dueToday = Actions.addMail({direction:'incoming', status:'ready_for_pickup', pickupDeadline:todayStr, pickupDeadlineSource:'explicit', description:'today'});
     const uOver = mailPickupUrgency(overdue);

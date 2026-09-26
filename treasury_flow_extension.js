@@ -211,9 +211,14 @@ Actions.removeSale = function(id){
 
 const PNCoreAddInventoryTreasuryFlow = Actions.addInventory;
 Actions.addInventory = function(data){
-  const result = PNCoreAddInventoryTreasuryFlow.call(this, data);
-  applyTreasuryChange(Store.load().treasury, "inventory", result.id, "ACQUISITION", result.purchasePrice, result.currency, "Inventory purchase");
-  Store.persist();
+  const skipAcquisition = !!(data && data._skipTreasuryAcquisition);
+  const payload = Object.assign({}, data || {});
+  delete payload._skipTreasuryAcquisition;
+  const result = PNCoreAddInventoryTreasuryFlow.call(this, payload);
+  if (!skipAcquisition && result){
+    applyTreasuryChange(Store.load().treasury, "inventory", result.id, "ACQUISITION", result.purchasePrice, result.currency, "Inventory purchase");
+    Store.persist();
+  }
   return result;
 };
 
@@ -256,10 +261,82 @@ const PNCoreRemoveInventoryTreasuryFlow = Actions.removeInventory;
 Actions.removeInventory = function(id){
   const item = Store.get("inventory", id);
   const ledger = Store.load();
-  const sold = !!item && (item.status === "SOLD" || item.status === "SOLD_IN_TRANSIT" || Store.all("sales").some(s => s.inventoryItemId === item.id && saleStateResolved(s) === "COMPLETED"));
+  const sold = !!item && (item.status === "SOLD" || item.status === "SOLD_IN_TRANSIT" || item.status === "GIFTED" || Store.all("sales").some(s => s.inventoryItemId === item.id && saleStateResolved(s) === "COMPLETED"));
   if (item && !sold) removeTreasuryFlow(ledger.treasury, "inventory", item.id, "ACQUISITION");
   Store.persist();
   return PNCoreRemoveInventoryTreasuryFlow.call(this, id);
+};
+
+const PNCoreAddRepairTreasuryFlow = Actions.addRepair;
+Actions.addRepair = function(data){
+  const result = PNCoreAddRepairTreasuryFlow.call(this, data);
+  if (result && (Number(result.cost) || 0)){
+    applyTreasuryChange(Store.load().treasury, "repair", result.id, "REPAIR", result.cost, result.currency, "Repair cost");
+    Store.persist();
+  }
+  return result;
+};
+
+const PNCoreUpdateRepairTreasuryFlow = Actions.updateRepair;
+Actions.updateRepair = function(id, data){
+  const before = Store.get("repairs", id);
+  const result = PNCoreUpdateRepairTreasuryFlow.call(this, id, data);
+  if (!before || !result) return result;
+  const treasury = Store.load().treasury;
+  const existing = findTreasuryFlow(treasury, "repair", id, "REPAIR");
+  if (!existing) return result; // historical repairs remain uncharged unless created after this flow system
+  const nextCost = Number(result.cost) || 0;
+  const nextCur = String(result.currency || "RSD").toUpperCase();
+  if (String(existing.currency || "RSD").toUpperCase() !== nextCur) removeTreasuryFlow(treasury, "repair", id, "REPAIR");
+  applyTreasuryChange(treasury, "repair", id, "REPAIR", nextCost, nextCur, "Repair cost");
+  Store.persist();
+  return result;
+};
+
+const PNCoreRemoveRepairTreasuryFlow = Actions.removeRepair;
+Actions.removeRepair = function(id){
+  const treasury = Store.load().treasury;
+  if (findTreasuryFlow(treasury, "repair", id, "REPAIR")){
+    removeTreasuryFlow(treasury, "repair", id, "REPAIR");
+    Store.persist();
+  }
+  return PNCoreRemoveRepairTreasuryFlow.call(this, id);
+};
+
+const PNCoreAddProjectTreasuryFlow = Actions.addProject;
+Actions.addProject = function(data){
+  const result = PNCoreAddProjectTreasuryFlow.call(this, data);
+  const amount = result ? Number(result.additionalCosts) || 0 : 0;
+  if (result && amount > 0){
+    applyTreasuryChange(Store.load().treasury, "project", result.id, "PROJECT_ADDITIONAL", amount, result.currency, "Project additional costs");
+    const flow = findTreasuryFlow(Store.load().treasury, "project", result.id, "PROJECT_ADDITIONAL");
+    if (flow) flow.legacyBaseline = 0;
+    Store.persist();
+  }
+  return result;
+};
+
+const PNCoreUpdateProjectTreasuryFlow = Actions.updateProject;
+Actions.updateProject = function(id, data){
+  const before = Store.get("projects", id);
+  const result = PNCoreUpdateProjectTreasuryFlow.call(this, id, data);
+  if (!before || !result || !data || !Object.prototype.hasOwnProperty.call(data,"additionalCosts")) return result;
+  const oldAmount = Number(before.additionalCosts) || 0;
+  const newAmount = Number(result.additionalCosts) || 0;
+  if (oldAmount === newAmount) return result;
+  const treasury = Store.load().treasury;
+  let flow = findTreasuryFlow(treasury, "project", id, "PROJECT_ADDITIONAL");
+  const baseline = flow && Number.isFinite(Number(flow.legacyBaseline)) ? Number(flow.legacyBaseline) : (flow ? 0 : oldAmount);
+  const charge = Math.max(0, newAmount - baseline);
+  if (flow && String(flow.currency || "RSD").toUpperCase() !== String(result.currency || "RSD").toUpperCase()){
+    removeTreasuryFlow(treasury, "project", id, "PROJECT_ADDITIONAL");
+    flow = null;
+  }
+  applyTreasuryChange(treasury, "project", id, "PROJECT_ADDITIONAL", charge, result.currency, "Project additional costs");
+  flow = findTreasuryFlow(treasury, "project", id, "PROJECT_ADDITIONAL");
+  if (flow) flow.legacyBaseline = baseline;
+  Store.persist();
+  return result;
 };
 
 const PNCoreAddMailTreasuryFlow = Actions.addMail;

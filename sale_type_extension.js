@@ -415,7 +415,8 @@ if (Actions && Actions.addSale){
       payload.inventorySnapshot = {
         id: data.inventoryItemId,
         priorStatus: item ? item.status : null,
-        priorAssignedRigId: item ? item.assignedRigId || null : null
+        priorAssignedRigId: item ? item.assignedRigId || null : null,
+        priorAssignedProjectId: item ? item.assignedProjectId || null : null
       };
     }
     if (payload.saleState === "PENDING"){
@@ -441,11 +442,27 @@ if (Actions && Actions.removeSale){
     const result = PNCoreRemoveSaleLedger(id);
     if (sale && sale.inventoryItemId && sale.inventorySnapshot){
       const part = Store.get("inventory", sale.inventoryItemId);
-      const expectedStatus = saleIsCompleted(sale) ? "SOLD" : "LISTED";
-      if (part && part.status === expectedStatus){
+      const expectedStatuses = saleIsCompleted(sale) ? ["SOLD","SOLD_IN_TRANSIT"] : ["LISTED"];
+      if (part && expectedStatuses.includes(part.status)){
         Store.update("inventory", part.id, {
           status: sale.inventorySnapshot.priorStatus || "IN_STORAGE",
-          assignedRigId: sale.inventorySnapshot.priorAssignedRigId || null
+          assignedRigId: sale.inventorySnapshot.priorAssignedRigId || null,
+          assignedProjectId: sale.inventorySnapshot.priorAssignedProjectId || null,
+          saleTransactionId:null,
+          salePrice:null,
+          saleCurrency:null,
+          saleDate:null,
+          saleChannel:null,
+          saleDetail:null,
+          saleNotes:null,
+          assignedProjectId: sale.inventorySnapshot.priorAssignedProjectId || null,
+          saleTransactionId:null,
+          salePrice:null,
+          saleCurrency:null,
+          saleDate:null,
+          saleChannel:null,
+          saleDetail:null,
+          saleNotes:null
         });
       }
     }
@@ -466,7 +483,7 @@ if (Actions && Actions.updateSale){
     const stateChanged = saleStateResolved(sale) !== payload.saleState;
     if (previousLink && (next !== previousLink || stateChanged)){
       const part = Store.get("inventory", sale.inventoryItemId);
-      if (part && ["SOLD","LISTED"].includes(part.status) && sale.inventorySnapshot){
+      if (part && ["SOLD","SOLD_IN_TRANSIT","LISTED"].includes(part.status) && sale.inventorySnapshot){
         Store.update("inventory", part.id, {
           status: sale.inventorySnapshot.priorStatus || "IN_STORAGE",
           assignedRigId: sale.inventorySnapshot.priorAssignedRigId || null

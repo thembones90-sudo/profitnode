@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "excluded": {
+    "mail_cod_shop_fund_v1.js": "legacy duplicate cash-ledger integration; conflicts with Treasury authority",
+    "ledger_shop_fund_journal_v1.js": "legacy duplicate cash journal; conflicts with Treasury authority",
+    "shop_fund_doctrine_v6.js": "legacy hard-coded Shop Fund balances; unsafe second source of truth",
+    "shop_fund_reset_v7.js": "legacy hard-coded Shop Fund reset; unsafe second source of truth",
+    "mail_bex_parser_extension.js": "dormant parser experiment; requires dedicated integration tests before runtime",
+    "mail_shipment_dossier_visual_v3.js": "dormant presentation experiment; intentionally not production runtime",
+    "profitnode_intel_refinement_v2.js": "dormant refinement experiment; intentionally not production runtime",
+    "sidebar_identity_v1.js": "superseded by sidebar_cleanup_extension.js",
+    "cool_tribute_semantic_icons_v1.js": "superseded tribute icon experiment",
+    "roulette_v4_reforge_extension.js": "superseded roulette experiment",
+    "cooler_canonical_inventory_fix_v1.js": "one-off data repair; must not execute on every production boot",
+    "profit_blueprints_muster_v2.js": "dormant blueprint prototype; requires explicit product review",
+    "profit_blueprints_rare_art_v4.js": "dormant blueprint prototype; requires explicit product review",
+    "profit_blueprints_rare_v3.js": "dormant blueprint prototype; requires explicit product review",
+    "profit_blueprints_uncommon_art_v7_rare_geometry.js": "dormant blueprint prototype; requires explicit product review",
+    "profit_blueprints_v1.js": "dormant blueprint prototype; requires explicit product review",
+    "profit_blueprints_visual_v1.js": "dormant blueprint prototype; requires explicit product review"
+  }
+}
