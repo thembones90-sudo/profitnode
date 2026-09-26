@@ -4,7 +4,7 @@ const tracked=cp.execFileSync("git",["ls-files","*.js"],{encoding:"utf8"}).trim(
 const manifest=fs.readFileSync("pn_scripts.js","utf8"),index=fs.readFileSync("index.html","utf8");
 const config=JSON.parse(fs.readFileSync("runtime_manifest_exclusions.json","utf8"));
 const excluded=new Set(Object.keys(config.excluded||{}));
-const dev=new Set(["app.js","pn_scripts.js","browsertest.js","costintegritytest.js","hardwaretest.js","mail_fixtures.js","mailparsertest.js","mailworkflowtest.js","pn_test_env.js","rendertest.js","smoketest.js","manifestintegritytest.js"]);
+const dev=new Set(["app.js","pn_scripts.js","auditintegritytest.js","browsertest.js","costintegritytest.js","hardwaretest.js","mail_fixtures.js","mailparsertest.js","mailworkflowtest.js","pn_test_env.js","rendertest.js","smoketest.js","manifestintegritytest.js"]);
 const loaded=new Set();
 for(const src of [manifest,index]) for(const m of src.matchAll(/["']([^"'?]+\.js)(?:\?[^"']*)?["']/g)) loaded.add(path.basename(m[1]));
 const candidates=tracked.filter(f=>!f.includes("/")&&!dev.has(f));
