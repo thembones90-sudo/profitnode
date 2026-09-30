@@ -1,7 +1,7 @@
 "use strict";
 window.__PN_SCRIPTS = [
   "app_core.js?v=rig-lifecycle-status-v1",
-  "cpu_revaluation_extension.js?v=v3-stack-20260912b",
+  "cpu_revaluation_extension.js?v=cpu-quality-v4-20260930",
   "gpu_revaluation_extension.js?v=v3-stack-20260912b",
   "motherboard_revaluation_extension.js?v=v3-stack-20260912b",
   "planner_retirement_extension.js?v=planner-retired-v1",
