@@ -1,0 +1,33 @@
+"use strict";
+(function(){
+  if(window.__PN_CLOUD_SYNC_V1__)return;window.__PN_CLOUD_SYNC_V1__=true;
+  const URL="https://emnroovdtopxfzwoyhhp.supabase.co";
+  const KEY="sb_publishable__tkOfCLkhpkz4BtvSXNQTg_FAmNF3CO";
+  const LEDGER_KEY="profitnode_ledger_v1";
+  const ROW_ID="primary";
+  let client=null,user=null,cloudRevision=0,saveTimer=null,wrapped=false;
+  function localLedger(){try{return JSON.parse(localStorage.getItem(LEDGER_KEY)||"null")}catch(_){return null}}
+  function meaningful(x){return !!(x&&((x.projects&&x.projects.length)||(x.inventory&&x.inventory.length)||(x.sales&&x.sales.length)||(x.treasury&&x.treasury.flows&&x.treasury.flows.length)))}
+  function backupLocal(tag){const raw=localStorage.getItem(LEDGER_KEY);if(!raw)return;const k="profitnode_cloud_backup_"+tag+"_"+new Date().toISOString().replace(/[:.]/g,"-");localStorage.setItem(k,raw)}
+  function shell(){let el=document.getElementById("pn-cloud-gate");if(el)return el;el=document.createElement("div");el.id="pn-cloud-gate";el.innerHTML='<div class="pn-cloud-card"><div class="pn-cloud-kicker">PROFITNODE CLOUD</div><h2>SYNC ACCESS</h2><p id="pn-cloud-msg">Sign in to load the shared ledger on this device.</p><input id="pn-cloud-email" type="email" placeholder="Email"><input id="pn-cloud-pass" type="password" placeholder="Password"><div class="pn-cloud-actions"><button id="pn-cloud-signin">SIGN IN</button><button id="pn-cloud-signup">CREATE ACCOUNT</button></div><button id="pn-cloud-local">USE LOCAL ONLY</button></div>';document.body.appendChild(el);return el}
+  function message(t,bad){const m=document.getElementById("pn-cloud-msg");if(m){m.textContent=t;m.style.color=bad?"#ff6972":"#c6bbd3"}}
+  function closeGate(){const e=document.getElementById("pn-cloud-gate");if(e)e.remove()}
+  async function fetchCloud(){const r=await client.from("profitnode_ledger").select("ledger,revision,updated_at").eq("id",ROW_ID).maybeSingle();if(r.error)throw r.error;return r.data}
+  async function seedCloud(ledger){const r=await client.from("profitnode_ledger").insert({id:ROW_ID,owner_id:user.id,ledger,revision:1,source_device:navigator.userAgent,updated_at:new Date().toISOString()}).select().single();if(r.error)throw r.error;cloudRevision=1;return r.data}
+  async function saveCloud(){if(!user||typeof Store==="undefined"||!Store.load)return;const ledger=Store.load();if(!meaningful(ledger))return;const next=cloudRevision+1;const r=await client.from("profitnode_ledger").update({ledger,revision:next,source_device:navigator.userAgent,updated_at:new Date().toISOString()}).eq("id",ROW_ID).eq("owner_id",user.id).select("revision").single();if(r.error){console.error("PROFITNODE CLOUD SAVE FAILED",r.error);return}cloudRevision=r.data.revision}
+  function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>saveCloud().catch(e=>console.error("PROFITNODE CLOUD SAVE FAILED",e)),500)}
+  function wrapPersist(){if(wrapped||typeof Store==="undefined")return;wrapped=true;const old=Store.persist.bind(Store);Store.persist=function(){const ok=old();if(ok)scheduleSave();return ok}}
+  async function activate(){const local=localLedger(),remote=await fetchCloud();if(!remote){if(!meaningful(local))throw new Error("Cloud is empty and this device has no meaningful local ledger. Refusing to initialize from an empty state.");backupLocal("pre-seed");await seedCloud(local);wrapPersist();closeGate();message("Cloud initialized from this device.");return}
+    cloudRevision=Number(remote.revision)||1;
+    if(meaningful(local))backupLocal("pre-cloud-load");
+    localStorage.setItem(LEDGER_KEY,JSON.stringify(remote.ledger));
+    if(typeof Store!=="undefined"){Store._data=remote.ledger;Store.error=null;Store._writeLocked=false}
+    wrapPersist();closeGate();if(typeof render==="function")render();
+  }
+  async function signIn(){const email=document.getElementById("pn-cloud-email").value.trim(),password=document.getElementById("pn-cloud-pass").value;message("Signing in...");const r=await client.auth.signInWithPassword({email,password});if(r.error)throw r.error;user=r.data.user;await activate()}
+  async function signUp(){const email=document.getElementById("pn-cloud-email").value.trim(),password=document.getElementById("pn-cloud-pass").value;message("Creating account...");const r=await client.auth.signUp({email,password,options:{emailRedirectTo:location.origin}});if(r.error)throw r.error;if(r.data.session){user=r.data.user;await activate()}else message("Account created. Confirm the email, then return here and sign in.")}
+  function wireGate(){shell();document.getElementById("pn-cloud-signin").onclick=()=>signIn().catch(e=>message(e.message||String(e),true));document.getElementById("pn-cloud-signup").onclick=()=>signUp().catch(e=>message(e.message||String(e),true));document.getElementById("pn-cloud-local").onclick=()=>{closeGate();sessionStorage.setItem("pn_cloud_local_only","1")}}
+  async function boot(){if(!window.supabase||!window.supabase.createClient){console.error("PROFITNODE CLOUD: Supabase client missing");return}client=window.supabase.createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});const r=await client.auth.getUser();if(r.data&&r.data.user){user=r.data.user;try{await activate()}catch(e){console.error(e);wireGate();message(e.message||String(e),true)}}else if(!sessionStorage.getItem("pn_cloud_local_only"))wireGate();client.auth.onAuthStateChange((event,session)=>{if(event==="SIGNED_OUT"){user=null;cloudRevision=0}else if(session&&session.user&&!user){user=session.user;activate().catch(e=>{wireGate();message(e.message||String(e),true)})}})}
+  const style=document.createElement("style");style.textContent='#pn-cloud-gate{position:fixed;inset:0;z-index:9999;background:rgba(5,3,9,.9);display:grid;place-items:center;padding:20px}.pn-cloud-card{width:min(430px,100%);background:#15111c;border:1px solid #7e22ce;box-shadow:0 0 40px rgba(168,85,247,.25);padding:24px;font-family:IBM Plex Mono,monospace}.pn-cloud-kicker{font-size:10px;letter-spacing:.16em;color:#a855f7}.pn-cloud-card h2{margin:6px 0 8px;font:700 24px Oswald,sans-serif}.pn-cloud-card p{color:#c6bbd3;min-height:34px}.pn-cloud-card input{margin:5px 0}.pn-cloud-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.pn-cloud-card button{background:#261e32;color:#fff;border:1px solid #4a3760;padding:9px;cursor:pointer;font:600 11px Oswald,sans-serif;letter-spacing:.05em}.pn-cloud-card button:hover{border-color:#a855f7}.pn-cloud-card #pn-cloud-local{width:100%;margin-top:8px;color:#a89faf}';document.head.appendChild(style);
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>boot().catch(console.error));else boot().catch(console.error);
+})();
