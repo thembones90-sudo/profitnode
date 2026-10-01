@@ -1,6 +1,6 @@
 "use strict";
 window.__PN_SCRIPTS = [
-  "app_core.js?v=rig-lifecycle-status-v1",
+  "app_core.js?v=financial-storage-recovery-v1",
   "cpu_revaluation_extension.js?v=cpu-quality-v4-20260930",
   "gpu_revaluation_extension.js?v=v3-stack-20260912b",
   "motherboard_revaluation_extension.js?v=v3-stack-20260912b",
@@ -42,7 +42,7 @@ window.__PN_SCRIPTS = [
   "build_rating_extension.js?v=build-rating-v4-evidence",
   "gift_project_extension.js?v=gift-lifecycle-v5-20260930",
   "parts_vault_retirement_extension.js?v=retired-inventory-v1-20260930",
-  "realized_profit_cashflow_extension.js?v=cash-pool-v1-20260930-hotfix",
+  "financial_recovery_extension.js?v=financial-recovery-v1-20261001",
   "rig_rating_extension.js?v=rig-rating-v4-unrated-safe",
   "ram_revaluation_extension.js?v=ram-v3-20260912-live1",
   "ram_v31_extension.js?v=ram-v31-20260912-live2",

@@ -252,13 +252,13 @@ const probe = `
     return updateResult.ok && updateResult.transactionId === soldResult.transactionId && sales.length === 1 && flows.length === 1 && flows[0].amount === 19000 && cash && cash.amount === soldCashBefore + 19000;
   })());
   log('B. updating sale metadata adjusts realized profit in place', dashboardStats('RSD').realizedProfit === soldStatsBefore.realizedProfit + 7000);
-  log('B. SOLD_IN_TRANSIT item still shows under ACTIVE INVENTORY (not yet delivered)', (function(){
+  log('B. SOLD_IN_TRANSIT item is retired from ACTIVE INVENTORY once money moves', (function(){
     state.filters.inventory.status = 'ACTIVE';
     const active = renderInventory();
     state.filters.inventory.status = 'SOLD';
     const sold = renderInventory();
     state.filters.inventory.status = 'ACTIVE';
-    return active.includes('Ryzen 5 3600') && !sold.includes('Ryzen 5 3600');
+    return !active.includes('Ryzen 5 3600') && !sold.includes('Ryzen 5 3600');
   })());
   log('B. MARK AS DELIVERED finalizes the item to SOLD with no second treasury credit', (function(){
     const cashBeforeDeliver = ((Store.load().treasury.balances.find(b=>b.sourceKey==='CASH_RSD')||{}).amount)||0;
@@ -274,12 +274,13 @@ const probe = `
     state.filters.inventory.status = 'ACTIVE';
     return !active.includes('Ryzen 5 3600') && sold.includes('Ryzen 5 3600');
   })());
-  log('B. PARTS VAULT filter bar reports ACTIVE, SOLD, and TOTAL counts', (function(){
+  log('B. PARTS VAULT filter bar reports ACTIVE, RETIRED, and TOTAL counts', (function(){
     const items = Store.all('inventory');
-    const active = items.filter(item=>item.status!=='SOLD').length;
-    const sold = items.length-active;
+    const retiredStatuses = new Set(['SOLD','GIFTED','SOLD_IN_TRANSIT']);
+    const active = items.filter(item=>!retiredStatuses.has(item.status)).length;
+    const retired = items.length-active;
     const html = renderInventory();
-    return html.includes('data-inventory-count="ACTIVE">ACTIVE <b>'+active+'</b>') && html.includes('data-inventory-count="SOLD">SOLD <b>'+sold+'</b>') && html.includes('data-inventory-count="TOTAL">TOTAL <b>'+items.length+'</b>');
+    return html.includes('data-inventory-count="ACTIVE">ACTIVE <b>'+active+'</b>') && html.includes('data-inventory-count="RETIRED">RETIRED <b>'+retired+'</b>') && html.includes('data-inventory-count="TOTAL">TOTAL <b>'+items.length+'</b>');
   })());
   log('B. SOLD inventory detail links to its exact Sales Ledger row', (function(){
     state.modal = {entityType:'inventory',id:soldItem.id,prefill:null};
