@@ -44,6 +44,7 @@ window.__PN_SCRIPTS = [
   "parts_vault_retirement_extension.js?v=retired-inventory-v1-20260930",
   "financial_recovery_extension.js?v=financial-recovery-v1-20261001",
   "storage_recovery_extension.js?v=storage-recovery-console-v1-20261001",
+  "reset_safety_extension.js?v=reset-safety-v1-20261001",
   "rig_rating_extension.js?v=rig-rating-v4-unrated-safe",
   "ram_revaluation_extension.js?v=ram-v3-20260912-live1",
   "ram_v31_extension.js?v=ram-v31-20260912-live2",
