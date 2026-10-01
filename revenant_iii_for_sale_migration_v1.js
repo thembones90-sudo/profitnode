@@ -1,18 +1,20 @@
 "use strict";
 (function revenantIIIForSaleMigrationV1(){
   const MARKER="profitnode_revenant_iii_for_sale_v1";
+  let attempts=0;
   function run(){
+    attempts++;
     try{
-      if(typeof Store==="undefined"||typeof emptyRigSlots!=="function")return;
+      if(typeof Store==="undefined"||typeof emptyRigSlots!=="function")return false;
       const project=Store.all("projects").find(p=>String(p&&p.name||"").trim().toUpperCase()==="REVENANT III");
-      if(!project)return;
+      if(!project)return false;
       const existing=Store.all("rigs").find(r=>String(r&&r.family||"").trim().toUpperCase()==="REVENANT III"&&String(r&&r.variantName||"").trim().toUpperCase()==="FOR SALE");
-      const alreadyCorrect=existing&&existing.status==="LISTED"&&existing.purpose==="FLIP"&&Number(existing.expectedSalePrice)===43000&&existing.slots&&existing.slots.STORAGE2;
-      if(alreadyCorrect){try{localStorage.setItem(MARKER,"1")}catch(_){ }return;}
+      const alreadyCorrect=existing&&existing.status==="LISTED"&&existing.purpose==="FLIP"&&Number(existing.expectedSalePrice)===44600&&existing.slots&&existing.slots.STORAGE2;
+      if(alreadyCorrect){try{localStorage.setItem(MARKER,"1")}catch(_){ }return true;}
 
       const inventory=Store.all("inventory").filter(i=>i&&i.assignedProjectId===project.id);
       const text=i=>String((i&&i.manufacturer||"")+" "+(i&&i.model||"")).trim();
-      const find=(category,re)=>inventory.find(i=>i.category===category&&re.test(text(i)));
+      const find=(categories,re)=>inventory.find(i=>(Array.isArray(categories)?categories:[categories]).includes(i.category)&&re.test(text(i)));
       const cpu=find("CPU",/RYZEN\s*5\s*2600\s*$/i);
       const gpu=find("GPU",/GTX\s*1070\s*8GB/i);
       const mobo=find("MOTHERBOARD",/B450\s*TOMAHAWK\s*MAX\s*II/i);
@@ -21,14 +23,9 @@
       const hdd=find("STORAGE",/(WESTERN\s*DIGITAL|WDC).*500GB/i);
       const psu=find("PSU",/MONTECH.*CENTURY\s*550W/i);
       const pcCase=find("CASE",/UGD.*TRACER\s*2234/i);
-      const cooler=find("COOLER",/AMD.*STOCK\s*COOLER/i);
+      const cooler=find(["COOLER","COOLING"],/AMD.*STOCK\s*COOLER/i);
       const required=[cpu,gpu,mobo,ram,nvme,hdd,psu,pcCase,cooler];
-      if(required.some(x=>!x)){console.warn("[PROFITNODE] REVENANT III FOR SALE migration skipped: assigned hardware set is incomplete.");return;}
-
-      // Historical reconstruction corrections only. Use Store.update so the
-      // restored Treasury snapshot is not charged again for old purchases.
-      Store.update("inventory",nvme.id,{purchasePrice:5500,notes:"REVENANT III build. [Genesis STRONG]"});
-      Store.update("inventory",psu.id,{purchasePrice:3500,notes:"REVENANT III build. [Genesis STRONG]"});
+      if(required.some(x=>!x))return false;
 
       const slots=emptyRigSlots();
       slots.CPU={kind:"INVENTORY",inventoryItemId:cpu.id};
@@ -43,14 +40,14 @@
 
       const rigData={
         family:"REVENANT III",variantName:"FOR SALE",status:"LISTED",purpose:"FLIP",currency:"RSD",slots:slots,
-        estimatedMarketValue:43000,expectedSalePrice:43000,salePrice:null,saleDate:null,targetMarginPct:38.4,
-        notes:"Completed and validated flip build. OCCT CPU/RAM/GPU/VRAM PASS; CPU peak 62.4C; both drives 100% health; CS2 and Valorant tested smooth. Exact captured component basis 26,490 RSD, corresponding to the 26,500 RSD rounded shop figure. Listed target: 43,000 RSD / 380 EUR."
+        estimatedMarketValue:44600,expectedSalePrice:44600,salePrice:null,saleDate:null,targetMarginPct:40.6,
+        notes:"Completed and validated flip build. Total invested: 26,500 RSD. Listed at 380 EUR (~44,600 RSD). OCCT CPU/RAM/GPU/VRAM PASS; CPU peak 62.4C; both drives 100% health; CS2 and Valorant tested smooth."
       };
       let rig=existing;
       if(rig)rig=Store.update("rigs",rig.id,rigData);
       else{
         rig=Store.insert("rigs",rigData);
-        if(typeof Timeline!=="undefined"&&Timeline.log)Timeline.log("RIG_STATUS","REVENANT III / FOR SALE → LISTED","Validated flip build listed for sale at 43,000 RSD.",typeof todayISO==="function"?todayISO():"","rig",rig.id);
+        if(typeof Timeline!=="undefined"&&Timeline.log)Timeline.log("RIG_STATUS","REVENANT III / FOR SALE → LISTED","Validated flip build listed for sale at 380 EUR.",typeof todayISO==="function"?todayISO():"","rig",rig.id);
       }
 
       const projectSlots=Object.assign({},project.slots||{});
@@ -64,12 +61,14 @@
       projectSlots.COOLER={kind:"INVENTORY",inventoryItemId:cooler.id};
       const extras=(project.extras||[]).filter(x=>!(x&&x.inventoryItemId===hdd.id));
       extras.push({id:"revenant-iii-secondary-hdd",label:text(hdd),notes:"Secondary 500GB HDD · 100% health",inventoryItemId:hdd.id,cost:Number(hdd.purchasePrice)||0,currency:hdd.currency||"RSD"});
-      Store.update("projects",project.id,{status:"LISTED",purpose:"FLIP",slots:projectSlots,extras:extras,estimatedMarketValue:43000,listingPrice:380,listingCurrency:"EUR",notes:"Completed, verified and listed for sale. Rounded invested basis: 26,500 RSD (exact captured component sum 26,490 RSD). OCCT CPU/RAM/GPU/VRAM PASS, peak CPU 62.4C, both drives 100% health, CS2/Valorant tested smooth. Target: 43,000 RSD / 380 EUR."});
+      Store.update("projects",project.id,{status:"LISTED",purpose:"FLIP",slots:projectSlots,extras:extras,estimatedMarketValue:44600,listingPrice:380,listingCurrency:"EUR",notes:"Completed, verified and listed for sale. Total invested: 26,500 RSD. Expected sale: 44,600 RSD / 380 EUR. Expected profit: 18,100 RSD · ROI 68.3% · margin 40.6%. OCCT CPU/RAM/GPU/VRAM PASS, peak CPU 62.4C, both drives 100% health, CS2/Valorant tested smooth."});
       Store.persist();
       try{localStorage.setItem(MARKER,"1")}catch(_){ }
       if(typeof render==="function")render();
       console.info("[PROFITNODE] REVENANT III / FOR SALE migration applied.");
-    }catch(err){console.error("[PROFITNODE] REVENANT III / FOR SALE migration failed",err);}
+      return true;
+    }catch(err){console.error("[PROFITNODE] REVENANT III / FOR SALE migration failed",err);return false;}
   }
-  setTimeout(run,0);
+  function retry(){if(run())return;if(attempts<20)setTimeout(retry,500);else console.warn("[PROFITNODE] REVENANT III / FOR SALE migration gave up after ledger hydration retries.");}
+  setTimeout(retry,250);
 })();
