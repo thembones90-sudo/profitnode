@@ -241,7 +241,9 @@ function createSandbox(){
     getItem: (k) => (k in storage ? storage[k] : null),
     setItem: (k, v) => { storage[k] = String(v); },
     removeItem: (k) => { delete storage[k]; },
+    key: (i) => Object.keys(storage)[i] === undefined ? null : Object.keys(storage)[i],
   };
+  Object.defineProperty(localStorage, 'length', { get: () => Object.keys(storage).length });
 
   const docListeners = {};
   const timers = [];
