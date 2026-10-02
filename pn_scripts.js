@@ -54,5 +54,6 @@ window.__PN_SCRIPTS = [
   "parts_vault_new_item_align_v1.js?v=parts-vault-new-item-align-v1",
   "revenant_iii_for_sale_migration_v1.js?v=revenant-iii-for-sale-v2",
   "case_already_owned_extension.js?v=case-already-owned-v1-20261002",
+  "project_budget_extension.js?v=project-budget-v1-20261002",
   "cloud_sync_extension.js?v=cloud-sync-v1"
 ];
