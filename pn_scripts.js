@@ -41,7 +41,6 @@ window.__PN_SCRIPTS = [
   "build_workspace_refinement_extension.js?v=build-lifecycle-refinement-v2",
   "build_rating_extension.js?v=build-rating-v4-evidence",
   "gift_project_extension.js?v=gift-lifecycle-v5-20260930",
-  "parts_vault_retirement_extension.js?v=retired-inventory-v1-20260930",
   "financial_recovery_extension.js?v=financial-recovery-v1-20261001",
   "realized_profit_ledger_v3.js?v=forward-cash-ledger-v3-20261002",
   "storage_recovery_extension.js?v=storage-recovery-console-v1-20261001",
