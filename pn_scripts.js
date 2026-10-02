@@ -49,12 +49,12 @@ window.__PN_SCRIPTS = [
   "ram_revaluation_extension.js?v=ram-v3-20260912-live1",
   "ram_v31_extension.js?v=ram-v31-20260912-live2",
   "ram_hybrid_v3_extension.js?v=ram-hybrid-v3-lifecycle",
+  "inventory_new_condition_extension.js?v=inventory-new-condition-v1-20261002",
+  "inventory_enum_safety_extension.js?v=inventory-enum-safety-v1-20261002",
   "f5_route_persistence_v3.js?v=f5-route-v3-standalone",
   "parts_vault_new_item_align_v1.js?v=parts-vault-new-item-align-v1",
   "revenant_iii_for_sale_migration_v1.js?v=revenant-iii-for-sale-v2",
   "case_already_owned_extension.js?v=case-already-owned-v1-20261002",
   "project_budget_extension.js?v=project-budget-v1-20261002",
-  "inventory_new_condition_extension.js?v=inventory-new-condition-v1-20261002",
-  "inventory_enum_safety_extension.js?v=inventory-enum-safety-v1-20261002",
   "cloud_sync_extension_v2.js?v=cloud-sync-v2-20261002"
 ];
