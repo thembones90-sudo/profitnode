@@ -30,8 +30,32 @@
     return idx > 0 ? (idx < 10 ? "0" : "") + idx : "--";
   };
 
+  // Inline editor state for reserving budget on an empty bay (one at a time).
+  const ALLOC_UI = { slotKey: null };
+  const allocFor = (project, slotKey) => {
+    const a = project && project.allocations && project.allocations[slotKey];
+    return a && Number(a.amount) > 0 ? Number(a.amount) : 0;
+  };
+  const allocHtml = (project, slotKey, locked) => {
+    const amount = allocFor(project, slotKey);
+    if (!locked && ALLOC_UI.slotKey === slotKey){
+      return '<div class="pn-lo-alloc is-editing"><span class="pn-lo-alloc-k">RESERVE BUDGET (' + escHtml(project.currency) + ')</span>'
+        + '<span class="pn-lo-alloc-edit"><input type="number" min="0" step="1" data-pb-alloc-input="' + slotKey + '" value="' + (amount || "") + '" placeholder="0">'
+        + '<button type="button" class="btn btn-sm btn-primary" data-pb-alloc-save="' + slotKey + '">SAVE</button>'
+        + '<button type="button" class="btn btn-sm btn-ghost" data-pb-alloc-cancel>×</button></span></div>';
+    }
+    if (amount > 0){
+      const budget = Number(project.budget);
+      return '<div class="pn-lo-alloc" data-lo-allocated="' + amount + '"><span class="pn-lo-alloc-k">ALLOCATED</span><b>' + money(amount, project.currency) + '</b>'
+        + (budget > 0 ? '<span class="pn-lo-alloc-share">' + (Math.round(amount / budget * 1000) / 10) + '% OF BUDGET</span>' : "")
+        + (locked ? "" : '<span class="pn-lo-alloc-actions"><button type="button" class="btn btn-sm pn-lo-price-btn" data-pb-alloc-open="' + slotKey + '">EDIT ALLOCATION</button>'
+          + '<button type="button" class="btn btn-sm btn-ghost" data-pb-alloc-clear="' + slotKey + '">CLEAR</button></span>') + '</div>';
+    }
+    return locked ? "" : '<button type="button" class="btn btn-sm pn-lo-price-btn" data-pb-alloc-open="' + slotKey + '" title="Reserve part of the budget for this part before choosing it">ALLOCATE BUDGET</button>';
+  };
+
   const baseCard = pbSlotCardHtml;
-  const wrappedCard = function(project, slotKey){
+  const wrappedCard = function(project, slotKey, locked){
     const html = String(baseCard.apply(this, arguments));
     const end = html.indexOf(">");
     if (end < 0) return html;
@@ -42,7 +66,7 @@
     let opening = html.slice(0, end);
     if (/style="/.test(opening)) opening = opening.replace(/style="([^"]*)"/, (m, css) => 'style="' + css + (css && !/;\s*$/.test(css) ? ";" : "") + "--lo-c:" + color + '"');
     else opening += ' style="--lo-c:' + color + '"';
-    opening = opening.replace(" data-pb-slot=", ' data-lo-kind="' + kind + '" data-pb-slot=');
+    opening = opening.replace(" data-pb-slot=", ' data-lo-kind="' + kind + '"' + (!slot && allocFor(project, slotKey) ? ' data-lo-alloc="1"' : "") + ' data-pb-slot=');
 
     let strip;
     if (!slot){
@@ -63,6 +87,10 @@
       const headBtn = new RegExp('(<button[^>]*data-pb-edit-slot="' + slotKey + '"[^>]*>[^<]*</button>)');
       body = body.replace(headBtn, '<span class="pn-lo-head-actions">$1<button type="button" class="btn btn-sm pn-lo-price-btn" data-pb-quick-price="' + slotKey + '" title="Edit the price recorded for this part">EDIT PRICE</button></span>');
     }
+    if (!slot){
+      const close = body.lastIndexOf("</div>");
+      if (close > -1) body = body.slice(0, close) + allocHtml(project, slotKey, locked) + body.slice(close);
+    }
     return opening + ">" + strip + body;
   };
   wrappedCard.__pnLoadoutCmdV1 = true;
@@ -77,13 +105,56 @@
       const st = Actions.projectBuildStats(p);
       const planned = Math.max(0, (st.slotsFilled || 0) - (st.slotsOwned || 0));
       const offline = Math.max(0, (st.slotsTotal || 0) - (st.slotsFilled || 0));
+      const allocatedBays = typeof pnBudgetAllocations === "function" ? pnBudgetAllocations(p).length : 0;
       const readout = '<span class="pn-lo-readout" data-lo-readout><b>' + (st.slotsFilled || 0) + "/" + (st.slotsTotal || 0) + "</b> BAYS ONLINE"
-        + "<em>" + (st.slotsOwned || 0) + " OWNED</em><em class=\"is-planned\">" + planned + " PLANNED</em>" + (offline ? '<em class="is-offline">' + offline + " OFFLINE</em>" : "") + "</span>";
+        + "<em>" + (st.slotsOwned || 0) + " OWNED</em><em class=\"is-planned\">" + planned + " PLANNED</em>" + (offline ? '<em class="is-offline">' + offline + " OFFLINE</em>" : "") + (allocatedBays ? '<em class="is-alloc">' + allocatedBays + " ALLOCATED</em>" : "") + "</span>";
       return html.replace("<h2>COMPONENT LOADOUT</h2>", "<h2>COMPONENT LOADOUT</h2>" + readout);
     };
     wrappedRender.__pnLoadoutCmdV1 = true;
     renderProjectBuild = wrappedRender;
   }
+
+  const saveAllocation = slotKey => {
+    const p = typeof pbProject === "function" ? pbProject() : null;
+    const input = document.querySelector('[data-pb-alloc-input="' + slotKey + '"]');
+    if (!p || !input) return;
+    const amount = Math.max(0, Number(String(input.value).replace(",", ".")) || 0);
+    const next = Object.assign({}, p.allocations || {});
+    if (amount > 0) next[slotKey] = { amount }; else delete next[slotKey];
+    Store.update("projects", p.id, { allocations: next });
+    ALLOC_UI.slotKey = null;
+    render();
+  };
+  document.addEventListener("click", e => {
+    const t = e.target;
+    if (!t || !t.closest) return;
+    const open = t.closest("[data-pb-alloc-open]");
+    if (open){
+      ALLOC_UI.slotKey = open.dataset.pbAllocOpen;
+      render();
+      const input = document.querySelector('[data-pb-alloc-input="' + ALLOC_UI.slotKey + '"]');
+      if (input){ input.focus(); input.select(); }
+      return;
+    }
+    const save = t.closest("[data-pb-alloc-save]");
+    if (save) return saveAllocation(save.dataset.pbAllocSave);
+    if (t.closest("[data-pb-alloc-cancel]")){ ALLOC_UI.slotKey = null; render(); return; }
+    const clear = t.closest("[data-pb-alloc-clear]");
+    if (clear){
+      const p = typeof pbProject === "function" ? pbProject() : null;
+      if (!p) return;
+      const next = Object.assign({}, p.allocations || {});
+      delete next[clear.dataset.pbAllocClear];
+      Store.update("projects", p.id, { allocations: next });
+      render();
+    }
+  });
+  document.addEventListener("keydown", e => {
+    const input = e.target && e.target.closest ? e.target.closest("[data-pb-alloc-input]") : null;
+    if (!input) return;
+    if (e.key === "Enter"){ e.preventDefault(); saveAllocation(input.dataset.pbAllocInput); }
+    else if (e.key === "Escape"){ ALLOC_UI.slotKey = null; render(); }
+  });
 
   const L = "[data-pb-loadout]";
   const style = document.createElement("style");
@@ -139,6 +210,15 @@
     + L + " .pn-pb-slot.is-empty .pn-pb-slot-empty-hint{margin:0;font:600 13px var(--stamp);letter-spacing:.24em;color:var(--text-muted)}"
     + L + " .pn-pb-slot.is-empty .pn-pb-slot-empty-hint::after{content:' · BAY OFFLINE';color:color-mix(in srgb,var(--lo-c) 60%,var(--text-muted))}"
     + L + " .pn-pb-slot.is-empty .btn{margin-top:4px}"
+    + L + " .pn-pb-slot.is-empty[data-lo-alloc] .pn-pb-slot-empty-hint::after{content:' · BUDGET RESERVED';color:#f2c94c}"
+    + L + " .pn-pb-slot.is-empty[data-lo-alloc]{border-color:rgba(242,201,76,.55)}"
+    + L + " .pn-lo-alloc{display:flex;flex-direction:column;gap:4px;width:100%;padding-top:8px;border-top:1px dashed rgba(242,201,76,.35)}"
+    + L + " .pn-lo-alloc-k{font:600 10px var(--stamp);letter-spacing:.22em;color:var(--text-muted)}"
+    + L + " .pn-lo-alloc>b{font:600 22px var(--stamp);letter-spacing:.04em;color:#f2c94c}"
+    + L + " .pn-lo-alloc-share{font:600 11px var(--stamp);letter-spacing:.14em;color:var(--text-muted)}"
+    + L + " .pn-lo-alloc-actions,.pn-lo-alloc-edit{display:flex;gap:6px;flex-wrap:wrap;align-items:center}"
+    + L + " .pn-lo-alloc-edit input{width:110px;font-size:14px}"
+    + ".pn-lo-readout em.is-alloc{border-color:rgba(242,201,76,.6);color:#f2c94c}"
     + "@media(max-width:760px){" + L + " .pn-pb-grid{grid-template-columns:1fr}" + L + " .pn-pb-slot{min-height:0}" + L + " .pn-pb-slot.is-empty{min-height:0}" + L + " .pn-pb-slot.is-empty{padding:14px 14px 14px 18px}}";
   document.head.appendChild(style);
 

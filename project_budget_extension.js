@@ -18,6 +18,21 @@
 */
 (function installProjectBudgetV1(){
 
+  // Budget reserved for slots whose part isn't chosen yet:
+  // project.allocations = { SLOT: { amount } } in the project currency. An
+  // allocation only counts while its slot is still empty, so adding the real
+  // part supersedes it. Kept apart from project slots on purpose: it never
+  // touches slot counts, build rating, compatibility or profit accounting.
+  globalThis.pnBudgetAllocations = function(project){
+    const map = project && project.allocations;
+    if (!map || typeof map !== "object") return [];
+    return Object.keys(map)
+      .filter(k => !(project.slots && project.slots[k]))
+      .map(k => ({ slotKey: k, amount: Number(map[k] && map[k].amount) || 0 }))
+      .filter(a => a.amount > 0);
+  };
+  const allocatedTotal = project => pnBudgetAllocations(project).reduce((sum, a) => sum + a.amount, 0);
+
   // 1. Add the field to the project form (NEW PROJECT + EDIT DETAILS).
   if (typeof FORM_SCHEMAS !== "undefined" && typeof FORM_SCHEMAS.project === "function" && !FORM_SCHEMAS.project.__pnBudgetV1){
     const baseSchema = FORM_SCHEMAS.project;
@@ -72,7 +87,7 @@
         + '<div class="kpi-value" style="color:' + (over ? "var(--red)" : "var(--green)") + '">'
           + money(Math.abs(remaining), p.currency) + (over ? " OVER" : " LEFT")
         + '</div>'
-        + '<div class="kpi-sub">' + pctUsed + '% of ' + money(budget, p.currency) + ' spent</div>'
+        + '<div class="kpi-sub">' + pctUsed + '% of ' + money(budget, p.currency) + ' spent' + (allocatedTotal(p) > 0 ? ' · ' + money(allocatedTotal(p), p.currency) + ' allocated' : '') + '</div>'
         + '</div>';
 
       // Fixed anchor text that always follows the EST. MARKET VALUE tile,
@@ -132,16 +147,19 @@
       const stats = Actions.projectBuildStats(project);
       const spent = Number(stats.totalCostBasis) || 0;
       const planned = Number(stats.plannedCost) || 0;
+      const allocs = pnBudgetAllocations(project);
+      const allocated = allocs.reduce((sum, a) => sum + a.amount, 0);
       const left = budget - spent;
-      const leftAfterPlanned = left - planned;
-      const committed = spent + planned;
+      const leftAfterPlanned = left - planned - allocated;
+      const committed = spent + planned + allocated;
       const breach = leftAfterPlanned < 0;
       const status = left < 0 ? "BUDGET BREACH" : breach ? "PLANNED BREACH" : pct(committed, budget) >= 90 ? "NEAR LIMIT" : "WITHIN PARAMETERS";
       const statusCls = left < 0 || breach ? "is-breach" : pct(committed, budget) >= 90 ? "is-warn" : "is-ok";
 
       const groups = pbBuildCostRows(project);
       const tag = (rows, kind) => (rows || []).map(r => Object.assign({ amount: Number(r.amount) || 0, kind, label: r.label }, rowMeta(r.label)));
-      const rows = [].concat(tag(groups.direct, "PAID"), tag(groups.reused, "REUSED"), tag(groups.planned, "PLANNED")).sort((a, b) => b.amount - a.amount);
+      const allocRows = allocs.map(a => Object.assign({}, rowMeta(RIG_SLOT_LABELS[a.slotKey] + " — Budget reserved, part not chosen yet"), { amount: a.amount, kind: "ALLOCATED", label: RIG_SLOT_LABELS[a.slotKey] }));
+      const rows = [].concat(tag(groups.direct, "PAID"), tag(groups.reused, "REUSED"), tag(groups.planned, "PLANNED"), allocRows).sort((a, b) => b.amount - a.amount);
 
       const scale = Math.max(budget, committed);
       let cursor = 0;
@@ -152,7 +170,7 @@
       });
       const desk = layoutLabels(segData, 900), mob = layoutLabels(segData, 280);
       const deskLanes = desk.pop().lanes, mobLanes = mob.pop().lanes;
-      const segs = segData.map((sg, i) => '<span class="pn-cc-seg' + (sg.r.kind === "PLANNED" ? " is-planned" : "") + (desk[i].inside ? " in-d" : "") + (mob[i].inside ? " in-m" : "") + '" title="' + escHtml(sg.r.slot + " · " + sg.r.name + " · " + m(sg.r.amount)) + '" style="--c:' + sg.r.color + ';width:' + sg.width + '%"><b>' + escHtml(sg.text) + '</b></span>').join("");
+      const segs = segData.map((sg, i) => '<span class="pn-cc-seg' + (sg.r.kind === "PLANNED" ? " is-planned" : sg.r.kind === "ALLOCATED" ? " is-alloc" : "") + (desk[i].inside ? " in-d" : "") + (mob[i].inside ? " in-m" : "") + '" title="' + escHtml(sg.r.slot + " · " + sg.r.name + " · " + m(sg.r.amount)) + '" style="--c:' + sg.r.color + ';width:' + sg.width + '%"><b>' + escHtml(sg.text) + '</b></span>').join("");
       const calls = segData.map((sg, i) => '<span class="pn-cc-call' + (desk[i].inside ? " in-d" : "") + (mob[i].inside ? " in-m" : "") + '" style="--c:' + sg.r.color + ';--x:' + sg.center + '%;--ld:' + desk[i].lane + ';--lm:' + mob[i].lane + ';--sd:' + desk[i].start + '%;--sm:' + mob[i].start + '%"><i></i><b>' + escHtml(sg.text) + '</b></span>').join("");
       const limitAt = pct(budget, scale);
       const ticks = [25, 50, 75].map(t => '<span class="pn-cc-tick" style="left:' + (limitAt * t / 100) + '%"></span>').join("")
@@ -161,12 +179,13 @@
       const mini = (label, value, cls, attr) => '<div class="pn-cc-mini' + (cls ? " " + cls : "") + '"' + attr + '><span class="pn-cc-k">' + label + '</span><b>' + value + '</b></div>';
       const head = '<div class="pn-cc-head"><span class="pn-cc-title"><i></i>FISCAL OPS // BUDGET TELEMETRY</span><span class="pn-cc-status ' + statusCls + '">' + status + '</span></div>';
       const top = '<div class="pn-cc-top">'
-        + '<div class="pn-cc-hero"><span class="pn-cc-k">LEFT AFTER PLANNED</span><div class="pn-cc-big' + (breach ? " is-neg" : "") + '" data-pb-budget-left-after-planned="' + leftAfterPlanned + '">' + signed(leftAfterPlanned) + '</div>'
+        + '<div class="pn-cc-hero"><span class="pn-cc-k">LEFT AFTER PLANNED' + (allocated > 0 ? " + ALLOCATED" : "") + '</span><div class="pn-cc-big' + (breach ? " is-neg" : "") + '" data-pb-budget-left-after-planned="' + leftAfterPlanned + '">' + signed(leftAfterPlanned) + '</div>'
           + '<div class="pn-cc-sub">of ' + m(budget) + ' budget · ' + pct(committed, budget) + '% committed</div></div>'
         + '<div class="pn-cc-minis">'
           + mini("BUDGET", m(budget), "", ' data-pb-budget-total="' + budget + '"')
           + mini("SPENT", m(spent), "", ' data-pb-budget-spent="' + spent + '"')
           + mini("PLANNED", m(planned), "is-planned", ' data-pb-budget-planned="' + planned + '"')
+          + (allocated > 0 ? mini("ALLOCATED", m(allocated), "is-alloc", ' data-pb-budget-allocated="' + allocated + '"') : "")
           + mini("LEFT NOW", signed(left), left < 0 ? "is-neg" : "is-pos", ' data-pb-budget-left="' + left + '"')
         + '</div></div>';
       const bar = '<div class="pn-cc-bar">' + segs + ticks + '</div>'
@@ -216,6 +235,8 @@
       + ".pn-cc-mini b{font:600 22px var(--stamp);letter-spacing:.03em;color:var(--text)}.pn-cc-mini.is-pos b{color:var(--green)}.pn-cc-mini.is-neg b{color:var(--red)}.pn-cc-mini.is-planned b{color:#74c7ff}"
       + ".pn-cc-bar{position:relative;display:flex;height:36px;margin:18px 0 0;overflow:hidden;background:rgba(160,180,200,.07);box-shadow:inset 0 0 0 1px rgba(88,174,232,.3);clip-path:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%)}"
       + ".pn-cc-seg{background:var(--c);box-shadow:inset -2px 0 0 rgba(0,0,0,.6),0 0 12px -2px var(--c)}"
+      + ".pn-cc-seg.is-alloc{background:repeating-linear-gradient(90deg,var(--c) 0 2px,color-mix(in srgb,var(--c) 22%,transparent) 2px 7px);box-shadow:inset 0 0 0 1px var(--c)}"
+      + ".pn-cc-kind.is-allocated{color:#f2c94c;border-style:dotted}.pn-cc-mini.is-alloc b{color:#f2c94c}"
       + ".pn-cc-seg.is-planned{background:repeating-linear-gradient(45deg,var(--c),var(--c) 5px,transparent 5px,transparent 9px)}"
       + ".pn-cc-seg{display:flex;align-items:center;justify-content:center;min-width:0;overflow:hidden}"
       + ".pn-cc-seg>b{display:none;font:600 12px var(--stamp);letter-spacing:.08em;white-space:nowrap;color:#fff;background:rgba(8,8,18,.72);padding:2px 7px;border-radius:2px}"
