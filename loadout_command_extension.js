@@ -54,6 +54,8 @@
     return locked ? "" : '<button type="button" class="btn btn-sm pn-lo-price-btn" data-pb-alloc-open="' + slotKey + '" title="Reserve part of the budget for this part before choosing it">ALLOCATE BUDGET</button>';
   };
 
+  globalThis.pnLoadoutAllocHtml = allocHtml;
+
   const baseCard = pbSlotCardHtml;
   const wrappedCard = function(project, slotKey, locked){
     const html = String(baseCard.apply(this, arguments));
