@@ -121,13 +121,61 @@ function pnGpuNameTier(text,catalog){
 
 function pnMotherboardNameTier(text,catalog){
   if(catalog) return pnPartTierFromScore(catalog.overall,PN_PART_NAME_RULES.MOTHERBOARD.scores);
-  if(/A320|A520|\bH\d{2,3}|\bB(?:65|75|85)|\bQ(?:6[0-9]|7[0-9]|87)|\bP(?:55|67)/.test(text)) return 1;
+  // Base/no-overclocking Intel chipsets (H-series of any era, plus the old-era
+  // B/Q business boards) all land in the same POOR tier. The previous \bH\d{3}
+  // pattern only caught 3-digit H chipsets (H110, H310, H410...) and missed the
+  // older 2-digit ones (H61, H67, H81, H87...), which fell through to the
+  // generic COMMON default instead — letting a 2011-era H61 board outrank a
+  // newer H110 board, which is exactly backwards. Z-series of that same old era
+  // (Z68 etc.) is deliberately left out of this bucket, and so are P55/P67 and
+  // X38/X48: those were the enthusiast/overclocking-capable or flagship
+  // chipsets of their generation (P67 in particular was THE K-CPU overclocking
+  // chipset before Z68 existed; X38/X48 were the SLI/CrossFire flagship
+  // LGA775 boards), genuinely a step above these base/locked boards —
+  // grouping them in here would repeat the same kind of era-blind mistake
+  // this fix is correcting. The base LGA775 OEM chipsets (945/965/G31/G41/
+  // P35/P45) ARE included, same base/no-overclocking role as everything else
+  // here, just older. pnMotherboardLegacyRating() below further ranks boards
+  // within this POOR bucket by how old their platform actually is, so two
+  // very different-generation "junk tier" boards (e.g. a 2011 H61 vs a 2015
+  // H110, or a 2006 G41 vs either) don't read as identically rated just
+  // because they share a tier badge.
+  if(/A320|A520|\bH\d{2,3}|\bB(?:65|75|85)|\bQ(?:6[0-9]|7[0-9]|87)|945|965|\bG31|\bG41|\bP35|\bP45/.test(text)) return 1;
   if(/CROSSHAIR|MAXIMUS|GODLIKE|AORUS (?:MASTER|XTREME)|TAICHI/.test(text)) return 7;
   if(/X670|X870/.test(text)) return 6;
   if(/X570/.test(text)) return 4;
   if(/B450|B550|B650/.test(text)) return /TOMAHAWK|MORTAR|AORUS (?:PRO|ELITE)|ROG STRIX/.test(text)?5:4;
   if(/A520|B550/.test(text)) return 3;
   return 2;
+}
+
+// Only consulted for boards pnMotherboardNameTier already placed in the POOR
+// bucket above (no catalog match, matched the base/no-overclocking pattern).
+// That single regex spans five real hardware generations (2006 LGA775 through
+// 2020 AM4 A520) that are NOT equally bad — it only tells you "base chipset,
+// no overclocking," not "how old." Ranked oldest-to-newest by known platform
+// generation (a sourceable fact — launch socket/chipset — not a fabricated
+// per-board spec), each kept strictly inside the POOR band (0-30) so the tier
+// badge never contradicts the number. Anything the table doesn't recognize
+// (H110 and other 3-digit H-chipsets, A320, A520) keeps the flat 15/100
+// midpoint it already had — this only pulls OLDER platforms down from that,
+// never pushes anything up.
+// No trailing \b on any of these: real model names run the chipset code
+// straight into the next token (H61M, H87M-G43, B75M-GL, ...), so a trailing
+// boundary would never match — same convention as the tier-1 regex above.
+const PN_MOBO_LEGACY_ERA = [
+  {rx:/945|965|\bG31|\bG41|\bP35|\bP45/, rating:4},              // LGA775 base OEM, ~2006-2010 (X38/X48 excluded — those were the enthusiast flagship LGA775 boards)
+  {rx:/\bH55|\bH57/, rating:7},                                  // LGA1156, 2010
+  {rx:/\bH61/, rating:9},                                        // LGA1155 base, 2011 — the board in question
+  {rx:/\bB65|\bQ65|\bH67|\bQ67/, rating:11},                     // LGA1155, 2011-12
+  {rx:/\bB75|\bQ75|\bH77|\bQ77/, rating:13},                     // LGA1155, 2012-13
+  {rx:/\bH81/, rating:14},                                       // LGA1150 base, 2013
+  {rx:/\bB85|\bQ85|\bH87|\bQ87/, rating:14}                      // LGA1150, 2013-14
+];
+
+function pnMotherboardLegacyRating(text){
+  const hit=PN_MOBO_LEGACY_ERA.find(e=>e.rx.test(text));
+  return hit?hit.rating:null;
 }
 
 function pnRamStructuredRating(item){
@@ -213,7 +261,8 @@ function pnPartNameTier(item){
   const category=pnPartTierCategory(item&&item.category),resolution=pnPartCatalogResolution(item||{}),catalog=resolution.item,text=pnPartText(item,catalog),ramStructured=category==="RAM"?pnRamStructuredRating(item):null;
   let tier=category==="CPU"?pnCpuNameTier(text,catalog):category==="GPU"?pnGpuNameTier(text,catalog):category==="MOTHERBOARD"?pnMotherboardNameTier(text,catalog):category==="RAM"?pnRamNameTier(item,text):category==="PSU"?pnPsuNameTier(text,catalog):category==="STORAGE"?pnStorageNameTier(item,text,catalog):category==="COOLING"?pnCoolerNameTier(text,catalog):category==="CASE"?pnCaseNameTier(text,catalog):4;
   tier=Math.max(1,Math.min(7,Number(tier)||4));
-  const rating=ramStructured?Math.max(1,Math.min(100,Math.round(Number(ramStructured.overall)||1))):pnPartNameRating(tier,category),source=ramStructured?"configuration":catalog?"catalog":"heuristic",reason=ramStructured?"Structured RAM configuration"+(catalog?" · "+resolution.reason:""):catalog?"Canonical "+category.toLowerCase()+" evidence · "+resolution.reason:resolution.reason;
+  const mboLegacyRating=(category==="MOTHERBOARD"&&!catalog&&tier===1)?pnMotherboardLegacyRating(text):null;
+  const rating=ramStructured?Math.max(1,Math.min(100,Math.round(Number(ramStructured.overall)||1))):mboLegacyRating!=null?mboLegacyRating:pnPartNameRating(tier,category),source=ramStructured?"configuration":catalog?"catalog":"heuristic",reason=ramStructured?"Structured RAM configuration"+(catalog?" · "+resolution.reason:""):catalog?"Canonical "+category.toLowerCase()+" evidence · "+resolution.reason:mboLegacyRating!=null?"Older base-chipset generation, ranked below newer POOR-tier boards · "+resolution.reason:resolution.reason;
   return Object.assign({tier:tier,rating:rating,source:source,category:category,matchConfidence:resolution.confidence,reason:reason},PN_PART_NAME_TIERS[tier]);
 }
 
