@@ -92,5 +92,93 @@
     renderProjectBuild = wrappedRender;
   }
 
+  // 3. COST DETAILS: budget vs. spent/planned/remaining, plus every part's
+  // share of the budget. Spent = totalCostBasis and planned = plannedCost,
+  // the same figures the BUDGET tile uses, so the two never disagree.
+  // pbCostBreakdownHtml is called by name from renderProjectBuild at render
+  // time, so reassigning the global here is picked up.
+  if (typeof pbCostBreakdownHtml === "function" && !pbCostBreakdownHtml.__pnBudgetV1){
+    const baseCostHtml = pbCostBreakdownHtml;
+    const pct = (part, budget) => Math.round((part / budget) * 1000) / 10;
+    const wrappedCostHtml = function(project){
+      const html = baseCostHtml.apply(this, arguments);
+      const budget = project ? Number(project.budget) : 0;
+      if (!(budget > 0) || typeof pbBuildCostRows !== "function") return html;
+
+      const cur = project.currency;
+      const stats = Actions.projectBuildStats(project);
+      const spent = Number(stats.totalCostBasis) || 0;
+      const planned = Number(stats.plannedCost) || 0;
+      const left = budget - spent;
+      const leftAfterPlanned = left - planned;
+      const groups = pbBuildCostRows(project);
+      const rows = []
+        .concat((groups.direct || []).map(r => ({ label: r.label, amount: Number(r.amount) || 0, kind: "PAID" })))
+        .concat((groups.reused || []).map(r => ({ label: r.label, amount: Number(r.amount) || 0, kind: "REUSED" })))
+        .concat((groups.planned || []).map(r => ({ label: r.label, amount: Number(r.amount) || 0, kind: "PLANNED" })))
+        .sort((a, b) => b.amount - a.amount);
+
+      const barW = v => Math.max(0, Math.min(100, pct(v, budget)));
+      const spentW = barW(spent), plannedW = Math.min(barW(planned), 100 - spentW);
+      const bar = '<div class="pn-pb-budget-bar">'
+        + '<span class="pn-pb-budget-seg is-spent" style="width:' + spentW + '%"></span>'
+        + '<span class="pn-pb-budget-seg is-planned" style="width:' + plannedW + '%"></span>'
+        + '</div>';
+
+      const stat = (label, value, cls, attr) => '<div class="pn-pb-budget-stat' + (cls ? " " + cls : "") + '"' + (attr || "") + '>' + label + '<b>' + value + '</b></div>';
+      const signed = v => (v < 0 ? "−" : "") + money(Math.abs(v), cur);
+      const summary = '<div class="pn-pb-budget-stats">'
+        + stat("BUDGET", money(budget, cur), "", ' data-pb-budget-total="' + budget + '"')
+        + stat("SPENT", money(spent, cur) + ' <small>' + pct(spent, budget) + '%</small>', "is-spent", ' data-pb-budget-spent="' + spent + '"')
+        + stat("PLANNED", money(planned, cur) + ' <small>' + pct(planned, budget) + '%</small>', "is-planned", ' data-pb-budget-planned="' + planned + '"')
+        + stat("LEFT NOW", signed(left), left < 0 ? "is-over" : "is-left", ' data-pb-budget-left="' + left + '"')
+        + stat("LEFT AFTER PLANNED", signed(leftAfterPlanned), leftAfterPlanned < 0 ? "is-over" : "is-left", ' data-pb-budget-left-after-planned="' + leftAfterPlanned + '"')
+        + '</div>';
+
+      const partRows = rows.length
+        ? rows.map(r => '<div class="pn-pb-budget-row" data-pb-budget-row="' + r.kind + '">'
+            + '<span class="pn-pb-budget-kind is-' + r.kind.toLowerCase() + '">' + r.kind + '</span>'
+            + '<span class="pn-pb-budget-label">' + escHtml(r.label) + '</span>'
+            + '<span class="pn-pb-budget-mini"><span class="is-' + r.kind.toLowerCase() + '" style="width:' + barW(r.amount) + '%"></span></span>'
+            + '<span class="pn-pb-budget-amt">' + money(r.amount, cur) + '</span>'
+            + '<span class="pn-pb-budget-pct">' + pct(r.amount, budget) + '%</span>'
+            + '</div>').join("")
+        : '<p class="hint">No parts with a cost yet.</p>';
+
+      const section = '<div class="pn-pb-budget" data-pb-budget-breakdown>'
+        + '<div class="pn-pb-budget-head">BUDGET BREAKDOWN</div>'
+        + summary + bar
+        + '<div class="pn-pb-budget-rows">' + partRows + '</div>'
+        + '</div>';
+
+      return String(html).replace('<div class="panel-body">', '<div class="panel-body">' + section);
+    };
+    wrappedCostHtml.__pnBudgetV1 = true;
+    pbCostBreakdownHtml = wrappedCostHtml;
+
+    const style = document.createElement("style");
+    style.textContent = ".pn-pb-budget{border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px;margin-bottom:8px;background:rgba(160,180,200,.03)}"
+      + ".pn-pb-budget-head{font:800 9px var(--mono);letter-spacing:.14em;color:#9fb4c8;margin-bottom:6px}"
+      + ".pn-pb-budget-stats{display:flex;gap:8px;flex-wrap:wrap}"
+      + ".pn-pb-budget-stat{flex:1;min-width:120px;display:flex;flex-direction:column;gap:3px;font:800 8.5px var(--mono);letter-spacing:.08em;color:var(--text-muted)}"
+      + ".pn-pb-budget-stat b{font-size:13px;letter-spacing:.02em;color:var(--text)}"
+      + ".pn-pb-budget-stat small{font-size:9px;color:var(--text-muted);font-weight:700}"
+      + ".pn-pb-budget-stat.is-left b{color:var(--green)}.pn-pb-budget-stat.is-over b{color:var(--red)}"
+      + ".pn-pb-budget-bar{display:flex;height:8px;margin:8px 0 6px;border-radius:4px;overflow:hidden;background:rgba(160,180,200,.10)}"
+      + ".pn-pb-budget-seg.is-spent{background:var(--green)}"
+      + ".pn-pb-budget-seg.is-planned{background:repeating-linear-gradient(45deg,var(--blue),var(--blue) 4px,transparent 4px,transparent 7px)}"
+      + ".pn-pb-budget-rows{display:flex;flex-direction:column}"
+      + ".pn-pb-budget-row{display:grid;grid-template-columns:62px minmax(0,1fr) minmax(60px,160px) 84px 46px;align-items:center;gap:8px;font-size:11.5px;padding:3px 0;border-bottom:1px dashed var(--border)}"
+      + ".pn-pb-budget-row:last-child{border-bottom:0}"
+      + ".pn-pb-budget-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}"
+      + ".pn-pb-budget-amt,.pn-pb-budget-pct{text-align:right;font-family:var(--mono)}.pn-pb-budget-pct{color:var(--text-muted);font-size:10.5px}"
+      + ".pn-pb-budget-kind{font:800 8px var(--mono);letter-spacing:.1em;text-align:center;border:1px solid var(--border-strong);border-radius:3px;padding:1px 0}"
+      + ".pn-pb-budget-kind.is-paid{color:var(--green);border-color:var(--green)}.pn-pb-budget-kind.is-reused{color:#b98cff;border-color:#b98cff}.pn-pb-budget-kind.is-planned{color:var(--blue);border-color:var(--blue)}"
+      + ".pn-pb-budget-mini{height:5px;border-radius:3px;background:rgba(160,180,200,.10);overflow:hidden}.pn-pb-budget-mini>span{display:block;height:100%}"
+      + ".pn-pb-budget-mini>.is-paid{background:var(--green)}.pn-pb-budget-mini>.is-reused{background:#b98cff}.pn-pb-budget-mini>.is-planned{background:var(--blue)}"
+      + "@media(max-width:760px){.pn-pb-budget-row{grid-template-columns:56px minmax(0,1fr) 76px 40px}.pn-pb-budget-mini{display:none}}";
+    document.head.appendChild(style);
+  }
+
   console.info("[PROFITNODE] Project planned-budget tracking active.");
 })();

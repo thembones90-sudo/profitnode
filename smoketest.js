@@ -1531,6 +1531,8 @@ const projectBuildProbe = `
   const lifeCostHtml=pbCostBreakdownHtml(lifeReady),lifeReusedGroup=(lifeCostHtml.split('<h3>REUSED INVENTORY</h3>')[1]||'').split('</h3>')[0];
   out.push(['cost details itemize reused Vault parts under REUSED INVENTORY and keep the estimated final basis visible', lifeReusedGroup.split('pn-pb-cost-row').length-1===8 && lifeCostHtml.indexOf('data-pb-est-final="'+lifeReadyStats.estimatedFinalCost+'"')>-1 && lifeReadyStats.reusedInventoryBasis===8028]);
 
+  const budgetHtml=pbCostBreakdownHtml(Object.assign({},lifeReady,{budget:10000})),budgetRows=budgetHtml.split('data-pb-budget-row="').length-1;
+  out.push(['COST DETAILS shows budget spent/left and every part\\'s share of the planned budget', budgetHtml.indexOf('data-pb-budget-breakdown')>-1 && budgetRows===8 && budgetHtml.indexOf('data-pb-budget-spent="'+lifeReadyStats.totalCostBasis+'"')>-1 && budgetHtml.indexOf('data-pb-budget-left="'+(10000-lifeReadyStats.totalCostBasis)+'"')>-1 && pbCostBreakdownHtml(lifeReady).indexOf('data-pb-budget-breakdown')===-1]);
   const assembled=Actions.markProjectBuildAssembled(life.id),assembledStats=Actions.projectBuildStats(Store.get('projects',life.id));
   out.push(['MARK ASSEMBLED moves every required owned part to INSTALLED and enters TESTING', assembled.ok && assembled.project.status==='TESTING' && assembledStats.slotsInstalled===8 && Object.values(lifeItems).every(item=>Store.get('inventory',item.id).status==='INSTALLED')]);
   out.push(['completion is blocked until physical verification is explicitly recorded', !Actions.markProjectBuildComplete(life.id).ok]);
