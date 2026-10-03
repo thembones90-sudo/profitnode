@@ -140,7 +140,20 @@ function pnMotherboardNameTier(text,catalog){
   // very different-generation "junk tier" boards (e.g. a 2011 H61 vs a 2015
   // H110, or a 2006 G41 vs either) don't read as identically rated just
   // because they share a tier badge.
-  if(/A320|A520|\bH\d{2,3}|\bB(?:65|75|85)|\bQ(?:6[0-9]|7[0-9]|87)|945|965|\bG31|\bG41|\bP35|\bP45/.test(text)) return 1;
+  //
+  // No leading \b on the fixed 2-digit codes (B65/75/85, Q6x/7x/87, G31/41,
+  // P35/45): ASUS named this whole generation of boards P8H61-M, P5G41T-M,
+  // P7H55-M etc — the chipset code runs straight into the "P8"/"P5"/"P7"
+  // prefix with no separator, so a leading boundary never matched those at
+  // all and silently dropped a large share of real-world ASUS boards to the
+  // COMMON default. In exchange, each fixed 2-digit code gets a trailing
+  // (?!\d) guard instead, so it can't match as a prefix of an unrelated
+  // *modern* chipset that happens to start the same way — H670, H770, Q670,
+  // B650 and B850 are all real current/recent chipsets, and without the
+  // guard "H67", "Q67", "B65"/"B85" would falsely swallow them too. H\d{2,3}
+  // doesn't need the guard: its own greedy 2-or-3-digit match already
+  // prefers the longest real match (H610 reads as 610, not 61+"0").
+  if(/A320|A520|H\d{2,3}|B(?:65|75|85)(?!\d)|Q(?:6[0-9]|7[0-9]|87)(?!\d)|945|965|G31(?!\d)|G41(?!\d)|P35(?!\d)|P45(?!\d)/.test(text)) return 1;
   if(/CROSSHAIR|MAXIMUS|GODLIKE|AORUS (?:MASTER|XTREME)|TAICHI/.test(text)) return 7;
   if(/X670|X870/.test(text)) return 6;
   if(/X570/.test(text)) return 4;
@@ -160,17 +173,19 @@ function pnMotherboardNameTier(text,catalog){
 // (H110 and other 3-digit H-chipsets, A320, A520) keeps the flat 15/100
 // midpoint it already had — this only pulls OLDER platforms down from that,
 // never pushes anything up.
-// No trailing \b on any of these: real model names run the chipset code
-// straight into the next token (H61M, H87M-G43, B75M-GL, ...), so a trailing
-// boundary would never match — same convention as the tier-1 regex above.
+// Same two rules as the gate regex above, for the same reasons: no leading
+// \b (so ASUS's P8H61-M / P5G41T-M / P7H55-M naming still matches), and a
+// trailing (?!\d) guard on every fixed 2-digit code so it can't match as a
+// prefix of an unrelated modern chipset (H67 vs H670, H81 vs H810, B65 vs
+// B650, etc — H810 in particular is a REAL current chipset, not hypothetical).
 const PN_MOBO_LEGACY_ERA = [
-  {rx:/945|965|\bG31|\bG41|\bP35|\bP45/, rating:4},              // LGA775 base OEM, ~2006-2010 (X38/X48 excluded — those were the enthusiast flagship LGA775 boards)
-  {rx:/\bH55|\bH57/, rating:7},                                  // LGA1156, 2010
-  {rx:/\bH61/, rating:9},                                        // LGA1155 base, 2011 — the board in question
-  {rx:/\bB65|\bQ65|\bH67|\bQ67/, rating:11},                     // LGA1155, 2011-12
-  {rx:/\bB75|\bQ75|\bH77|\bQ77/, rating:13},                     // LGA1155, 2012-13
-  {rx:/\bH81/, rating:14},                                       // LGA1150 base, 2013
-  {rx:/\bB85|\bQ85|\bH87|\bQ87/, rating:14}                      // LGA1150, 2013-14
+  {rx:/945|965|G31(?!\d)|G41(?!\d)|P35(?!\d)|P45(?!\d)/, rating:4},        // LGA775 base OEM, ~2006-2010 (X38/X48 excluded — enthusiast flagship LGA775 boards)
+  {rx:/H55(?!\d)|H57(?!\d)/, rating:7},                                    // LGA1156, 2010
+  {rx:/H61(?!\d)/, rating:9},                                              // LGA1155 base, 2011 — the board in question
+  {rx:/B65(?!\d)|Q65(?!\d)|H67(?!\d)|Q67(?!\d)/, rating:11},               // LGA1155, 2011-12
+  {rx:/B75(?!\d)|Q75(?!\d)|H77(?!\d)|Q77(?!\d)/, rating:13},               // LGA1155, 2012-13
+  {rx:/H81(?!\d)/, rating:14},                                             // LGA1150 base, 2013
+  {rx:/B85(?!\d)|Q85(?!\d)|H87(?!\d)|Q87(?!\d)/, rating:14}                // LGA1150, 2013-14
 ];
 
 function pnMotherboardLegacyRating(text){
