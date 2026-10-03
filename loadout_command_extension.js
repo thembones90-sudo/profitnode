@@ -58,7 +58,11 @@
         + '<span class="pn-lo-signal pn-tier-' + q.toLowerCase() + '" title="PROFITNODE quality signal: ' + q + (level ? " (" + level + "/7)" : "") + '">' + pips + "</span>"
         + share + "</div>";
     }
-    const body = html.slice(end + 1).replace("<b>PAID ", '<b><small>PAID</small> ').replace("<b>PLANNED COST ", '<b><small>PLANNED COST</small> ');
+    let body = html.slice(end + 1).replace("<b>PAID ", '<b><small>PAID</small> ').replace("<b>PLANNED COST ", '<b><small>PLANNED COST</small> ');
+    if (body.indexOf('data-pb-quick-price="' + slotKey + '"') > -1){
+      const headBtn = new RegExp('(<button[^>]*data-pb-edit-slot="' + slotKey + '"[^>]*>[^<]*</button>)');
+      body = body.replace(headBtn, '<span class="pn-lo-head-actions">$1<button type="button" class="btn btn-sm pn-lo-price-btn" data-pb-quick-price="' + slotKey + '" title="Edit the price recorded for this part">EDIT PRICE</button></span>');
+    }
     return opening + ">" + strip + body;
   };
   wrappedCard.__pnLoadoutCmdV1 = true;
@@ -120,6 +124,10 @@
     + L + " .pn-pb-slot-foot .chip{font:600 11px var(--stamp);letter-spacing:.14em;border-radius:0;clip-path:polygon(6px 0,100% 0,calc(100% - 6px) 100%,0 100%);padding:3px 12px}"
     + L + " .pn-pb-slot .btn{font-family:var(--stamp);letter-spacing:.16em;border-radius:0;clip-path:polygon(7px 0,100% 0,calc(100% - 7px) 100%,0 100%);padding:5px 16px;border-color:color-mix(in srgb,var(--lo-c) 55%,transparent);background:color-mix(in srgb,var(--lo-c) 10%,transparent)}"
     + L + " .pn-pb-slot .btn:hover{background:color-mix(in srgb,var(--lo-c) 24%,transparent);border-color:var(--lo-c)}"
+    + L + " .pn-lo-head-actions{display:flex;gap:6px;margin-left:auto;flex:none}" + L + " .pn-lo-head-actions .btn{margin-left:0 !important}"
+    + L + " .pn-pb-slot .pn-lo-price-btn{border-color:rgba(242,201,76,.55);background:rgba(242,201,76,.1);color:#f2c94c}"
+    + L + " .pn-pb-slot .pn-lo-price-btn:hover{background:rgba(242,201,76,.24);border-color:#f2c94c;color:#fff}"
+    + L + " .pn-pb-price .pn-pb-price-edit-btn{display:none}"
     + L + " .pn-pb-slot [data-pb-remove-slot]{align-self:flex-start;margin-top:2px !important;background:transparent;border-color:rgba(255,90,90,.35);color:#ff8f8f}"
     + L + " .pn-pb-slot [data-pb-remove-slot]:hover{background:rgba(255,70,70,.14);border-color:var(--red);color:#fff}"
     + L + " .pn-pb-slot[data-lo-kind=planned]{border-style:dashed}"
