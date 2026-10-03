@@ -56,6 +56,6 @@ window.__PN_SCRIPTS = [
   "revenant_iii_for_sale_migration_v1.js?v=revenant-iii-for-sale-v2",
   "case_already_owned_extension.js?v=case-already-owned-v1-20261002",
   "project_budget_extension.js?v=project-budget-command-center-v4-20261003",
-  "loadout_command_extension.js?v=loadout-command-v1-20261003",
+  "loadout_command_extension.js?v=workspace-command-v2-20261003",
   "cloud_sync_extension_v2.js?v=cloud-sync-v2-20261002"
 ];
