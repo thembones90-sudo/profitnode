@@ -121,7 +121,7 @@ function pnGpuNameTier(text,catalog){
 
 function pnMotherboardNameTier(text,catalog){
   if(catalog) return pnPartTierFromScore(catalog.overall,PN_PART_NAME_RULES.MOTHERBOARD.scores);
-  if(/A320|A520|\bH\d{3}/.test(text)) return 1;
+  if(/A320|A520|\bH\d{2,3}|\bB(?:65|75|85)|\bQ(?:6[0-9]|7[0-9]|87)|\bP(?:55|67)/.test(text)) return 1;
   if(/CROSSHAIR|MAXIMUS|GODLIKE|AORUS (?:MASTER|XTREME)|TAICHI/.test(text)) return 7;
   if(/X670|X870/.test(text)) return 6;
   if(/X570/.test(text)) return 4;
