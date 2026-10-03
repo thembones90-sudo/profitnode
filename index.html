@@ -145,7 +145,7 @@ nav.mainnav{flex:1;padding:10px 0;overflow-y:auto}
 }
 .topbar .sub{font-family:var(--mono);font-size:11px;color:var(--text-mute);margin-top:4px}
 .topbar-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.content{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:16px 20px 40px;width:100%;max-width:1480px;margin:0 auto}
+.content{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:16px max(20px,calc((100% - 1440px) / 2)) 40px;width:100%;margin:0 auto}
 
 /* ---------- buttons / inputs ---------- */
 .btn{
