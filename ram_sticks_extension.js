@@ -87,7 +87,7 @@
     if (ownedIds.length || planned.length){
       const label = sticks.filter(Boolean).map(stickLabel).join(" + ");
       if (!ownedIds.length){
-        slot = { kind: "PLANNED", catalogType: "RAM", label, cost: Math.round(planned.reduce((sum, st) => sum + stickAmount(p, st), 0)), currency: p.currency, sticks: stored };
+        slot = { kind: "PLANNED", catalogType: "RAM", label, cost: Math.round(planned.reduce((sum, st) => sum + stickAmount(p, st), 0) * 100) / 100, currency: p.currency, sticks: stored };
       } else {
         slot = { kind: "INVENTORY", inventoryItemId: ownedIds[0], label, sticks: stored };
         if (ownedIds.length > 1){
@@ -134,10 +134,9 @@
   const share = (p, amount) => Number(p.budget) > 0 ? '<span class="pn-lo-share">' + (Math.round(amount / Number(p.budget) * 1000) / 10) + "% OF BUDGET</span>" : "";
 
   const editorHtml = (p, idx, st) => {
-    const cur = escHtml(p.currency);
     if (UI.price && st){
-      return '<div class="pn-lo-stick-editor"><span class="pn-lo-alloc-k">' + (st.kind === "INVENTORY" ? "PAID" : "PLANNED COST") + " (" + cur + ')</span>'
-        + '<span class="pn-lo-alloc-edit"><input type="number" min="0" step="1" data-pb-stick-price-input="' + idx + '" value="' + Math.round(stickAmount(p, st)) + '">'
+      return '<div class="pn-lo-stick-editor"><span class="pn-lo-alloc-k">' + (st.kind === "INVENTORY" ? "PAID" : "PLANNED COST") + '</span>'
+        + '<span class="pn-lo-alloc-edit"><input type="number" min="0" step="1" data-pb-stick-price-input="' + idx + '" value="' + Math.round(stickAmount(p, st) * 100) / 100 + '">' + (typeof pnEntryCurrencySelect === "function" ? pnEntryCurrencySelect('data-pb-stick-cur="' + idx + '"', p.currency) : "")
         + '<button type="button" class="btn btn-sm btn-primary" data-pb-stick-save="' + idx + '">SAVE</button><button type="button" class="btn btn-sm btn-ghost" data-pb-stick-cancel>×</button></span></div>';
     }
     const vault = availableSticks(p, idx);
@@ -152,9 +151,9 @@
           }).join("") + "</select>"
         : '<p class="hint" style="margin:0">No free RAM in Parts Vault. Add it there, or plan the stick instead.</p>';
     } else {
-      const lab = st && st.kind === "PLANNED" ? st.label : "", cost = st && st.kind === "PLANNED" ? Math.round(stickAmount(p, st)) : "";
+      const lab = st && st.kind === "PLANNED" ? st.label : "", cost = st && st.kind === "PLANNED" ? Math.round(stickAmount(p, st) * 100) / 100 : "";
       fields = '<input type="text" data-pb-stick-label="' + idx + '" placeholder="e.g. Kingston Fury 8GB DDR4 3200" value="' + escAttr(lab || "") + '">'
-        + '<input type="number" min="0" step="1" data-pb-stick-cost="' + idx + '" placeholder="Cost (' + cur + ')" value="' + cost + '">';
+        + '<span class="pn-lo-alloc-edit"><input type="number" min="0" step="1" data-pb-stick-cost="' + idx + '" placeholder="Cost" value="' + cost + '">' + (typeof pnEntryCurrencySelect === "function" ? pnEntryCurrencySelect('data-pb-stick-cur="' + idx + '"', p.currency) : "") + "</span>";
     }
     return '<div class="pn-lo-stick-editor">' + modeSel + fields
       + '<span class="pn-lo-alloc-edit"><button type="button" class="btn btn-sm btn-primary" data-pb-stick-save="' + idx + '">SAVE</button><button type="button" class="btn btn-sm btn-ghost" data-pb-stick-cancel>×</button></span></div>';
@@ -218,10 +217,13 @@
     if (!p) return;
     const sticks = sticksOf(p), cur = sticks[idx];
     let next;
+    const curSel = document.querySelector('[data-pb-stick-cur="' + idx + '"]');
+    const entryCur = (curSel && curSel.value) || p.currency;
+    const num = v => { const n = Math.max(0, Number(String(v || "0").replace(",", ".")) || 0); return entryCur === "RSD" ? Math.round(n) : Math.round(n * 100) / 100; };
     if (UI.price && cur){
-      const val = Math.max(0, Math.round(Number(String((document.querySelector('[data-pb-stick-price-input="' + idx + '"]') || {}).value || "0").replace(",", ".")) || 0));
-      if (cur.kind === "INVENTORY"){ Actions.updateInventory(cur.inventoryItemId, { purchasePrice: val }); next = cur; }
-      else next = Object.assign({}, cur, { cost: val, currency: p.currency });
+      const val = num((document.querySelector('[data-pb-stick-price-input="' + idx + '"]') || {}).value);
+      if (cur.kind === "INVENTORY"){ Actions.updateInventory(cur.inventoryItemId, { purchasePrice: val, currency: entryCur }); next = cur; }
+      else next = Object.assign({}, cur, { cost: val, currency: entryCur });
     } else if (UI.mode === "VAULT"){
       const sel = document.querySelector('[data-pb-stick-item="' + idx + '"]'), id = sel && sel.value;
       const item = id && Store.get("inventory", id);
@@ -230,9 +232,9 @@
       next = { kind: "INVENTORY", inventoryItemId: item.id };
     } else {
       const label = String((document.querySelector('[data-pb-stick-label="' + idx + '"]') || {}).value || "").trim();
-      const cost = Math.max(0, Math.round(Number(String((document.querySelector('[data-pb-stick-cost="' + idx + '"]') || {}).value || "0").replace(",", ".")) || 0));
+      const cost = num((document.querySelector('[data-pb-stick-cost="' + idx + '"]') || {}).value);
       if (!label){ pbSetNotice("err", "Give the planned stick a name."); return render(); }
-      next = { kind: "PLANNED", label, cost, currency: p.currency };
+      next = { kind: "PLANNED", label, cost, currency: entryCur };
     }
     sticks[idx] = next;
     const res = applySticks(p, sticks);

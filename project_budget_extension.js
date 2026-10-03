@@ -19,7 +19,8 @@
 (function installProjectBudgetV1(){
 
   // Budget reserved for slots whose part isn't chosen yet:
-  // project.allocations = { SLOT: { amount } } in the project currency. An
+  // project.allocations = { SLOT: { amount, currency } } (currency defaults to the
+  // project's; amounts are converted to the project currency here). An
   // allocation only counts while its slot is still empty, so adding the real
   // part supersedes it. Kept apart from project slots on purpose: it never
   // touches slot counts, build rating, compatibility or profit accounting.
@@ -28,7 +29,10 @@
     if (!map || typeof map !== "object") return [];
     return Object.keys(map)
       .filter(k => !(project.slots && project.slots[k]))
-      .map(k => ({ slotKey: k, amount: Number(map[k] && map[k].amount) || 0 }))
+      .map(k => {
+        const raw = Number(map[k] && map[k].amount) || 0, cur = (map[k] && map[k].currency) || project.currency;
+        return { slotKey: k, amount: typeof convert === "function" ? convert(raw, cur, project.currency) : raw };
+      })
       .filter(a => a.amount > 0);
   };
   const allocatedTotal = project => pnBudgetAllocations(project).reduce((sum, a) => sum + a.amount, 0);

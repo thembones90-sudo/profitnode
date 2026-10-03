@@ -32,15 +32,21 @@
 
   // Inline editor state for reserving budget on an empty bay (one at a time).
   const ALLOC_UI = { slotKey: null };
-  const allocFor = (project, slotKey) => {
+  const allocRaw = (project, slotKey) => {
     const a = project && project.allocations && project.allocations[slotKey];
-    return a && Number(a.amount) > 0 ? Number(a.amount) : 0;
+    return a && Number(a.amount) > 0 ? { amount: Number(a.amount), currency: a.currency || project.currency } : null;
+  };
+  const allocFor = (project, slotKey) => {
+    const a = allocRaw(project, slotKey);
+    return a ? (typeof convert === "function" ? convert(a.amount, a.currency, project.currency) : a.amount) : 0;
   };
   const allocHtml = (project, slotKey, locked) => {
     const amount = allocFor(project, slotKey);
     if (!locked && ALLOC_UI.slotKey === slotKey){
-      return '<div class="pn-lo-alloc is-editing"><span class="pn-lo-alloc-k">RESERVE BUDGET (' + escHtml(project.currency) + ')</span>'
-        + '<span class="pn-lo-alloc-edit"><input type="number" min="0" step="1" data-pb-alloc-input="' + slotKey + '" value="' + (amount || "") + '" placeholder="0">'
+      const raw = allocRaw(project, slotKey), cur = raw ? raw.currency : project.currency;
+      return '<div class="pn-lo-alloc is-editing"><span class="pn-lo-alloc-k">RESERVE BUDGET</span>'
+        + '<span class="pn-lo-alloc-edit"><input type="number" min="0" step="1" data-pb-alloc-input="' + slotKey + '" value="' + (raw ? raw.amount : "") + '" placeholder="0">'
+        + (typeof pnEntryCurrencySelect === "function" ? pnEntryCurrencySelect('data-pb-alloc-cur="' + slotKey + '"', cur) : "")
         + '<button type="button" class="btn btn-sm btn-primary" data-pb-alloc-save="' + slotKey + '">SAVE</button>'
         + '<button type="button" class="btn btn-sm btn-ghost" data-pb-alloc-cancel>×</button></span></div>';
     }
@@ -121,8 +127,10 @@
     const input = document.querySelector('[data-pb-alloc-input="' + slotKey + '"]');
     if (!p || !input) return;
     const amount = Math.max(0, Number(String(input.value).replace(",", ".")) || 0);
+    const curSel = document.querySelector('[data-pb-alloc-cur="' + slotKey + '"]');
+    const currency = (curSel && curSel.value) || p.currency;
     const next = Object.assign({}, p.allocations || {});
-    if (amount > 0) next[slotKey] = { amount }; else delete next[slotKey];
+    if (amount > 0) next[slotKey] = { amount, currency }; else delete next[slotKey];
     Store.update("projects", p.id, { allocations: next });
     ALLOC_UI.slotKey = null;
     render();
