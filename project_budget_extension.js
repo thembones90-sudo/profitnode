@@ -126,20 +126,6 @@
       const key = slotKeysByLength.find(k => String(label).indexOf(RIG_SLOT_LABELS[k] + " — ") === 0);
       return key ? { slot: RIG_SLOT_LABELS[key].toUpperCase(), short: key === "MOBO" ? "MOBO" : key === "STORAGE" ? "STORAGE" : RIG_SLOT_LABELS[key].toUpperCase(), name: String(label).slice(RIG_SLOT_LABELS[key].length + 3), color: GAUGE_COLORS[key] || "#9fb4c8" } : { slot: "EXTRA", short: "EXTRA", name: String(label), color: "#9BE15D" };
     };
-    // Lays out one label per bar segment for an assumed bar width: inside the
-    // segment when it fits, otherwise a callout below in the first free lane.
-    const layoutLabels = (segs, barPx) => {
-      const lanes = [];
-      return segs.map(sg => {
-        const textPx = sg.text.length * 8 + 16, segPx = sg.width / 100 * barPx;
-        if (textPx <= segPx - 6) return { inside: true, lane: 0, start: 0 };
-        const w = textPx / barPx * 100, start = Math.max(0, Math.min(sg.center - w / 2, 100 - w));
-        let lane = lanes.findIndex(end => end <= start - 1.5);
-        if (lane < 0){ lane = lanes.length; lanes.push(0); }
-        lanes[lane] = start + w;
-        return { inside: false, lane, start };
-      }).concat([{ lanes: lanes.length }]);
-    };
     const wrappedCostHtml = function(project){
       const html = baseCostHtml.apply(this, arguments);
       const budget = project ? Number(project.budget) : 0;
@@ -175,10 +161,8 @@
         cursor += width;
         return sg;
       });
-      const desk = layoutLabels(segData, 900), mob = layoutLabels(segData, 280);
-      const deskLanes = desk.pop().lanes, mobLanes = mob.pop().lanes;
-      const segs = segData.map((sg, i) => '<span class="pn-cc-seg' + (sg.r.kind === "PLANNED" ? " is-planned" : sg.r.kind === "ALLOCATED" ? " is-alloc" : "") + (desk[i].inside ? " in-d" : "") + (mob[i].inside ? " in-m" : "") + '" title="' + escHtml(sg.r.slot + " · " + sg.r.name + " · " + m(sg.r.amount)) + '" style="--c:' + sg.r.color + ';width:' + sg.width + '%"><b>' + escHtml(sg.text) + '</b></span>').join("");
-      const calls = segData.map((sg, i) => '<span class="pn-cc-call' + (desk[i].inside ? " in-d" : "") + (mob[i].inside ? " in-m" : "") + '" style="--c:' + sg.r.color + ';--x:' + sg.center + '%;--ld:' + desk[i].lane + ';--lm:' + mob[i].lane + ';--sd:' + desk[i].start + '%;--sm:' + mob[i].start + '%"><i></i><b>' + escHtml(sg.text) + '</b></span>').join("");
+      const segs = segData.map(sg => '<span class="pn-cc-seg' + (sg.r.kind === "PLANNED" ? " is-planned" : sg.r.kind === "ALLOCATED" ? " is-alloc" : "") + '" title="' + escHtml(sg.r.slot + " · " + sg.r.name + " · " + m(sg.r.amount)) + '" style="--c:' + sg.r.color + ';width:' + sg.width + '%"></span>').join("");
+      const pills = segData.map((sg, i) => '<span class="pn-cc-pill" data-pill="' + i + '" data-start="' + (sg.center - sg.width / 2) + '" data-width="' + sg.width + '" data-full="' + escAttr(sg.text) + '" data-name="' + escAttr(sg.r.short) + '" style="--c:' + sg.r.color + '">' + escHtml(sg.text) + "</span>").join("");
       const limitAt = pct(budget, scale);
       const ticks = [25, 50, 75].map(t => '<span class="pn-cc-tick" style="left:' + (limitAt * t / 100) + '%"></span>').join("")
         + (scale > budget ? '<span class="pn-cc-limit" style="left:' + limitAt + '%"></span>' : "");
@@ -195,8 +179,7 @@
           + (allocated > 0 ? mini("ALLOCATED", m(allocated), "is-alloc", ' data-pb-budget-allocated="' + allocated + '"') : "")
           + mini("LEFT NOW", signed(left), left < 0 ? "is-neg" : "is-pos", ' data-pb-budget-left="' + left + '"')
         + '</div></div>';
-      const bar = '<div class="pn-cc-bar">' + segs + ticks + '</div>'
-        + '<div class="pn-cc-calls" style="--lanes-d:' + deskLanes + ';--lanes-m:' + mobLanes + '">' + calls + '</div>'
+      const bar = '<div class="pn-cc-gauge" data-pn-cc-gauge><div class="pn-cc-bar">' + segs + ticks + '</div><div class="pn-cc-labels">' + pills + "</div></div>"
         + '<div class="pn-cc-scale"><span style="left:0">0</span>' + [25, 50, 75].map(t => '<span class="is-mid" style="left:' + (limitAt * t / 100) + '%">' + t + '%</span>').join("") + '<span class="is-end" style="left:' + limitAt + '%">' + m(budget) + '</span></div>';
       const partRows = rows.length
         ? rows.map(r => '<div class="pn-cc-row" data-pb-budget-row="' + r.kind + '" style="--c:' + r.color + '">'
@@ -240,18 +223,15 @@
       + ".pn-cc-sub{font:500 13px var(--mono);color:var(--text-muted)}"
       + ".pn-cc-minis{display:flex;gap:26px;flex-wrap:wrap}.pn-cc-mini{display:flex;flex-direction:column;gap:4px;padding-left:10px;border-left:2px solid rgba(88,174,232,.35)}"
       + ".pn-cc-mini b{font:600 22px var(--stamp);letter-spacing:.03em;color:var(--text)}.pn-cc-mini.is-pos b{color:var(--green)}.pn-cc-mini.is-neg b{color:var(--red)}.pn-cc-mini.is-planned b{color:#74c7ff}"
-      + ".pn-cc-bar{position:relative;display:flex;height:36px;margin:18px 0 0;overflow:hidden;background:rgba(160,180,200,.07);box-shadow:inset 0 0 0 1px rgba(88,174,232,.3);clip-path:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%)}"
+      + ".pn-cc-gauge{position:relative;margin:18px 0 6px}.pn-cc-bar{position:relative;display:flex;height:60px;overflow:hidden;background:rgba(160,180,200,.07);box-shadow:inset 0 0 0 1px rgba(88,174,232,.3);clip-path:polygon(10px 0,100% 0,calc(100% - 10px) 100%,0 100%)}"
       + ".pn-cc-seg{background:var(--c);box-shadow:inset -2px 0 0 rgba(0,0,0,.6),0 0 12px -2px var(--c)}"
       + ".pn-cc-seg.is-alloc{background:repeating-linear-gradient(90deg,var(--c) 0 2px,color-mix(in srgb,var(--c) 22%,transparent) 2px 7px);box-shadow:inset 0 0 0 1px var(--c)}"
       + ".pn-cc-kind.is-allocated{color:#f2c94c;border-style:dotted}.pn-cc-mini.is-alloc b{color:#f2c94c}"
       + ".pn-cc-seg.is-planned{background:repeating-linear-gradient(45deg,var(--c),var(--c) 5px,transparent 5px,transparent 9px)}"
-      + ".pn-cc-seg{display:flex;align-items:center;justify-content:center;min-width:0;overflow:hidden}"
-      + ".pn-cc-seg>b{display:none;font:600 12px var(--stamp);letter-spacing:.08em;white-space:nowrap;color:#fff;background:rgba(8,8,18,.72);padding:2px 7px;border-radius:2px}"
-      + ".pn-cc-seg.in-d>b{display:block}"
-      + ".pn-cc-calls{position:relative;height:calc(var(--lanes-d) * 22px + 8px);margin-bottom:4px}"
-      + ".pn-cc-call{--lane:var(--ld);--s:var(--sd)}.pn-cc-call.in-d{display:none}"
-      + ".pn-cc-call>i{position:absolute;left:var(--x);top:0;width:1px;height:calc(var(--lane) * 22px + 6px);background:var(--c);opacity:.8}"
-      + ".pn-cc-call>b{position:absolute;left:var(--s);top:calc(var(--lane) * 22px + 4px);font:600 12px var(--stamp);letter-spacing:.08em;white-space:nowrap;color:var(--c);padding:0 6px;border-left:2px solid var(--c);background:rgba(8,8,18,.6)}"
+      + ".pn-cc-seg{min-width:0}"
+      + ".pn-cc-labels{position:absolute;inset:0;pointer-events:none}"
+      + ".pn-cc-pill{position:absolute;left:0;top:21px;height:18px;line-height:18px;visibility:hidden;font:600 12px var(--stamp);letter-spacing:.08em;white-space:nowrap;color:#fff;background:rgba(8,8,18,.74);padding:0 7px;border-radius:2px}"
+      + ".pn-cc-pill.is-placed{visibility:visible}.pn-cc-pill.is-out{background:rgba(8,8,18,.9);color:var(--c);box-shadow:inset 3px 0 0 var(--c),0 0 0 1px color-mix(in srgb,var(--c) 70%,transparent)}"
       + ".pn-cc-tick{position:absolute;top:0;bottom:0;width:1px;background:rgba(255,255,255,.22)}"
       + ".pn-cc-limit{position:absolute;top:0;bottom:0;width:3px;margin-left:-1px;background:var(--red);box-shadow:0 0 10px var(--red)}"
       + ".pn-cc-scale{position:relative;height:16px;font:500 12px var(--mono);color:var(--text-muted);margin-bottom:14px}.pn-cc-scale>span{position:absolute;top:0;white-space:nowrap}.pn-cc-scale>.is-mid{transform:translateX(-50%)}.pn-cc-scale>.is-end{transform:translateX(-100%)}"
@@ -265,13 +245,71 @@
       + ".pn-cc-kind.is-paid{color:var(--green)}.pn-cc-kind.is-reused{color:#c39bff}.pn-cc-kind.is-planned{color:#74c7ff;border-style:dashed}"
       + ".pn-cc-amt{font:600 17px var(--mono);text-align:right;color:var(--text)}.pn-cc-pct{font:500 13px var(--mono);text-align:right;color:var(--text-muted)}"
       + ".pn-cc-empty{font:500 14px var(--sans);color:var(--text-muted);margin:4px 0}"
-      + "@media(max-width:760px){.pn-cc-seg.in-d>b{display:none}.pn-cc-seg.in-m>b{display:block}.pn-cc-calls{height:calc(var(--lanes-m) * 22px + 8px)}"
-        + ".pn-cc-call{--lane:var(--lm);--s:var(--sm)}.pn-cc-call.in-d{display:block}.pn-cc-call.in-m{display:none}"
-        + ".pn-cc{padding:14px 14px 12px}.pn-cc-big{font-size:36px}.pn-cc-minis{gap:14px 18px}.pn-cc-mini b{font-size:18px}"
+      + "@media(max-width:760px){.pn-cc{padding:14px 14px 12px}.pn-cc-big{font-size:36px}.pn-cc-minis{gap:14px 18px}.pn-cc-mini b{font-size:18px}"
         + ".pn-cc-row{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:'slot amt' 'name pct' 'kind kind';row-gap:3px}"
         + ".pn-cc-slot{grid-area:slot}.pn-cc-name{grid-area:name;white-space:normal}.pn-cc-amt{grid-area:amt}.pn-cc-pct{grid-area:pct}.pn-cc-kind{grid-area:kind;justify-self:start;padding:2px 8px}}"
       + "@media(prefers-reduced-motion:reduce){.pn-cc-title i,.pn-cc-status.is-breach{animation:none}}";
     document.head.appendChild(style);
+
+    // Places every gauge label on the bar using the bar's real width: inside
+    // its segment when the text fits (falling back to the part name alone),
+    // otherwise as an outlined label centred on its segment in a lane above
+    // or below the inside labels. The bar grows extra lanes when needed so
+    // labels never overlap.
+    const ROW = 20;
+    globalThis.pnLayoutBudgetGauges = function(){
+      document.querySelectorAll("[data-pn-cc-gauge]").forEach(gauge => {
+        const W = gauge.clientWidth, bar = gauge.querySelector(".pn-cc-bar");
+        if (!W || !bar) return;
+        const lanes = [], items = [];
+        gauge.querySelectorAll(".pn-cc-pill").forEach(pill => {
+          const segL = Number(pill.dataset.start) / 100 * W, segW = Number(pill.dataset.width) / 100 * W, center = segL + segW / 2;
+          pill.classList.remove("is-out", "is-placed");
+          let inside = false;
+          for (const text of [pill.dataset.full, pill.dataset.name]){
+            pill.textContent = text;
+            if (pill.offsetWidth <= segW - 6){ inside = true; break; }
+          }
+          if (!inside){ pill.textContent = pill.dataset.full; pill.classList.add("is-out"); }
+          const w = pill.offsetWidth, left = inside ? center - w / 2 : Math.max(12, Math.min(center - w / 2, W - 12 - w));
+          let lane = -1;
+          if (!inside){
+            lane = lanes.findIndex(spans => spans.every(r => left + w + 4 <= r[0] || left >= r[1] + 4));
+            if (lane < 0){ lane = lanes.length; lanes.push([]); }
+            lanes[lane].push([left, left + w]);
+          }
+          items.push({ pill, left, lane });
+        });
+        const above = Math.ceil(lanes.length / 2), below = Math.floor(lanes.length / 2);
+        const height = Math.max(60, (above + 1 + below) * ROW + 4), mid = Math.round((height - 18) / 2);
+        bar.style.height = height + "px";
+        items.forEach(it => {
+          let top = mid;
+          if (it.lane >= 0){
+            const row = Math.floor(it.lane / 2) + 1;
+            top = it.lane % 2 === 0 ? mid - row * ROW : mid + row * ROW;
+          }
+          it.pill.style.left = it.left + "px";
+          it.pill.style.top = top + "px";
+          it.pill.classList.add("is-placed");
+        });
+      });
+    };
+    if (typeof render === "function" && !render.__pnGaugeLayoutV1){
+      const baseRender = render;
+      const wrapped = function(){
+        const out = baseRender.apply(this, arguments);
+        try { pnLayoutBudgetGauges(); } catch (_){}
+        return out;
+      };
+      wrapped.__pnGaugeLayoutV1 = true;
+      render = wrapped;
+    }
+    let resizeFrame = 0;
+    if (typeof window !== "undefined" && typeof window.addEventListener === "function" && typeof requestAnimationFrame === "function") window.addEventListener("resize", () => {
+      cancelAnimationFrame(resizeFrame);
+      resizeFrame = requestAnimationFrame(() => { try { pnLayoutBudgetGauges(); } catch (_){} });
+    });
   }
 
   console.info("[PROFITNODE] Project planned-budget tracking active.");
