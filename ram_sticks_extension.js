@@ -165,14 +165,14 @@
     const st = sticksOf(p)[idx], name = STICK_NAMES[idx], editing = !locked && UI.idx === idx;
     const kind = !st ? "empty" : st.kind === "INVENTORY" ? "owned" : "planned";
     const label = idx === 0 ? '<span class="pn-cat-label pn-cat-RAM">RAM</span>' : '<span class="pn-lo-stick-cat">RAM</span>';
-    const attrs = ' style="--pb-acc:#32C6A6;--lo-c:' + COLOR + '" data-lo-kind="' + kind + '" data-lo-stick="' + idx + '"' + (idx === 0 ? ' data-pb-slot="RAM"' : "");
+    const reserved = !st && p.allocations && p.allocations["RAM:" + idx] && Number(p.allocations["RAM:" + idx].amount) > 0;
+    const attrs = ' style="--pb-acc:#32C6A6;--lo-c:' + COLOR + '" data-lo-kind="' + kind + '" data-lo-stick="' + idx + '"' + (reserved ? ' data-lo-alloc="1"' : "") + (idx === 0 ? ' data-pb-slot="RAM"' : "");
     const strip = '<div class="pn-lo-strip"><span class="pn-lo-bay">BAY 03' + name + "</span>" + (st ? share(p, stickAmount(p, st)) : "") + (locked ? "" : pairBtn(false)) + "</div>";
     if (!st){
-      const bothEmpty = !slotOf(p);
       return '<div class="pn-pb-slot is-empty"' + attrs + ">" + strip + '<div class="pn-pb-slot-head">' + label + '<span class="pn-lo-stick-tag">STICK ' + name + '</span></div>'
         + '<span class="pn-pb-slot-empty-hint">EMPTY</span>'
         + (editing ? editorHtml(p, idx, null) : locked ? "" : '<button type="button" class="btn btn-sm" data-pb-stick-open="' + idx + '">+ ADD STICK ' + name + "</button>")
-        + (idx === 0 && bothEmpty && !editing && typeof pnLoadoutAllocHtml === "function" ? pnLoadoutAllocHtml(p, "RAM", locked) : "")
+        + (!editing && typeof pnLoadoutAllocHtml === "function" ? pnLoadoutAllocHtml(p, "RAM:" + idx, locked) : "")
         + "</div>";
     }
     const amount = stickAmount(p, st), owned = st.kind === "INVENTORY";
@@ -188,6 +188,23 @@
       + (locked ? "" : '<button type="button" class="btn btn-sm btn-ghost" style="margin-top:6px" data-pb-stick-remove="' + idx + '">REMOVE</button>')
       + "</div>";
   };
+
+  // Unpaired RAM reserves budget per stick ("RAM:0" / "RAM:1", counted while
+  // that stick is empty); paired RAM uses the whole-slot "RAM" allocation.
+  if (typeof pnBudgetAllocations === "function" && !pnBudgetAllocations.__pnRamSticksV1){
+    const baseAllocs = pnBudgetAllocations;
+    const wrappedAllocs = function(p){
+      const paired = isPaired(p), sticks = sticksOf(p);
+      return baseAllocs.apply(this, arguments).filter(a => {
+        const m = /^RAM:(\d)$/.exec(a.slotKey);
+        if (m) return !paired && !sticks[Number(m[1])];
+        if (a.slotKey === "RAM") return paired;
+        return true;
+      });
+    };
+    wrappedAllocs.__pnRamSticksV1 = true;
+    globalThis.pnBudgetAllocations = wrappedAllocs;
+  }
 
   const basePaired = pbSlotCardHtml;
   const wrappedCard = function(p, slotKey, locked){

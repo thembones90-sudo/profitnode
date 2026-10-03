@@ -162,7 +162,10 @@
 
       const groups = pbBuildCostRows(project);
       const tag = (rows, kind) => (rows || []).map(r => Object.assign({ amount: Number(r.amount) || 0, kind, label: r.label }, rowMeta(r.label)));
-      const allocRows = allocs.map(a => Object.assign({}, rowMeta(RIG_SLOT_LABELS[a.slotKey] + " — Budget reserved, part not chosen yet"), { amount: a.amount, kind: "ALLOCATED", label: RIG_SLOT_LABELS[a.slotKey] }));
+      const allocRows = allocs.map(a => {
+        const parts = String(a.slotKey).split(":"), base = RIG_SLOT_LABELS[parts[0]] || parts[0], stick = parts.length > 1 ? "Stick " + "AB".charAt(Number(parts[1])) + " budget reserved" : "Budget reserved";
+        return Object.assign({}, rowMeta(base + " — " + stick + ", part not chosen yet"), { amount: a.amount, kind: "ALLOCATED", label: base });
+      });
       const rows = [].concat(tag(groups.direct, "PAID"), tag(groups.reused, "REUSED"), tag(groups.planned, "PLANNED"), allocRows).sort((a, b) => b.amount - a.amount);
 
       const scale = Math.max(budget, committed);
