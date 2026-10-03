@@ -102,7 +102,7 @@
     const baseCostHtml = pbCostBreakdownHtml;
     const pct = (part, whole) => whole > 0 ? Math.round((part / whole) * 1000) / 10 : 0;
     const slotKeysByLength = typeof RIG_SLOT_LABELS !== "undefined" ? Object.keys(RIG_SLOT_LABELS).sort((a, b) => RIG_SLOT_LABELS[b].length - RIG_SLOT_LABELS[a].length) : [];
-    const GAUGE_COLORS = { CPU: "#39C6F4", GPU: "#B25CFF", MOBO: "#F2C94C", RAM: "#2FE0A8", STORAGE: "#4F6BFF", STORAGE2: "#7D8DFF", STORAGE3: "#A5B0FF", STORAGE4: "#A5B0FF", STORAGE5: "#A5B0FF", STORAGE6: "#A5B0FF", STORAGE7: "#A5B0FF", STORAGE8: "#A5B0FF", PSU: "#FF8A3D", COOLER: "#FF5FB0", CASE: "#B9C3D0" };
+    const GAUGE_COLORS = globalThis.PN_SLOT_GAUGE_COLORS = { CPU: "#39C6F4", GPU: "#B25CFF", MOBO: "#F2C94C", RAM: "#2FE0A8", STORAGE: "#4F6BFF", STORAGE2: "#7D8DFF", STORAGE3: "#A5B0FF", STORAGE4: "#A5B0FF", STORAGE5: "#A5B0FF", STORAGE6: "#A5B0FF", STORAGE7: "#A5B0FF", STORAGE8: "#A5B0FF", PSU: "#FF8A3D", COOLER: "#FF5FB0", CASE: "#B9C3D0" };
     const rowMeta = label => {
       const key = slotKeysByLength.find(k => String(label).indexOf(RIG_SLOT_LABELS[k] + " — ") === 0);
       return key ? { slot: RIG_SLOT_LABELS[key].toUpperCase(), short: key === "MOBO" ? "MOBO" : key === "STORAGE" ? "STORAGE" : RIG_SLOT_LABELS[key].toUpperCase(), name: String(label).slice(RIG_SLOT_LABELS[key].length + 3), color: GAUGE_COLORS[key] || "#9fb4c8" } : { slot: "EXTRA", short: "EXTRA", name: String(label), color: "#9BE15D" };
