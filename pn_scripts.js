@@ -58,5 +58,6 @@ window.__PN_SCRIPTS = [
   "project_budget_extension.js?v=project-budget-command-center-v4-20261003",
   "loadout_command_extension.js?v=workspace-command-v4-edit-price-20261003",
   "rig_assembly_command_extension.js?v=rig-assembly-command-v1-20261003",
+  "scroll_preserve_extension.js?v=scroll-preserve-v1-20261003",
   "cloud_sync_extension_v2.js?v=cloud-sync-v2-20261002"
 ];
