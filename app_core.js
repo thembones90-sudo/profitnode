@@ -537,7 +537,16 @@ const t=e.dataset.entityForm;if(!FORM_SCHEMAS[t])return
 ;const a=e.dataset.id||null,r=FORM_SCHEMAS[t](a?Store.get(collectionForEntity(t),a):null),n=new FormData(e),s={};r.fields.forEach(e=>{
 if("components"===e.type)return void(s.componentIds=n.getAll("componentIds"));if("scorePreview"===e.type||"partSearch"===e.type||"ramDetails"===e.type||"workspaceNote"===e.type)return;let t=n.get(e.key)
 ;"number"===e.type&&(t=""===t||null==t?null:parseFloat(t)),s[e.key]=t
-}),"sale"===t&&(s.inventoryItemId=n.get("inventoryItemId")||null);if("inventory"===t){s.catalogOverride=String(n.get("catalogOverride")||"").trim()||null,"STORAGE"!==s.category&&(s.driveHealthPercent=null);if("RAM"===s.category){const t=readInventoryRamForm(e);if(!t)return;Object.assign(s,t)}else Object.assign(s,{ramType:null,totalCapacity:null,moduleCount:null,moduleCapacity:null,ramSpeedMTs:null,ramSpeedMHz:null})}"inventory"===t?a?Actions.updateInventory(a,s):Actions.addInventory(s):"project"===t?(a?Actions.updateProject(a,s):(function(){const p=Actions.addProject(s);state.pbId=p.id,state.route="projectbuild"})()):"sale"===t?a?Actions.updateSale(a,s):Actions.addSale(s):"repair"===t&&(a?Actions.updateRepair(a,s):Actions.addRepair(s)),
+}),"sale"===t&&(s.inventoryItemId=n.get("inventoryItemId")||null);if("inventory"===t){s.catalogOverride=String(n.get("catalogOverride")||"").trim()||null,"STORAGE"!==s.category&&(s.driveHealthPercent=null);if("RAM"===s.category){const t=readInventoryRamForm(e);if(!t)return;Object.assign(s,t)}else Object.assign(s,{ramType:null,totalCapacity:null,moduleCount:null,moduleCapacity:null,ramSpeedMTs:null,ramSpeedMHz:null})}
+if("inventory"===t){
+  if(a)Actions.updateInventory(a,s);
+  else if("RAM"===s.category&&Number(s.moduleCount)>1&&Number(s.moduleCapacity)>0){
+    const count=Number(s.moduleCount),each=Number(s.moduleCapacity),totalPrice=Number(s.purchasePrice)||0,totalValue=Number(s.estimatedMarketValue)||0;
+    for(let i=0;i<count;i++)Actions.addInventory(Object.assign({},s,{totalCapacity:each,moduleCount:1,moduleCapacity:each,purchasePrice:Math.round(totalPrice/count),estimatedMarketValue:Math.round(totalValue/count),matchedKit:count>1,notes:(String(s.notes||"").trim()+(String(s.notes||"").trim()?" · ":"")+"Physical stick "+(i+1)+"/"+count).trim()}));
+  }else Actions.addInventory(s);
+}else if("project"===t){a?Actions.updateProject(a,s):(function(){const p=Actions.addProject(s);state.pbId=p.id,state.route="projectbuild"})()}
+else if("sale"===t){a?Actions.updateSale(a,s):Actions.addSale(s)}
+else if("repair"===t){a?Actions.updateRepair(a,s):Actions.addRepair(s)}
 closeModal()}
 /* PN SVG CHART NAN FIX V1 START */
 function pnChartDateTs(v){
