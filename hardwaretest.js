@@ -7,6 +7,7 @@ const DIR = __dirname;
 const sandbox = env.createSandbox();
 
 const hardware = JSON.parse(fs.readFileSync(path.join(DIR, 'profitnode_hardware_ratings_v1.json'), 'utf8'));
+const gpuMaster = JSON.parse(fs.readFileSync(path.join(DIR, 'profitnode_gpu_master_registry_v4.json'), 'utf8'));
 const motherboards = JSON.parse(fs.readFileSync(path.join(DIR, 'profitnode_motherboard_catalog_v1.json'), 'utf8'));
 const ram = JSON.parse(fs.readFileSync(path.join(DIR, 'profitnode_ram_catalog_v1.json'), 'utf8'));
 const storage = JSON.parse(fs.readFileSync(path.join(DIR, 'profitnode_storage_catalog_v1.json'), 'utf8'));
@@ -16,6 +17,7 @@ const gpuPsu = JSON.parse(fs.readFileSync(path.join(DIR, 'profitnode_gpu_psu_req
 const nvmeRegistry = JSON.parse(fs.readFileSync(path.join(DIR, 'profitnode_nvme_registry_v1.json'), 'utf8'));
 
 sandbox.canonicalHardware = hardware;
+sandbox.canonicalGpuMaster = gpuMaster;
 sandbox.canonicalBoards = motherboards;
 sandbox.canonicalRam = ram;
 sandbox.canonicalStorage = storage;
@@ -29,7 +31,7 @@ env.loadAll(sandbox, DIR);
 const results = env.run(sandbox, `(() => {
   function tierName(idx){return idx!=null&&idx>=0?PN_GEAR_TIERS[idx]:null}
   canonicalHardware.cpus = canonicalHardware.cpus.map(c=>{const idx=cpuGearTier(c);return Object.assign({},c,{pn_tier:tierName(idx),pn_tier_index:idx})});
-  canonicalHardware.gpus = canonicalHardware.gpus.map(g=>{const idx=gpuGearTier(g);return Object.assign({},g,{pn_tier:tierName(idx),pn_tier_index:idx})});
+  canonicalHardware.gpus = canonicalGpuMaster.entries.map(g=>{const live=Object.assign({},g,{overall:g.score,pn_score:g.score});const idx=gpuGearTier(live);return Object.assign(live,{pn_tier:tierName(idx),pn_tier_index:idx})});
   canonicalBoards.boards = canonicalBoards.boards.map(b=>{const idx=motherboardGearTier(b);return Object.assign({},b,{pn_tier:tierName(idx),pn_tier_index:idx})});
   canonicalRam.families = canonicalRam.families.map(f=>{const idx=ramRating(f).tierIndex;return Object.assign({model:f.series,technology:'DDR4',pn_tier:PN_GEAR_TIERS[idx],pn_tier_index:idx},f)});
   canonicalStorage.entries = canonicalStorage.entries.map(e=>{const idx=storageGearTier(e);return Object.assign({overall:e.overall_score,pn_tier:tierName(idx),pn_tier_index:idx},e)});
@@ -43,7 +45,7 @@ const results = env.run(sandbox, `(() => {
   HardwareCatalog.gpuPsuRequirements = canonicalGpuPsu.gpus;
   const out=[];
   out.push(['canonical CPU count is 279', HardwareCatalog.cpus.length===279]);
-  out.push(['canonical GPU count is 208', HardwareCatalog.gpus.length===208]);
+  out.push(['canonical GPU MASTER V4 count is 193', HardwareCatalog.gpus.length===193]);
   out.push(['canonical motherboard count is 1362 (936 legacy + ASUS + MSI + Gigabyte + ASRock + NZXT + Biostar + Colorful AM5 registries)', HardwareCatalog.boards.length===1362]);
   const tb250=catalogFind('MOBO','Biostar TB250-BTC');
   out.push(['BIOSTAR TB250-BTC is added to the canonical B250 roster as a functional desktop board', tb250&&tb250.brand==='Biostar'&&tb250.model==='TB250-BTC'&&tb250.chipset==='B250'&&tb250.socket==='LGA1151-v1'&&tb250.form_factor==='ATX'&&tb250.overall===49&&PN_GEAR_TIERS[motherboardGearTier(tb250)]==='UNCOMMON']);

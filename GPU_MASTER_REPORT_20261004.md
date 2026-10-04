@@ -72,3 +72,27 @@ Pre-Pascal/pre-Polaris scores intentionally carry lower confidence. They are use
 - Rare OEM/region-specific pre-Pascal variants not yet observed in SHADEZY inventory.
 - Any future Arc Battlemage gaming SKU beyond B570/B580.
 - New retail GPU generations or materially revised Tom's hierarchy data.
+
+## Hardening audit - 2026-10-05
+
+### Registry integrity
+- All 193 scores are numeric and inside 0-100.
+- All 193 stored tiers match the GPU-specific thresholds.
+- All 129 V3 scores and tiers remain unchanged under V4.
+- Canonical identities remain unique after normalized `brand + model` comparison.
+- No mobile, Max-Q, workstation, or datacenter identity is present in the master registry.
+- Vendor, tier, confidence, V3, and expansion distributions match the published counts above.
+
+### Identity corrections
+The score registry required no model or benchmark correction. The alias layer did require hardening: generic RTX 2060, RTX 3060, RTX 3080, RX 570, RX 580, and Arc A770 labels could select a specific VRAM/SP variant. Those aliases were removed, the identities remain searchable by exact variant, and the runtime now enforces both `do_not_auto_alias` and mobile/workstation exclusion policy. Generic ambiguous labels fail closed instead of silently selecting a card.
+
+### PSU mapping gaps
+The PSU requirement catalog has exact structured records for 123 of 193 GPU identities. The 70 exact gaps are the full 64-card V4 legacy/Intel expansion plus six earlier variants: RX 460 2GB/4GB, RX 550 2GB/4GB, and RX 560 2GB/4GB. These remain explicitly unverified; no PSU wattage or connector requirement was fabricated. They are safe unknowns, but completing verified PSU mappings is the highest-priority data follow-up.
+
+### Low-confidence review set
+Thirty records remain deliberately below MEDIUM confidence: 26 LOW-MEDIUM and 4 LOW. The four LOW records are GTX 690 4GB, GTX TITAN Z 12GB, Radeon HD 5870 1GB, and Radeon HD 6970 2GB. The remaining LOW-MEDIUM set is concentrated in Kepler-era entry cards, OEM variants, early Radeon HD/R9 models, R9 Nano, and Arc A310. No confidence was promoted merely because a score looked plausible.
+
+### Regression protection
+- Registry suite expanded from 43 to 60 assertions.
+- Runtime suite expanded from one aggregate assertion to 21 named assertions.
+- New coverage freezes all V3 ratings, all tier mappings and distributions, alias target integrity, ambiguity protection, mobile/workstation exclusion, RT null semantics, and purchase-price independence.

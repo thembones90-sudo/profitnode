@@ -33,7 +33,7 @@
 ## Current PROFITNODE GPU system
 
 ### Runtime catalog
-Approximately 208 canonical GPU records in `profitnode_hardware_ratings_v1.json` / live HardwareCatalog.
+The base file contains 208 rows under `gpus`, but 79 are legacy AM3/AM3+ CPU contamination. GPU MASTER V4 now produces exactly 193 canonical discrete desktop GPUs at runtime: 129 V3 records plus 64 V4 expansion records.
 
 ### Audited overlay
 `profitnode_gpu_ratings_v3.json`
@@ -66,9 +66,9 @@ PN transform:
 - VRAM is structured metadata and variant evidence, not free performance points.
 - Materially different VRAM/OEM/regional/power-limited variants may receive separate ratings.
 
-## Immediate expansion target
+## Expansion status
 
-The current audited overlay covers only 129 of roughly 208 runtime GPUs. The next concrete task is to generate an exact missing-model report and rate those models using this source priority:
+GPU MASTER V4 completed the deliberate desktop expansion from 129 to 193 records. Future additions must follow this source priority:
 
 1. Direct Tom's 2026/native or legacy hierarchy result where available.
 2. Tom's legacy calibrated against overlapping current anchors.
@@ -105,3 +105,15 @@ The expansion task is therefore not filling missing live rows. It is growing the
 Technical City's October 2026 desktop ranking currently extends to 490 ranked desktop graphics entries. This includes discrete gaming cards, workstation/OEM oddities, integrated graphics, and very old hardware, so PROFITNODE should not blindly import all 490. It does, however, provide a useful outer universe for model discovery and historical cross-checking.
 
 PassMark remains the broader synthetic fallback source and currently reports more than 1,000,000 submitted video-card benchmark results across its GPU list.
+
+## PassMark fallback calibration audit - 2026-10-05
+
+The V4 registry stores 29 PassMark G3D observations. Six records also carry measured historical Tom's evidence: GTX 970, GTX 980, GTX 980 Ti, TITAN X Maxwell, Arc A750, and Arc A770 16GB. This is the currently reproducible overlap set inside the repository.
+
+As a diagnostic only, a log/log least-squares fit over those six points produced:
+
+`PN score ~= 1.1121774343e-11 * G3D^2.9849669323`
+
+The fit's mean absolute error is 4.84 PN points. More importantly, its residuals are architecture-dependent: it over-predicts GTX 980 Ti by 8.33 points while under-predicting Arc A750 and A770 by 8.46 and 7.99 points. That is too unstable for direct scoring and confirms the existing doctrine: G3D is a fallback/cross-check, never a universal `G3D / maximum` conversion or sole score authority.
+
+Therefore no V4 score was changed from this diagnostic. Legacy inference remains anchored to measured Tom's historical neighborhoods first, then checked against PassMark and Technical City, with confidence reduced when evidence is sparse. Future calibration work should store a larger cross-architecture overlap snapshot before fitting separate generation/vendor relationships.

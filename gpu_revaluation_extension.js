@@ -1,6 +1,6 @@
 "use strict";
 
-/* PROFITNODE GPU MASTER V4 runtime layer Ã¢â‚¬â€ 2026-10-04
+/* PROFITNODE GPU MASTER V4 runtime layer - 2026-10-04
    - V3's 129 audited modern GPUs remain authoritative and unchanged.
    - Master V4 expands the discrete desktop gaming registry with legacy + Intel Arc.
    - Current Tom's native raster data remains primary; legacy cards carry explicit confidence.
@@ -12,7 +12,21 @@
   const MASTER_URL = "profitnode_gpu_master_registry_v4.json?v=" + VERSION;
   const ALIASES_URL = "profitnode_gpu_aliases_v4.json?v=" + VERSION;
   const baseLoadHardwareCatalog = loadHardwareCatalog;
+  const baseCatalogFind = catalogFind;
   const modelKey = value => String(value || "").trim();
+  let aliasPolicy = { ambiguous: new Set(), excluded: [] };
+
+  const policyKey = value => pnNorm(value)
+    .replace(/^(NVIDIA|AMD|INTEL) /, "")
+    .replace(/^(GEFORCE|RADEON) /, "");
+
+  const isExcludedVariant = value => aliasPolicy.excluded.some(pattern => pattern.test(String(value || "")));
+  const isAmbiguousIdentity = value => aliasPolicy.ambiguous.has(policyKey(value));
+
+  catalogFind = function catalogFindGpuMasterV4(slotKey, label) {
+    if (slotKey === "GPU" && (isExcludedVariant(label) || isAmbiguousIdentity(label))) return null;
+    return baseCatalogFind(slotKey, label);
+  };
 
   const fetchJson = async url => {
     const response = await fetch(url);
@@ -67,6 +81,10 @@
       const [v3, master, aliasDoc] = await Promise.all([
         fetchJson(V3_URL), fetchJson(MASTER_URL), fetchJson(ALIASES_URL)
       ]);
+      aliasPolicy = {
+        ambiguous: new Set((aliasDoc.do_not_auto_alias || []).map(policyKey)),
+        excluded: (aliasDoc.excluded_variant_patterns || []).map(pattern => new RegExp(pattern, "i"))
+      };
       const masterMap = new Map((master.entries || []).map(x => [modelKey(x.model), x]));
       const aliasIndex = aliasesByCanonical(aliasDoc);
       const seen = new Set();
