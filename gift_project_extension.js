@@ -34,22 +34,6 @@
 
   if(Actions&&typeof Actions.markProjectBuildComplete==="function"&&!Actions.markProjectBuildComplete.__pnGiftAwareV5){const base=Actions.markProjectBuildComplete.bind(Actions);const fn=function(projectId){const before=Store.get("projects",projectId),result=base(projectId);if(!result||!result.ok||!isGiftProject(before))return result;const completed=Store.get("projects",projectId),giftedAt=completed.completedAt||nowISO(),gifted=Store.update("projects",projectId,{status:GIFT_STATUS,giftedAt,completionDate:completed.completionDate||giftedAt.slice(0,10),buildLocked:true});retireGiftInventory(gifted);ensureGiftLedgerEntry(gifted);return{ok:true,project:gifted};};fn.__pnGiftAwareV5=true;Actions.markProjectBuildComplete=fn;}
 
-      const completed = Store.get("projects",projectId);
-      const giftedAt = completed.completedAt || nowISO();
-      const gifted = Store.update("projects",projectId,{
-        status:GIFT_STATUS,
-        giftedAt:giftedAt,
-        completionDate:completed.completionDate || giftedAt.slice(0,10),
-        buildLocked:true
-      });
-      Store.all("inventory").filter(item=>item.assignedProjectId===projectId).forEach(item=>Store.update("inventory",item.id,{status:"GIFTED",retiredAt:giftedAt}));
-      ensureGiftLedgerEntry(gifted);
-      return {ok:true,project:gifted};
-    };
-    wrappedComplete.__pnGiftAwareV2 = true;
-    Actions.markProjectBuildComplete = wrappedComplete;
-  }
-
   let repaired = 0;
   Store.all("projects").forEach(project => {
     if (!isGiftProject(project) || !project.completionDate) return;
