@@ -46,8 +46,17 @@ function pnPartTierCatalogKey(category){
 
 function pnPartCatalogIdentity(value,category){
   let text=pnNorm(value);
-  if(category==="GPU") text=text.replace(/\b\d+ GB\b/g,"").replace(/\bGDDR\dX?\b/g,"");
   return text.replace(/\b(?:OC|EDITION|GRAPHICS|CARD)\b/g,"").replace(/\s+/g," ").trim();
+}
+
+function pnGpuModelStem(value){
+  const text=pnNorm(value).replace(/\b(RTX|GTX|GT|RX)(\d{3,4})\b/g,"$1 $2").replace(/\bARC([AB]\d{3})\b/g,"ARC $1");
+  let hit=text.match(/\b(RTX|GTX|GT)\s+(\d{3,4})(?:\s+(TI SUPER|TI|SUPER|D V2|D))?\b/);
+  if(hit) return [hit[1],hit[2],hit[3]].filter(Boolean).join(" ");
+  hit=text.match(/\bRX\s+(\d{3,4})(?:\s+(XT LP|XTX|XT|GRE|GME|2048SP|D))?\b/);
+  if(hit) return ["RX",hit[1],hit[2]].filter(Boolean).join(" ");
+  hit=text.match(/\bARC\s+([AB]\d{3})\b/);
+  return hit?"ARC "+hit[1]:"";
 }
 
 function pnPartCatalogResolution(item){
@@ -66,6 +75,23 @@ function pnPartCatalogResolution(item){
   if(match) return {item:match,confidence:"MODEL",reason:"Exact model match"};
   match=list.find(row=>rowAliases(row).includes(full)||rowAliases(row).includes(model));
   if(match) return {item:match,confidence:"EXACT",reason:"Exact catalog alias match"};
+  if(category==="GPU"){
+    const inputTokens=new Set(pnNorm(full+" "+model).split(" ").filter(Boolean));
+    const variantHits=list.map(row=>({row:row,tokens:pnNorm(row.model||"").split(" ").filter(Boolean)}))
+      .filter(hit=>hit.tokens.length>=2&&hit.tokens.every(token=>inputTokens.has(token)))
+      .sort((a,b)=>b.tokens.length-a.tokens.length);
+    if(variantHits.length&&(!variantHits[1]||variantHits[0].tokens.length>variantHits[1].tokens.length)){
+      return {item:variantHits[0].row,confidence:"VARIANT",reason:"Canonical GPU variant tokens found in board-partner model"};
+    }
+    // A generic GPU family name is only safe when that family has exactly one
+    // canonical variant. RTX 2060, RTX 3080, RX 580 and similar roots have
+    // materially different VRAM/variant records, so never let the broad
+    // substring fallback silently choose the first one.
+    const stem=pnGpuModelStem(full||model),stemHits=stem?list.filter(row=>pnGpuModelStem(row.model||row.series||"")===stem):[];
+    if(stemHits.length===1) return {item:stemHits[0],confidence:"FAMILY",reason:"Unique canonical GPU family match"};
+    if(stemHits.length>1) return {item:null,confidence:"AMBIGUOUS",reason:"GPU family has multiple canonical variants; exact VRAM/model required"};
+    return {item:null,confidence:"NONE",reason:"Category heuristic — no canonical GPU match"};
+  }
   const normalized=pnPartCatalogIdentity(model,category);
   match=list.find(row=>pnPartCatalogIdentity(rowModel(row),category)===normalized);
   if(match) return {item:match,confidence:"NORMALIZED",reason:"Normalized model match"};
@@ -109,6 +135,8 @@ function pnCpuNameTier(text,catalog){
 }
 
 function pnGpuNameTier(text,catalog){
+  const canonical=pnPartTierFromScore(catalog&&(catalog.overall!=null?catalog.overall:catalog.pn_score),PN_PART_NAME_RULES.GPU.scores);
+  if(canonical) return canonical;
   if(/RTX (?:3090|4090|4090 D|5090|5090 D)|RX (?:6950 XT|6900 XT|7900 XTX|7900)/.test(text)) return 7;
   if(/RTX (?:4080|4080 SUPER|4070 TI|5080|5070 TI)|RX (?:6800 XT|6900 XT|6950 XT|7900)/.test(text)) return 6;
   if(/RTX (?:3080|3080 TI|3070|3070 TI|3070 SUPER|3060 TI|4070)|RX (?:6700 XT|6750 XT|6800 XT|7600)/.test(text)) return 5;
@@ -116,7 +144,13 @@ function pnGpuNameTier(text,catalog){
   if(/GTX (?:1070(?: TI)?|1080|1660(?: SUPER| TI)?)|RTX 2060(?: SUPER)?|RX (?:5600 XT|5700(?: XT)?)\b/.test(text)) return 3;
   if(/GTX (?:1060|1650(?: SUPER)?|1660)|RX (?:470|480|570|580|5500 XT)\b/.test(text)) return 3;
   if(/GTX (?:1050(?: TI)?|1630)|RX (?:460|560|6400|6500 XT)\b/.test(text)) return 2;
-  return pnPartTierFromScore(catalog&&catalog.overall,PN_PART_NAME_RULES.GPU.scores)||3;
+  if(/\bGT 630\b/.test(text)) return 1;
+  return 3;
+}
+
+function pnGpuLegacyRating(text){
+  if(/\bGT 630\b/.test(text)) return 1;
+  return null;
 }
 
 function pnMotherboardNameTier(text,catalog){
@@ -277,7 +311,8 @@ function pnPartNameTier(item){
   let tier=category==="CPU"?pnCpuNameTier(text,catalog):category==="GPU"?pnGpuNameTier(text,catalog):category==="MOTHERBOARD"?pnMotherboardNameTier(text,catalog):category==="RAM"?pnRamNameTier(item,text):category==="PSU"?pnPsuNameTier(text,catalog):category==="STORAGE"?pnStorageNameTier(item,text,catalog):category==="COOLING"?pnCoolerNameTier(text,catalog):category==="CASE"?pnCaseNameTier(text,catalog):4;
   tier=Math.max(1,Math.min(7,Number(tier)||4));
   const mboLegacyRating=(category==="MOTHERBOARD"&&!catalog&&tier===1)?pnMotherboardLegacyRating(text):null;
-  const rating=ramStructured?Math.max(1,Math.min(100,Math.round(Number(ramStructured.overall)||1))):mboLegacyRating!=null?mboLegacyRating:pnPartNameRating(tier,category),source=ramStructured?"configuration":catalog?"catalog":"heuristic",reason=ramStructured?"Structured RAM configuration"+(catalog?" · "+resolution.reason:""):catalog?"Canonical "+category.toLowerCase()+" evidence · "+resolution.reason:mboLegacyRating!=null?"Older base-chipset generation, ranked below newer POOR-tier boards · "+resolution.reason:resolution.reason;
+  const gpuCatalogScore=category==="GPU"&&catalog?Number(catalog.overall!=null?catalog.overall:catalog.pn_score):NaN,gpuLegacyRating=category==="GPU"&&!catalog?pnGpuLegacyRating(text):null;
+  const rating=ramStructured?Math.max(1,Math.min(100,Math.round(Number(ramStructured.overall)||1))):Number.isFinite(gpuCatalogScore)?Math.max(0,Math.min(100,Math.round(gpuCatalogScore))):gpuLegacyRating!=null?gpuLegacyRating:mboLegacyRating!=null?mboLegacyRating:pnPartNameRating(tier,category),source=ramStructured?"configuration":catalog?"catalog":"heuristic",reason=ramStructured?"Structured RAM configuration"+(catalog?" · "+resolution.reason:""):catalog?"Canonical "+category.toLowerCase()+" evidence · "+resolution.reason:gpuLegacyRating!=null?"Legacy GPU family floor · "+resolution.reason:mboLegacyRating!=null?"Older base-chipset generation, ranked below newer POOR-tier boards · "+resolution.reason:resolution.reason;
   return Object.assign({tier:tier,rating:rating,source:source,category:category,matchConfidence:resolution.confidence,reason:reason},PN_PART_NAME_TIERS[tier]);
 }
 
