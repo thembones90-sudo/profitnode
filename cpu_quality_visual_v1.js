@@ -12,8 +12,9 @@
     const resolution = typeof pnPartCatalogResolution === "function" ? pnPartCatalogResolution(item) : null;
     const cpu = resolution && resolution.item;
     if (!cpu) return null;
-    const score = Number(cpu.overall != null ? cpu.overall : cpu.pn_score);
-    if (!Number.isFinite(score)) return null;
+    const rawScore = cpu.overall != null ? cpu.overall : cpu.pn_score;
+    const score = rawScore == null || rawScore === "" ? NaN : Number(rawScore);
+    if (!Number.isFinite(score)) return { cpu, score: null, tierIndex: null, visualTier: null, resolution, unrated: true };
     const tierIndex = typeof cpuGearTier === "function" ? cpuGearTier(cpu) : null;
     if (!Number.isFinite(tierIndex)) return null;
     return {
@@ -26,16 +27,26 @@
   }
 
   globalThis.pnCpuNameTier = function pnCpuNameTierCanonical(text, catalog) {
-    const score = catalog && Number(catalog.overall != null ? catalog.overall : catalog.pn_score);
+    const rawScore = catalog && (catalog.overall != null ? catalog.overall : catalog.pn_score);
+    const score = rawScore == null || rawScore === "" ? NaN : Number(rawScore);
     if (Number.isFinite(score)) return Math.max(1, Math.min(7, cpuGearTier(catalog) + 1));
-    return typeof pnPartTierFromScore === "function"
-      ? (pnPartTierFromScore(score, PN_PART_NAME_RULES.CPU.scores) || 2)
-      : 2;
+    return catalog ? null : 2;
   };
 
   globalThis.pnPartNameTier = function pnPartNameTierCanonicalCpu(item) {
     const live = liveCpuQuality(item);
     if (!live) return basePartNameTier(item);
+    if (live.unrated) return {
+      tier: null,
+      rating: "—",
+      source: "catalog",
+      category: "CPU",
+      matchConfidence: live.resolution.confidence,
+      reason: "Canonical CPU record is intentionally unrated or lacks authoritative benchmark evidence",
+      key: "UNRATED",
+      label: "Unrated",
+      className: "pn-part-name-unrated"
+    };
     const tier = Math.max(1, Math.min(7, live.visualTier));
     return Object.assign({
       tier,
@@ -49,7 +60,7 @@
 
   globalThis.inventoryItemTierKey = function inventoryItemTierKeyCanonicalCpu(item) {
     const live = liveCpuQuality(item);
-    return live ? {tier: live.tierIndex, score: live.score} : baseInventoryItemTierKey(item);
+    return live ? {tier: live.unrated ? null : live.tierIndex, score: live.unrated ? null : live.score} : baseInventoryItemTierKey(item);
   };
 
   globalThis.__PN_CPU_QUALITY_VISUAL_V1 = {

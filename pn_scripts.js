@@ -1,7 +1,7 @@
 "use strict";
 window.__PN_SCRIPTS = [
-  "app_core.js?v=project-sale-v1",
-  "cpu_revaluation_extension.js?v=cpu-passmark-v5-20261004",
+  "app_core.js?v=project-sale-v1-cpu-unrated-safe",
+  "cpu_revaluation_extension.js?v=cpu-passmark-v5-hardening-20261004",
   "gpu_revaluation_extension.js?v=gpu-master-v4-20261004",
   "motherboard_revaluation_extension.js?v=v3-stack-20260912b",
   "planner_retirement_extension.js?v=planner-retired-v1",
@@ -18,7 +18,7 @@ window.__PN_SCRIPTS = [
   "rig_bench_navigation_extension.js?v=rig-direct-open-v1",
   "command_financial_model_extension.js?v=rig-assembly-nav-v1",
   "profitnode_intelligence_extension.js?v=mobo-era-regex-asus-fix-v3-20261003",
-  "cpu_quality_visual_v1.js?v=cpu-quality-visual-v1-20260930",
+  "cpu_quality_visual_v1.js?v=cpu-quality-visual-v1-unrated-safe-20261004",
   "command_separator_tune.js?v=command-depth-responsive-v3",
   "roulette_extension.js?v=roulette-loss-reason-v1",
   "roulette_ui_extension.js?v=rig-assembly-nav-v1",
