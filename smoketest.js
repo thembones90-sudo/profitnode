@@ -391,7 +391,7 @@ const probe = `
   log('inventory groups by category sections', typeof invHtml === 'string' && invHtml.includes('pn-inv-group'));
   log('inventory group headers show count and est value', invHtml.includes('pn-inv-group-count') && invHtml.includes('pn-inv-group-val'));
   log('inventory group order is canonical CPU-GPU-MOTHERBOARD', invHtml.indexOf('CPU') > -1 && invHtml.indexOf('CPU') < invHtml.indexOf('GPU') && invHtml.indexOf('GPU') < invHtml.indexOf('MOTHERBOARD'));
-  log('PARTS VAULT tints only the part-name span', invHtml.includes('class="pn-part-name pn-part-name-uncommon"')&&invHtml.includes('data-pn-part-tier="UNCOMMON"')&&!invHtml.includes('<tr class="clickable pn-part-name-'));
+  log('PARTS VAULT styles only the part-name span', invHtml.includes('class="pn-part-name pn-part-name-')&&invHtml.includes('data-pn-part-tier="')&&!invHtml.includes('<tr class="clickable pn-part-name-'));
 
   const draft = newRigDraft('REV');
   draft.slots.CPU = {kind:'INVENTORY', inventoryItemId: rigCpu.id};

@@ -18,6 +18,7 @@ window.__PN_SCRIPTS = [
   "rig_bench_navigation_extension.js?v=rig-direct-open-v1",
   "command_financial_model_extension.js?v=rig-assembly-nav-v1",
   "profitnode_intelligence_extension.js?v=gpu-visual-canonical-score-v1-20261005",
+  "gpu_quality_visual_v1.js?v=gpu-quality-visual-v1-20261005",
   "cpu_quality_visual_v1.js?v=cpu-quality-visual-v1-unrated-safe-20261004",
   "command_separator_tune.js?v=command-depth-responsive-v3",
   "roulette_extension.js?v=roulette-loss-reason-v1",

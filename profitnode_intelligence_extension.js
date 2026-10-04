@@ -318,12 +318,14 @@ function pnPartNameTier(item){
 
 function pnPartNameHtml(item){
   const visual=pnPartNameTier(item),category=pnPartTierCategory(item&&item.category),name=((item&&item.manufacturer)||"")+(((item&&item.manufacturer)&&(item&&item.model))?" ":"")+((item&&item.model)||"");
-  return '<span class="pn-part-name '+visual.className+(category==="COOLING"||category==="CASE"?' pn-part-name-subtle':'')+'" data-pn-part-tier="'+visual.key+'" title="PROFITNODE visual tier: '+visual.key+' — '+visual.label+' · Rating '+visual.rating+'/100">'+escHtml(name)+'</span>';
+  const unrated=visual.rating===null||visual.rating===undefined||visual.rating==="—",title=category==="GPU"?(unrated?'PROFITNODE GPU performance: UNRATED — exact model/VRAM variant required':'PROFITNODE GPU performance: '+visual.key+' · Native raster '+visual.rating+'/100 (RTX 5090 = 100)'):(unrated?'PROFITNODE visual tier: UNRATED':'PROFITNODE visual tier: '+visual.key+' — '+visual.label+' · Rating '+visual.rating+'/100');
+  return '<span class="pn-part-name '+visual.className+(category==="COOLING"||category==="CASE"?' pn-part-name-subtle':'')+'" data-pn-part-tier="'+visual.key+'" title="'+escAttr(title)+'">'+escHtml(name)+'</span>';
 }
 
 function pnPartTierReadHtml(item){
   const visual=pnPartNameTier(item||{}),hasName=item&&(item.manufacturer||item.model);
-  return hasName?'<span class="pn-part-tier-swatch '+visual.className+'">'+visual.key+' · '+escHtml(visual.label)+' · '+visual.rating+'/100</span><span>'+escHtml(visual.reason)+' · '+escHtml(visual.matchConfidence)+'</span>':'<span>Enter a part name to calculate its category-relative tier.</span>';
+  const rating=visual.rating===null||visual.rating===undefined||visual.rating==="—"?'UNRATED':visual.rating+'/100';
+  return hasName?'<span class="pn-part-tier-swatch '+visual.className+'">'+visual.key+' · '+escHtml(visual.label)+' · '+rating+'</span><span>'+escHtml(visual.reason)+' · '+escHtml(visual.matchConfidence)+'</span>':'<span>Enter a part name to calculate its category-relative tier.</span>';
 }
 
 function pnPartTierExplanationHtml(item){
@@ -1029,6 +1031,7 @@ function pnPartTierExplanationHtml(item){
   .pn-part-name-epic{color:#A335EE}
   .pn-part-name-legendary{color:#FF8000}
   .pn-part-name-artifact{color:#E6CC80}
+  .pn-part-name-unrated{color:#8f8898}
   .pn-part-name-subtle{filter:saturate(.78);opacity:.94}
 
   .pn-part-tier-inspector{
