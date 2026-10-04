@@ -1,7 +1,7 @@
 "use strict";
 window.__PN_SCRIPTS = [
   "app_core.js?v=project-sale-v1",
-  "cpu_revaluation_extension.js?v=v3-stack-20260912b",
+  "cpu_revaluation_extension.js?v=cpu-passmark-v5-20261004",
   "gpu_revaluation_extension.js?v=v3-stack-20260912b",
   "motherboard_revaluation_extension.js?v=v3-stack-20260912b",
   "planner_retirement_extension.js?v=planner-retired-v1",
