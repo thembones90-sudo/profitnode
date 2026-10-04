@@ -25,6 +25,11 @@ checks.push(['critical extension dependency order is preserved',
   before('project_build_extension.js','build_rating_extension.js') &&
   before('build_rating_extension.js','rig_rating_extension.js') &&
   before('ram_revaluation_extension.js','ram_v31_extension.js')]);
+checks.push(['Claude command-console visual stack remains active after accounting changes',
+  before('project_budget_extension.js','loadout_command_extension.js') &&
+  before('loadout_command_extension.js','ram_sticks_extension.js') &&
+  before('currency_entry_extension.js','rig_assembly_command_extension.js') &&
+  manifestNames.includes('scroll_preserve_extension.js')]);
 checks.push(['every manifest entry has a cache-busting ?v= suffix',
   entries.every(e => /\.js\?v=.+/.test(e))]);
 checks.push(['every manifest entry maps to a real file on disk',

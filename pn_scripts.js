@@ -49,6 +49,13 @@ window.__PN_SCRIPTS = [
   "inventory_enum_safety_extension.js?v=inventory-enum-safety-v1-20261002",
   "f5_route_persistence_v3.js?v=f5-route-v3-standalone",
   "parts_vault_new_item_align_v1.js?v=parts-vault-new-item-align-v1",
+  "case_already_owned_extension.js?v=case-already-owned-v1-20261002",
+  "project_budget_extension.js?v=project-budget-gauge-labels-v8-20261003",
+  "loadout_command_extension.js?v=workspace-command-v7-currency-20261003",
+  "ram_sticks_extension.js?v=ram-sticks-v3-stick-alloc-20261003",
+  "currency_entry_extension.js?v=currency-entry-v1-20261003",
+  "rig_assembly_command_extension.js?v=rig-assembly-command-v1-20261003",
+  "scroll_preserve_extension.js?v=scroll-preserve-v1-20261003",
   "audit_integrity_extension.js?v=audit-correctness-v1",
   "cloud_sync_extension.js?v=cloud-sync-v1"
 ];
