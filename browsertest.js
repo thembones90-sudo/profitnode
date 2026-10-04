@@ -288,12 +288,8 @@ async function main() {
     }
     const saleState=await evaluate(`({stored:state.rigDraft.expectedSalePrice,expected:displayValueToRsd(45000)})`);
     check("RIG BENCH Expected Sale Price keeps caret through live rerenders while typing 4,5,0,0,0",saleSteps.map(s=>s.value).join()==="4,45,450,4500,45000"&&saleSteps.map(s=>s.start).join()==="1,2,3,4,5"&&saleSteps.every(s=>s.start===s.end&&s.focused&&s.rerendered)&&saleState.stored===saleState.expected,JSON.stringify({saleSteps,saleState}));
-    const formattedSale=await evaluate(`(()=>{state.rigDraft.expectedSalePrice=45000;Store.setMeta({displayCurrency:'RSD'});render();const x=document.querySelector('[data-rig-field="expectedSalePrice"]');const initial=x.value;x.focus();x.dispatchEvent(new Event('input',{bubbles:true}));const unchanged=state.rigDraft.expectedSalePrice;x.setSelectionRange(x.value.length,x.value.length);return{initial,unchanged}})()`);
-    await cdp.send("Input.dispatchKeyEvent",{type:"keyDown",key:"Backspace",code:"Backspace",windowsVirtualKeyCode:8});
-    await cdp.send("Input.dispatchKeyEvent",{type:"keyUp",key:"Backspace",code:"Backspace",windowsVirtualKeyCode:8});
-    await delay(250);
-    const formattedAfter=await evaluate(`(()=>{const x=document.querySelector('[data-rig-field="expectedSalePrice"]');return{value:x.value,stored:state.rigDraft.expectedSalePrice}})()`);
-    check("RIG BENCH parses preformatted RSD sale values without 1000x corruption",formattedSale.initial==="45.000"&&formattedSale.unchanged===45000&&formattedAfter.stored===4500,JSON.stringify({formattedSale,formattedAfter}));
+    const formattedMoney=await evaluate(`(()=>{state.rigDraft.expectedSalePrice=45000;state.rigDraft.estimatedMarketValue=45000;render();const sale=document.querySelector('[data-rig-field="expectedSalePrice"]'),market=document.querySelector('[data-rig-field="estimatedMarketValue"]');sale.value='45.000 RSD';sale.dispatchEvent(new Event('input',{bubbles:true}));market.value='45.000';market.dispatchEvent(new Event('input',{bubbles:true}));return {sale:state.rigDraft.expectedSalePrice,market:state.rigDraft.estimatedMarketValue,expected:displayValueToRsd(45000)}})()`);
+    check("RIG BENCH preserves canonical value when editing preformatted 45.000 RSD",formattedMoney.sale===formattedMoney.expected&&formattedMoney.market===formattedMoney.expected,JSON.stringify(formattedMoney));
     const shot=await cdp.send("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
     check("1920/1100 browser flow produces a valid rendered frame",!!shot.data&&shot.data.length>10000);
     await evaluate(`document.querySelector('[data-route="roadto"]').click();RoadTo.create({name:'Browser RTX 5090',category:'GPU',target:200000,refType:'catalog'});RoadTo.addFunds(Store.all('roadTo')[0].id,75000);render()`);

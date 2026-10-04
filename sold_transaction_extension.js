@@ -181,26 +181,25 @@
     return {ok:!0, id};
   };
 
-  const soldMigrationLedger = Store.load();
-  soldMigrationLedger.meta = soldMigrationLedger.meta || {};
-  if (!soldMigrationLedger.meta.soldTransactionMigrationV3){
-    Store.all("inventory").filter(item =>
-      inventoryIsSold(item) && inventorySaleTransactionId(item) &&
-      !inventorySaleRecord(item) && Number(item.salePrice) > 0
-    ).forEach(item => {
-      const result = Actions.markInventorySold(item.id, {
-        salePrice: item.salePrice,
-        saleCurrency: item.saleCurrency || item.currency,
-        saleDate: item.saleDate || todayISO(),
-        saleChannel: item.saleChannel || "",
-        saleDetail: item.saleDetail || "",
-        saleNotes: item.saleNotes || ""
-      });
-      if (result.ok){
-        Timeline.log("SALE_MIGRATED", ((item.manufacturer || "")+" "+(item.model || "")).trim()+" SALE RECORD MIGRATED", "Linked the confirmed legacy sale to the Sales Ledger; Treasury cash was preserved.", todayISO(), "sale", result.saleId);
-      }
+  const saleMigrationMeta = Store.load().meta || (Store.load().meta = {});
+  if (!saleMigrationMeta.soldInventoryMigrationV1At) Store.all("inventory").filter(item =>
+    inventoryIsSold(item) && inventorySaleTransactionId(item) &&
+    !inventorySaleRecord(item) && Number(item.salePrice) > 0
+  ).forEach(item => {
+    const result = Actions.markInventorySold(item.id, {
+      salePrice: item.salePrice,
+      saleCurrency: item.saleCurrency || item.currency,
+      saleDate: item.saleDate || todayISO(),
+      saleChannel: item.saleChannel || "",
+      saleDetail: item.saleDetail || "",
+      saleNotes: item.saleNotes || ""
     });
-    soldMigrationLedger.meta.soldTransactionMigrationV3 = nowISO();
+    if (result.ok){
+      Timeline.log("SALE_MIGRATED", ((item.manufacturer || "")+" "+(item.model || "")).trim()+" SALE RECORD MIGRATED", "Linked the confirmed legacy sale to the Sales Ledger; Treasury cash was preserved.", todayISO(), "sale", result.saleId);
+    }
+  });
+  if (!saleMigrationMeta.soldInventoryMigrationV1At){
+    saleMigrationMeta.soldInventoryMigrationV1At = nowISO();
     Store.persist();
   }
 

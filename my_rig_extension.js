@@ -25,7 +25,7 @@ const MyRig={
   invested(e){e=e||this.ensure();let t=0;Object.keys(e.slots||{}).forEach(k=>{const s=e.slots[k];s&&Number(s.purchasePrice)>0&&(t+=Number(s.purchasePrice))});return Math.round(t)},
   value(e){e=e||this.ensure();const t=this.invested(e),a=Number(e.resaleValue)||null;const labeled=Object.keys(e.slots||{}).filter(k=>e.slots[k]&&String(e.slots[k].label||"").trim()),priced=labeled.filter(k=>Number(e.slots[k].purchasePrice)>0);return{invested:t,resale:a==null?null:a,diff:a==null?null:Math.round(a-t),partsTotal:labeled.length,partsPriced:priced.length}},
   setIdentity(e){const t=this.ensure(),n=myRigDefault();["name","subtitle","image","status","buildDate","notes"].forEach(k=>{null!=e[k]&&(t[k]=e[k])});t.name=String(t.name||"").trim()||n.name;t.status=["ACTIVE","SHELVED"].includes(t.status)?t.status:"ACTIVE";t.updatedAt=nowISO();return this.save(t)},
-  setSlot(e,t){const r=this.ensure();r.canonicalExcluded&&delete r.canonicalExcluded[e];const prev=r.slots[e];if(e==="STORAGE"&&prev&&Array.isArray(prev.stack)&&t.label!==(prev.stack[0]&&prev.stack[0].model)){t=Object.assign({},t);delete t.stack;delete t.stackTotal}r.slots[e]=Object.assign({},t,{dataSource:"MANUAL"});r.updatedAt=nowISO();return this.save(r)},
+  setSlot(e,t){const r=this.ensure();if(t&&t.vaultId){const avail=Actions.partAvailability(Store.get("inventory",t.vaultId),"myrig",e);if(!avail.ok)return{ok:!1,error:avail.error}}r.canonicalExcluded&&delete r.canonicalExcluded[e];const prev=r.slots[e];if(e==="STORAGE"&&prev&&Array.isArray(prev.stack)&&t.label!==(prev.stack[0]&&prev.stack[0].model)){t=Object.assign({},t);delete t.stack;delete t.stackTotal}r.slots[e]=Object.assign({},t,{dataSource:"MANUAL"});r.updatedAt=nowISO();return this.save(r)},
   clearSlot(e){const r=this.ensure();r.slots[e]&&delete r.slots[e];"object"!==typeof r.canonicalExcluded&&(r.canonicalExcluded={});MY_RIG_CANONICAL_LOADOUT&&MY_RIG_CANONICAL_LOADOUT.slots&&MY_RIG_CANONICAL_LOADOUT.slots[e]&&(r.canonicalExcluded[e]=!0);r.updatedAt=nowISO();return this.save(r)},
   setResale(e){const r=this.ensure();r.resaleValue=Number(e)>0?Math.round(Number(e)):null;r.updatedAt=nowISO();return this.save(r)},
   logUpgrade(e){const r=this.ensure();r.history.unshift({id:myRigUid(),slotKey:e.slotKey||"OTHER",oldPart:e.oldPart||"",newPart:e.newPart||"",date:e.date||todayISO(),cost:Math.round(Number(e.cost)||0),notes:e.notes||""});r.updatedAt=nowISO();return this.save(r)},
@@ -37,6 +37,14 @@ const MyRig={
   ramFromSpecs(label,entry){let cap=null,speed=null,cl=null,modules=null;const spec=String(label||"").toUpperCase();const capMatch=spec.match(/(\d+)\s*GB/);if(capMatch)cap=parseInt(capMatch[1],10);const speedMatch=spec.match(/DDR5?-?(\d{4,5})/i);if(speedMatch)speed=parseInt(speedMatch[1],10);const clMatch=spec.match(/CL(\d{2,3})/);if(clMatch)cl=parseInt(clMatch[1],10);const modMatch=spec.match(/\((\d+)X(\d+)GB\)/i);if(modMatch){modules=parseInt(modMatch[1],10);if(!cap)cap=modules*parseInt(modMatch[2],10)}if(!modules&&cap)modules=cap<=16?1:2;return cap&&speed?ramRating({totalCapacity:cap,moduleCount:modules,speed:speed,casLatency:cl||30}):null},
   rigSlotsForProfile(r){r=r||this.ensure();const slots={};let any=!1;MY_RIG_COMPAT_SLOTS.forEach(k=>{const s=r.slots[k];if(!s||!String(s.label||"").trim())return;any=!0;const clear=String(s.label).trim(),entry=typeof catalogFind==="function"?catalogFind(k,clear):null;slots[k]={kind:"PLANNED",catalogType:k,label:clear,cost:Number(s.purchasePrice)||0,originalPrice:0,currency:"RSD"};entry&&entry.caps&&(slots[k].caps=JSON.parse(JSON.stringify(entry.caps)))});return any?{currency:"RSD",slots:slots}:null},
   hardwareProfile(r){const slots=this.rigSlotsForProfile(r);if(!slots)return null;return typeof rigHardwareProfile==="function"?rigHardwareProfile(slots):null},
+};
+const PNMyRigInstallFromGoalNoPurchase=MyRig.installFromGoal.bind(MyRig);
+MyRig.installFromGoal=function(goal,options){
+  const rig=this.ensure(),slot=goal&&goal.targetSlot,old=slot&&rig.slots[slot],transfer=!!(options&&options.toVault&&old&&old.label&&!old.vaultId);
+  if(!transfer)return PNMyRigInstallFromGoalNoPurchase(goal,options);
+  const add=Actions.addInventory;
+  Actions.addInventory=function(data){return Store.insert("inventory",Object.assign({},data,{personalTransfer:true,notes:String(data.notes||"")+" Existing personal component; no shop purchase/cash debit."}))};
+  try{return PNMyRigInstallFromGoalNoPurchase(goal,options)}finally{Actions.addInventory=add}
 };
 function myRigNoticeHtml(){const e=MyRigUI.notice;return e?'<div class="pn-myrig-notice'+(e.tone==="ok"?" ok":"")+'">'+escHtml(e.text)+"</div>":""}
 function myRigStatusOptions(e){return["ACTIVE","SHELVED"].map(t=>'<option value="'+t+'"'+(e===t?" selected":"")+">"+t+"</option>").join("")}

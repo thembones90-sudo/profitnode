@@ -12,7 +12,7 @@ const PB_BUILD_CASE_SIZES=[
 const PB_CATALOG_SLOTS=["CPU","GPU","MOBO","RAM","STORAGE","PSU","COOLER"];
 const PB_QUALITY_TIERS=["POOR","COMMON","UNCOMMON","RARE","EPIC","LEGENDARY","ARTIFACT"];
 function pbCaseSizeById(id){return PB_BUILD_CASE_SIZES.find(c=>c.id===id)||null}
-const PBUI={slotKey:null,slot:null,query:"",results:[],catalogHits:[],ramHits:[],quickPrice:null,caseDraft:null,extraDraft:null,notice:null};
+const PBUI={slotKey:null,slot:null,query:"",results:[],catalogHits:[],ramHits:[],quickPrice:null,caseDraft:null,extraDraft:null,saleOpen:false,notice:null};
 // COMPATIBILITY CHECK expand/filter state, tracked per project id so a
 // re-render inside the same workspace never resets it. Memory-only while
 // the tab stays open — intentionally not persisted to localStorage.
@@ -447,15 +447,21 @@ function pbCostBreakdownHtml(project){
   const itemized='<details class="pn-pb-cost-details"><summary>ITEMIZED BREAKDOWN</summary><div class="pn-pb-cost-cols"><div class="pn-pb-cost-group"><h3>PROJECT CASH</h3>'+rowsHtml(direct)+'</div><div class="pn-pb-cost-group"><h3>REUSED INVENTORY</h3>'+rowsHtml(reused)+'</div><div class="pn-pb-cost-group"><h3>PLANNED</h3>'+rowsHtml(planned)+"</div></div></details>"
   return'<div class="panel" data-pb-cost-breakdown style="margin-top:8px"><div class="panel-head"><h2>BUILD COST BREAKDOWN</h2></div><div class="panel-body">'+totalsRow+itemized+"</div></div>"
 }
+function pbSaleModalHtml(project){
+  if(!PBUI.saleOpen||!project||"SOLD"===project.status)return""
+  const currency=project.saleCurrency||project.currency||"RSD",channels=typeof window!=="undefined"&&typeof window.__pnInventorySaleChannels==="function"?window.__pnInventorySaleChannels():["CASH","KUPUJEMPRODAJEM","DIRECT","OTHER"]
+  return'<div class="modal-backdrop pn-pb-sale-modal" data-pb-sale-close><div class="modal" role="dialog" aria-modal="true" aria-label="Record completed build sale"><div class="modal-head"><h3>SELL '+escHtml(project.name)+'</h3><button type="button" class="modal-close" data-pb-sale-close aria-label="Close">✕</button></div><form data-pb-sale-form><div class="modal-body"><div class="field-row-wrap" style="display:flex;flex-wrap:wrap;gap:0 14px"><label class="field half"><span class="req">Final Sale Price</span><input type="number" name="salePrice" min="0.01" step="0.01" value="'+escAttr(project.salePrice||"")+'" required autofocus></label><label class="field half"><span class="req">Currency</span><select name="saleCurrency">'+CURRENCIES.map(c=>'<option value="'+escAttr(c)+'"'+(c===currency?' selected':'')+'>'+escHtml(c)+'</option>').join("")+'</select></label><label class="field half"><span class="req">Sale Date</span><input type="date" name="saleDate" value="'+escAttr(project.saleDate||todayISO())+'" required></label><label class="field half"><span>Sale Channel</span><select name="saleChannel"><option value="">—</option>'+channels.map(c=>'<option value="'+escAttr(c)+'">'+escHtml(STATUS_LABEL(c))+'</option>').join("")+'</select></label><label class="field half"><span>Buyer / Detail</span><input type="text" name="saleDetail"></label><label class="field half"><span>Notes</span><input type="text" name="saleNotes"></label></div><div class="info-note pn-pb-sale-accounting"><b>ONE SALE · THREE RESULTS</b> — the full sale revenue enters War Chest cash, the profit enters Command as realized profit, and every installed component is closed as SOLD.</div></div><div class="modal-foot"><span></span><span style="display:flex;gap:8px"><button type="button" class="btn" data-pb-sale-close>CANCEL</button><button type="submit" class="btn btn-primary">CONFIRM SOLD</button></span></div></form></div></div>'
+}
 
 function renderProjectBuild(){
   const p=pbProject()
   if(!p)return pageHeader("BUILD WORKSPACE","","")+'<div class="content"><div class="panel"><div class="panel-body"><p class="hint">This project could not be found — it may have been deleted.</p><button type="button" class="btn" data-pb-back style="margin-top:10px">BACK TO PROJECTS</button></div></div></div>'
-  const purp=PROJECT_PURPOSES.includes(p.purpose)?p.purpose:"FLIP",locked=!!p.buildLocked||"COMPLETED"===p.status
+  const purp=PROJECT_PURPOSES.includes(p.purpose)?p.purpose:"FLIP",sold="SOLD"===p.status,locked=!!p.buildLocked||"COMPLETED"===p.status||sold
   const stats=Actions.projectBuildStats(p),invested=stats.totalCostBasis,planned=stats.plannedCost,projectCash=stats.projectCash,reusedBasis=stats.reusedInventoryBasis
   const grid=PROJECT_BUILD_SLOTS.map(k=>pbSlotCardHtml(p,k,locked)).join("")
   const tierLine=locked&&p.finalTier?'<div class="pn-myrig-meta-item">FINAL TIER: '+escHtml(p.finalTier)+"</div>":""
-  const lifecycleAction=locked?'<span class="chip chip-green-outline">BUILD LOCKED</span>':stats.slotsFilled<stats.slotsTotal?'<span class="chip chip-muted">CONFIGURE '+stats.slotsFilled+'/'+stats.slotsTotal+'</span>':stats.slotsOwned<stats.slotsTotal?'<span class="chip chip-amber-outline">OWNED '+stats.slotsOwned+'/'+stats.slotsTotal+'</span>':stats.slotsInstalled<stats.slotsTotal?'<button type="button" class="btn btn-sm btn-primary" data-pb-mark-assembled>MARK ASSEMBLED</button>':!stats.verified?'<button type="button" class="btn btn-sm btn-primary" data-pb-mark-verified>MARK VERIFIED</button>':'<button type="button" class="btn btn-sm btn-primary" data-pb-mark-complete>MARK BUILD COMPLETE</button>'
+  const saleEligible=locked&&["COMPLETED","LISTED"].includes(p.status)&&"FAMILY_GIFT"!==purp
+  const lifecycleAction=sold?'<span class="chip chip-green">SOLD · '+money(p.salePrice,p.saleCurrency||p.currency)+'</span>':locked?'<span class="chip chip-green-outline">BUILD LOCKED</span>'+(saleEligible?'<button type="button" class="btn btn-sm btn-primary pn-pb-sold-btn" data-pb-sell-build>SOLD</button>':""):stats.slotsFilled<stats.slotsTotal?'<span class="chip chip-muted">CONFIGURE '+stats.slotsFilled+'/'+stats.slotsTotal+'</span>':stats.slotsOwned<stats.slotsTotal?'<span class="chip chip-amber-outline">OWNED '+stats.slotsOwned+'/'+stats.slotsTotal+'</span>':stats.slotsInstalled<stats.slotsTotal?'<button type="button" class="btn btn-sm btn-primary" data-pb-mark-assembled>MARK ASSEMBLED</button>':!stats.verified?'<button type="button" class="btn btn-sm btn-primary" data-pb-mark-verified>MARK VERIFIED</button>':'<button type="button" class="btn btn-sm btn-primary" data-pb-mark-complete>MARK BUILD COMPLETE</button>'
   const hero='<div class="panel pn-pb-hero"><div class="pn-pb-eyebrow">BUILD WORKSPACE</div><h1 class="pn-pb-name">'+escHtml(p.name)+'</h1><div class="pn-myrig-meta"><span class="chip '+PROJECT_STATUS_META[p.status].chip+'">'+STATUS_LABEL(p.status)+'</span><span class="chip '+PROJECT_PURPOSE_META[purp].chip+'">'+PROJECT_PURPOSE_LABEL[purp]+"</span>"+tierLine+'</div><div class="pn-pb-hero-actions"><button type="button" class="btn btn-sm" data-pb-back>← BACK TO PROJECTS</button><button type="button" class="btn btn-sm" data-pb-edit-details>EDIT DETAILS</button>'+lifecycleAction+"</div></div>"
   // Reuses the app's own compact 4-tile .kpi-grid (Dashboard/Analytics)
   // instead of the bespoke pn-myrig-vstats/pn-myrig-vstat classes this
@@ -469,10 +475,12 @@ function renderProjectBuild(){
     +'<div class="kpi"><div class="kpi-label">EST. MARKET VALUE</div><div class="kpi-value">'+(p.estimatedMarketValue?money(p.estimatedMarketValue,p.currency):"—")+'</div><div class="kpi-sub">manual current estimate</div></div>'
     +'<div class="kpi" data-pb-lifecycle="'+stats.lifecycleStage+'"><div class="kpi-label">BUILD STATE</div><div class="kpi-value">'+escHtml(stats.lifecycleStage)+'</div><div class="kpi-sub pn-pb-lifecycle-sub"><span>'+stats.slotsFilled+'/'+stats.slotsTotal+' CONFIGURED</span> · <span>'+stats.slotsOwned+'/'+stats.slotsTotal+' OWNED</span> · <span>'+stats.slotsInstalled+'/'+stats.slotsTotal+' INSTALLED</span> · <span>'+(stats.verified?'VERIFIED':'UNVERIFIED')+'</span></div></div>'
     +"</div>"
-  return pageHeader("BUILD WORKSPACE",p.name,"")+'<div class="content pn-pb-page">'+pbNoticeHtml()+hero+(typeof buildRatingPanelHtml==="function"?buildRatingPanelHtml(p):"")+statsRow+'<div class="panel" data-pb-loadout style="margin-top:8px"><div class="panel-head"><h2>COMPONENT LOADOUT</h2></div><div class="panel-body"><div class="pn-pb-grid">'+grid+"</div></div></div>"+(PBUI.slotKey?pbSlotEditorHtml(p):"")+pbCostBreakdownHtml(p)+pbExtrasHtml(p,locked)+pbCompatHtml(p)+"</div>"
+  return pageHeader("BUILD WORKSPACE",p.name,"")+'<div class="content pn-pb-page">'+pbNoticeHtml()+hero+(typeof buildRatingPanelHtml==="function"?buildRatingPanelHtml(p):"")+statsRow+'<div class="panel" data-pb-loadout style="margin-top:8px"><div class="panel-head"><h2>COMPONENT LOADOUT</h2></div><div class="panel-body"><div class="pn-pb-grid">'+grid+"</div></div></div>"+(PBUI.slotKey?pbSlotEditorHtml(p):"")+pbCostBreakdownHtml(p)+pbExtrasHtml(p,locked)+pbCompatHtml(p)+"</div>"+pbSaleModalHtml(p)
 }
 function pbClick(e){
-  if(e.target.closest("[data-pb-back]"))return state.route="projects",state.pbId=null,PBUI.slotKey=null,PBUI.slot=null,PBUI.query="",PBUI.results=[],PBUI.caseDraft=null,PBUI.extraDraft=null,PBUI.quickPrice=null,PBUI.notice=null,void render()
+  if(e.target.closest("[data-pb-back]"))return state.route="projects",state.pbId=null,PBUI.slotKey=null,PBUI.slot=null,PBUI.query="",PBUI.results=[],PBUI.caseDraft=null,PBUI.extraDraft=null,PBUI.quickPrice=null,PBUI.saleOpen=false,PBUI.notice=null,void render()
+  if(e.target.closest("[data-pb-sell-build]")){PBUI.saleOpen=true;render();return}
+  const saleClose=e.target.closest("[data-pb-sale-close]");if(saleClose){if(e.target===saleClose||saleClose.matches("button")){PBUI.saleOpen=false;render()}return}
   if(e.target.closest("[data-pb-edit-details]")){const p=pbProject();return p?void openForm("project",p.id):void 0}
   if(e.target.closest("[data-pb-compat-toggle]")){const p=pbProject();if(!p)return;const s=PB_COMPAT_STATE[p.id]||(PB_COMPAT_STATE[p.id]={open:false,filter:"ALL"});s.open=!s.open;return void render()}
   if(e.target.closest("[data-pb-compat-filter]")){const p=pbProject();if(!p)return;const s=PB_COMPAT_STATE[p.id]||(PB_COMPAT_STATE[p.id]={open:true,filter:"ALL"});s.filter=e.target.closest("[data-pb-compat-filter]").dataset.pbCompatFilter||"ALL";s.open=true;return void render()}
@@ -602,6 +610,16 @@ function pbClick(e){
     const p=pbProject();if(!p)return;const res=Actions.markProjectBuildComplete(p.id)
     return pbSetNotice(res.ok?"ok":"err",res.ok?"Build marked complete.":res.error),void render()}
 }
+function pbSubmit(e){
+  const form=e.target.closest&&e.target.closest("[data-pb-sale-form]");if(!form)return
+  e.preventDefault();const p=pbProject();if(!p)return
+  const data=new FormData(form),res=Actions.markProjectSold(p.id,{salePrice:data.get("salePrice"),saleCurrency:data.get("saleCurrency"),saleDate:data.get("saleDate"),saleChannel:data.get("saleChannel"),saleDetail:data.get("saleDetail"),saleNotes:data.get("saleNotes")})
+  if(!res.ok)return pbSetNotice("err",res.error),void render()
+  const d=res.sale?saleDerived(res.sale):null
+  PBUI.saleOpen=false
+  pbSetNotice("ok","Sale recorded · War Chest +"+money(res.sale.buyerPrice,res.sale.currency)+" · Realized profit "+money(d.profit,res.sale.currency)+".")
+  render()
+}
 function pbSecondaryInput(e){
   const t=e.target
   if(t.matches&&t.matches("[data-pb-quick-price-input]")&&PBUI.quickPrice)return void(PBUI.quickPrice.value=t.value)
@@ -656,6 +674,7 @@ function pbKeydown(e){
   render()
 }
 document.addEventListener("click",pbClick)
+document.addEventListener("submit",pbSubmit)
 document.addEventListener("input",pbInput)
 document.addEventListener("change",pbChange)
 document.addEventListener("keydown",pbKeydown)
@@ -667,7 +686,7 @@ if(typeof document!=="undefined"&&document.addEventListener){
   s.textContent+=".pn-pb-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}.pn-pb-paid{display:flex;align-items:center;gap:7px;margin:5px 0;padding:7px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}.pn-pb-paid span{font:8px var(--mono);letter-spacing:.14em;color:var(--text-muted)}.pn-pb-paid b{font:800 13px var(--mono);color:var(--text)}.pn-pb-paid .btn{margin-left:auto}.pn-pb-picker,.pn-pb-price-editor{margin-top:12px}.pn-pb-picker .field,.pn-pb-price-editor .field{max-width:760px}.pn-pb-picker-results{max-width:760px;max-height:260px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);margin-top:8px}.pn-pb-picker-result{display:grid;grid-template-columns:76px minmax(0,1fr) auto;align-items:center;gap:10px;width:100%;min-width:0;padding:9px 10px;border:0;border-bottom:1px solid var(--border);background:var(--surface-2);color:var(--text);text-align:left;cursor:pointer}.pn-pb-picker-result:last-child{border-bottom:0}.pn-pb-picker-result:hover,.pn-pb-picker-result:focus{background:var(--surface-3);outline:1px solid var(--amber)}.pn-pb-result-source{padding:2px 5px;border:1px solid var(--border-strong);font:800 8px var(--mono);letter-spacing:.08em;text-align:center}.pn-pb-result-source.is-vault{color:var(--green);border-color:var(--green-dim)}.pn-pb-result-source.is-registry{color:#9fb4c8}.pn-pb-result-name{min-width:0;font-weight:800;overflow-wrap:anywhere}.pn-pb-result-cost{font:9px var(--mono);color:var(--text-muted);white-space:nowrap}.pn-pb-picker-empty{margin:8px 0 0}.pn-pb-price-field{display:flex;align-items:center;gap:8px}.pn-pb-price-field input{max-width:220px}.pn-pb-price-field b{font:10px var(--mono);color:var(--text-muted)}@media(max-width:1180px){.pn-pb-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:760px){.pn-pb-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.pn-pb-slot-head{flex-wrap:wrap}.pn-pb-picker-result{grid-template-columns:70px minmax(0,1fr)}.pn-pb-result-cost{grid-column:2;white-space:normal}}@media(max-width:480px){.pn-pb-stats{grid-template-columns:1fr}}"
   s.textContent+=".pn-pb-slot-spec{font:10px var(--mono);color:var(--text-muted);letter-spacing:.04em}.pn-pb-case-plan{display:grid;grid-template-columns:minmax(220px,1fr) minmax(220px,1fr) minmax(150px,.5fr) auto;gap:10px;align-items:end;max-width:980px}.pn-pb-case-plan .field{max-width:none}.pn-pb-case-divider{display:flex;align-items:center;gap:10px;max-width:980px;margin:18px 0 8px;color:var(--text-muted);font:8px var(--mono);letter-spacing:.14em}.pn-pb-case-divider:before,.pn-pb-case-divider:after{content:\"\";height:1px;background:var(--border);flex:1}.pn-pb-result-name small{display:block;margin-top:3px;color:var(--text-muted);font:9px var(--mono);font-weight:400}@media(max-width:900px){.pn-pb-case-plan{grid-template-columns:1fr 1fr}.pn-pb-case-plan .btn{align-self:end}}@media(max-width:600px){.pn-pb-case-plan{grid-template-columns:1fr}}"
   s.textContent+=compactStyles
-  s.textContent+="[data-pb-loadout]>.panel-head h2,[data-pb-loadout] .pn-pb-slot .pn-cat-label{font-size:15.625px;font-weight:700;text-transform:uppercase}"
+  s.textContent+="[data-pb-loadout]>.panel-head h2,[data-pb-loadout] .pn-pb-slot .pn-cat-label{font-size:15.625px;font-weight:700;text-transform:uppercase}.pn-pb-sold-btn{background:linear-gradient(135deg,#d6b14a,#8f6816)!important;border-color:#e8c768!important;color:#120d03!important;font-weight:900!important;box-shadow:0 0 18px rgba(214,177,74,.25)}.pn-pb-sale-accounting{margin-top:8px}.pn-pb-sale-modal .modal{max-width:720px}"
   document.head.appendChild(s)
   if(typeof ROUTES!=="undefined"&&!window.__PN_PROJECT_BUILD_REGISTERED){
     ROUTES.push({key:"projectbuild",label:"Build Workspace",hidden:!0,parent:"projects",render:renderProjectBuild})

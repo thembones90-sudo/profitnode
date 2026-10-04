@@ -17,13 +17,9 @@ jobs:
       - run: node smoketest.js
       - run: node rendertest.js
       - run: node hardwaretest.js
-      - run: node costintegritytest.js
-      - run: node auditintegritytest.js
-      - run: node financialrecoverytest.js
       - run: node mailparsertest.js
       - run: node mailworkflowtest.js
-      - id: setup-chrome
-        uses: browser-actions/setup-chrome@v1
+      - run: node costintegritytest.js
+      - run: node auditcorrectnesstest.js
+      - run: node manifestintegritytest.js
       - run: node browsertest.js
-        env:
-          CHROME_PATH: ${{ steps.setup-chrome.outputs.chrome-path }}

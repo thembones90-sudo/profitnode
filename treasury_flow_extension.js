@@ -211,14 +211,10 @@ Actions.removeSale = function(id){
 
 const PNCoreAddInventoryTreasuryFlow = Actions.addInventory;
 Actions.addInventory = function(data){
-  const skipAcquisition = !!(data && data._skipTreasuryAcquisition);
-  const payload = Object.assign({}, data || {});
-  delete payload._skipTreasuryAcquisition;
-  const result = PNCoreAddInventoryTreasuryFlow.call(this, payload);
-  if (!skipAcquisition && result){
-    applyTreasuryChange(Store.load().treasury, "inventory", result.id, "ACQUISITION", result.purchasePrice, result.currency, "Inventory purchase");
-    Store.persist();
-  }
+  const result = PNCoreAddInventoryTreasuryFlow.call(this, data);
+  if (window.__pnPersonalVaultTransfer) return result;
+  applyTreasuryChange(Store.load().treasury, "inventory", result.id, "ACQUISITION", result.purchasePrice, result.currency, "Inventory purchase");
+  Store.persist();
   return result;
 };
 
@@ -261,7 +257,7 @@ const PNCoreRemoveInventoryTreasuryFlow = Actions.removeInventory;
 Actions.removeInventory = function(id){
   const item = Store.get("inventory", id);
   const ledger = Store.load();
-  const sold = !!item && (item.status === "SOLD" || item.status === "SOLD_IN_TRANSIT" || item.status === "GIFTED" || Store.all("sales").some(s => s.inventoryItemId === item.id && saleStateResolved(s) === "COMPLETED"));
+  const sold = !!item && (["SOLD","SOLD_IN_TRANSIT","GIFTED","RETIRED"].includes(item.status) || Store.all("sales").some(s => s.inventoryItemId === item.id && saleStateResolved(s) === "COMPLETED"));
   if (item && !sold) removeTreasuryFlow(ledger.treasury, "inventory", item.id, "ACQUISITION");
   Store.persist();
   return PNCoreRemoveInventoryTreasuryFlow.call(this, id);
@@ -379,7 +375,6 @@ Actions.removeMail = function(id){
   Store.persist();
   return PNCoreRemoveMailTreasuryFlow.call(this, id);
 };
-
 
 /* PN TREASURY SINGLE AUTHORITY V4 REPAIR */
 const PN_TREASURY_V4_LEGACY_FLOWS_BEFORE = "2026-09-17T07:18:02Z";

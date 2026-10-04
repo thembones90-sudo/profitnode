@@ -34,7 +34,44 @@
 
   if(Actions&&typeof Actions.markProjectBuildComplete==="function"&&!Actions.markProjectBuildComplete.__pnGiftAwareV5){const base=Actions.markProjectBuildComplete.bind(Actions);const fn=function(projectId){const before=Store.get("projects",projectId),result=base(projectId);if(!result||!result.ok||!isGiftProject(before))return result;const completed=Store.get("projects",projectId),giftedAt=completed.completedAt||nowISO(),gifted=Store.update("projects",projectId,{status:GIFT_STATUS,giftedAt,completionDate:completed.completionDate||giftedAt.slice(0,10),buildLocked:true});retireGiftInventory(gifted);ensureGiftLedgerEntry(gifted);return{ok:true,project:gifted};};fn.__pnGiftAwareV5=true;Actions.markProjectBuildComplete=fn;}
 
-  let repaired=0;const ledger=Store.load();ledger.meta=ledger.meta||{};
-  if(!ledger.meta.giftLifecycleV5RepairedAt){Store.all("projects").forEach(project=>{if(!isGiftProject(project)||!project.completionDate||!project.buildLocked||!["COMPLETED","GIFTED"].includes(project.status))return;let current=project;if(project.status!==GIFT_STATUS){current=Store.update("projects",project.id,{status:GIFT_STATUS,giftedAt:project.giftedAt||String(project.completionDate)+"T00:00:00.000Z",buildLocked:true});repaired++;}repaired+=retireGiftInventory(current);if(!giftSaleForProject(current.id)){ensureGiftLedgerEntry(current);repaired++;}});ledger.meta.giftLifecycleV5RepairedAt=nowISO();Store.persist();}
-  console.info("[PROFITNODE] GIFT PROJECT LIFECYCLE V5 active · repaired",repaired,"item(s).");
+      const completed = Store.get("projects",projectId);
+      const giftedAt = completed.completedAt || nowISO();
+      const gifted = Store.update("projects",projectId,{
+        status:GIFT_STATUS,
+        giftedAt:giftedAt,
+        completionDate:completed.completionDate || giftedAt.slice(0,10),
+        buildLocked:true
+      });
+      Store.all("inventory").filter(item=>item.assignedProjectId===projectId).forEach(item=>Store.update("inventory",item.id,{status:"GIFTED",retiredAt:giftedAt}));
+      ensureGiftLedgerEntry(gifted);
+      return {ok:true,project:gifted};
+    };
+    wrappedComplete.__pnGiftAwareV2 = true;
+    Actions.markProjectBuildComplete = wrappedComplete;
+  }
+
+  let repaired = 0;
+  Store.all("projects").forEach(project => {
+    if (!isGiftProject(project) || !project.completionDate) return;
+    const looksFinished = project.buildLocked || ["COMPLETED","GIFTED"].includes(project.status);
+    if (!looksFinished) return;
+
+    let current = project;
+    if (project.status !== GIFT_STATUS) {
+      current = Store.update("projects",project.id,{
+        status:GIFT_STATUS,
+        giftedAt:project.giftedAt || String(project.completionDate)+"T00:00:00.000Z",
+        buildLocked:true
+      });
+      repaired++;
+    }
+    if (!giftSaleForProject(current.id)) {
+      ensureGiftLedgerEntry(current);
+      repaired++;
+    }
+    Store.all("inventory").filter(item=>item.assignedProjectId===current.id&&!(["GIFTED","RETIRED"].includes(item.status))).forEach(item=>{Store.update("inventory",item.id,{status:"GIFTED",retiredAt:current.giftedAt||nowISO()});repaired++});
+  });
+
+  if (repaired) Store.persist();
+  console.info("[PROFITNODE] GIFT PROJECT LIFECYCLE V2 active · repaired",repaired,"gift lifecycle/ledger item(s).");
 })();
