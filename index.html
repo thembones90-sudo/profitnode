@@ -559,7 +559,7 @@ tbody tr.clickable[data-open-rig-family]:hover td:last-child::before{opacity:1}
 .pn-pb-compat-filter[data-pb-compat-filter="GREEN"].is-active{color:var(--green);border-color:var(--green-dim);background:var(--green-wash)}
 @media(max-width:1180px){.pn-bc-tiles{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:640px){.pn-bc-tiles{grid-template-columns:1fr}}
-.rig-editor-content{padding:10px 14px 24px;max-width:1680px}
+.rig-editor-content{padding:10px max(14px,calc((100% - 1680px)/2)) 24px;max-width:none}
 .rig-editor-content .panel-body{padding:8px 12px}
 .rig-editor-content .panel-head{padding:8px 12px}
 .rig-editor-content textarea{min-height:34px}
