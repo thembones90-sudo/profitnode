@@ -318,7 +318,7 @@ function pnPartNameTier(item){
 
 function pnPartNameHtml(item){
   const visual=pnPartNameTier(item),category=pnPartTierCategory(item&&item.category),name=((item&&item.manufacturer)||"")+(((item&&item.manufacturer)&&(item&&item.model))?" ":"")+((item&&item.model)||"");
-  const unrated=visual.rating===null||visual.rating===undefined||visual.rating==="—",title=category==="GPU"?(unrated?'PROFITNODE GPU performance: UNRATED — exact model/VRAM variant required':'PROFITNODE GPU performance: '+visual.key+' · Native raster '+visual.rating+'/100 (RTX 5090 = 100)'):(unrated?'PROFITNODE visual tier: UNRATED':'PROFITNODE visual tier: '+visual.key+' — '+visual.label+' · Rating '+visual.rating+'/100');
+  const unrated=visual.rating===null||visual.rating===undefined||visual.rating==="—",familyFloor=visual.source==="family-floor"?' · conservative family floor':'',title=category==="GPU"?(unrated?'PROFITNODE GPU performance: UNRATED — exact model/VRAM variant required':'PROFITNODE GPU performance: '+visual.key+' · Native raster '+visual.rating+'/100 (RTX 5090 = 100)'+familyFloor):(unrated?'PROFITNODE visual tier: UNRATED':'PROFITNODE visual tier: '+visual.key+' — '+visual.label+' · Rating '+visual.rating+'/100');
   return '<span class="pn-part-name '+visual.className+(category==="COOLING"||category==="CASE"?' pn-part-name-subtle':'')+'" data-pn-part-tier="'+visual.key+'" title="'+escAttr(title)+'">'+escHtml(name)+'</span>';
 }
 
