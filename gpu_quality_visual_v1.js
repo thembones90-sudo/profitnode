@@ -20,35 +20,12 @@
     };
   }
 
-  function canonicalFamilyFloor(item, resolution) {
-    if (typeof pnGpuModelStem !== "function" || typeof HardwareCatalog === "undefined" || !Array.isArray(HardwareCatalog.gpus)) return null;
-    const label = ((item && item.manufacturer) || "") + " " + ((item && item.model) || "");
-    const stem = pnGpuModelStem(label);
-    if (!stem) return null;
-    const variants = HardwareCatalog.gpus.map(gpu => {
-      const score = Number(gpu.overall != null ? gpu.overall : gpu.pn_score);
-      const tierIndex = typeof gpuGearTier === "function" ? gpuGearTier(gpu) : null;
-      return { gpu, score, tierIndex };
-    }).filter(x => pnGpuModelStem(x.gpu.model || "") === stem && Number.isFinite(x.score) && Number.isFinite(x.tierIndex));
-    if (variants.length < 2 || new Set(variants.map(x => x.tierIndex)).size !== 1) return null;
-    const floor = variants.reduce((best, x) => x.score < best.score ? x : best, variants[0]);
-    return {
-      gpu: null,
-      score: Math.max(0, Math.min(100, Math.round(floor.score))),
-      tierIndex: floor.tierIndex,
-      resolution: resolution || { confidence: "FAMILY", reason: "Canonical GPU family floor" },
-      familyFloor: true,
-      familyStem: stem,
-      familyVariants: variants.length
-    };
-  }
-
   function liveGpuQuality(item) {
     if (!item || String(item.category || "").toUpperCase() !== "GPU") return null;
     const resolution = typeof pnPartCatalogResolution === "function" ? pnPartCatalogResolution(item) : null;
     const gpu = resolution && resolution.item;
     if (!gpu) {
-      const floor = canonicalFamilyFloor(item, resolution) || gt630FamilyFloor(item, resolution);
+      const floor = gt630FamilyFloor(item, resolution);
       return floor || { gpu: null, score: null, tierIndex: null, resolution, unrated: true };
     }
     const rawScore = gpu.overall != null ? gpu.overall : gpu.pn_score;
@@ -81,9 +58,7 @@
       source: "family-floor",
       category: "GPU",
       matchConfidence: "FAMILY",
-      reason: live.familyStem
-        ? "Conservative " + live.familyStem + " floor across " + live.familyVariants + " same-tier canonical variants; exact variant not recorded"
-        : "Conservative GT 630 family floor; exact memory variant not recorded"
+      reason: "Conservative GT 630 family floor; exact memory variant not recorded"
     }, PN_PART_NAME_TIERS[live.tierIndex + 1]);
     const tier = Math.max(1, Math.min(7, live.tierIndex + 1));
     return Object.assign({

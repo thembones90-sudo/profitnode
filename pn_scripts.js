@@ -1,6 +1,6 @@
 "use strict";
 window.__PN_SCRIPTS = [
-  "app_core.js?v=project-sale-v1-cpu-unrated-safe",
+  "app_core.js?v=xfx-rx580-8gb-identity-v1",
   "cpu_revaluation_extension.js?v=cpu-passmark-v5-hardening-20261004",
   "gpu_revaluation_extension.js?v=gpu-master-v4-hardening-20261005",
   "motherboard_revaluation_extension.js?v=v3-stack-20260912b",
@@ -18,7 +18,7 @@ window.__PN_SCRIPTS = [
   "rig_bench_navigation_extension.js?v=rig-direct-open-v1",
   "command_financial_model_extension.js?v=rig-assembly-nav-v1",
   "profitnode_intelligence_extension.js?v=gpu-visual-canonical-score-v1-20261005",
-  "gpu_quality_visual_v1.js?v=gpu-family-floor-v2-20261005",
+  "gpu_quality_visual_v1.js?v=personal-gpu-identity-v3-20261005",
   "cpu_quality_visual_v1.js?v=cpu-quality-visual-v1-unrated-safe-20261004",
   "command_separator_tune.js?v=command-depth-responsive-v3",
   "roulette_extension.js?v=roulette-loss-reason-v1",
