@@ -175,8 +175,8 @@ async function main() {
     check("WAR CHEST reveals one compact 50/30/20 line only after the €800 reserve gate",surplusProtocol.exists&&!surplusProtocol.legacyGrid&&/ROAD TO/.test(surplusProtocol.text)&&/HARDWARE/.test(surplusProtocol.text)&&/FREE/.test(surplusProtocol.text),JSON.stringify(surplusProtocol));
     await evaluate(`(()=>{const t=pnTreasuryCoreDraft(Store.load().treasury),cash=t.balances.find(x=>x.sourceKey==='CASH_EUR');cash.amount=650;Store.load().treasury=t;Store.persist();render()})()`);await delay(100);
     await evaluate(`document.querySelector('[data-treasury-new]').click()`);await delay(100);
-    const recountDrawer=await evaluate(`(()=>{const shell=document.querySelector('.pn-wc-drawer-shell'),drawer=document.querySelector('.pn-treasury-editor');return{shell:!!shell,dialog:shell&&shell.getAttribute('role'),height:drawer&&Math.round(drawer.getBoundingClientRect().height),right:drawer&&Math.round(drawer.getBoundingClientRect().right),viewport:innerWidth}})()`);
-    check("RECOUNT THE HOARD opens as a full-height focused drawer",recountDrawer.shell&&recountDrawer.dialog==='dialog'&&recountDrawer.height===1080&&recountDrawer.right===recountDrawer.viewport,JSON.stringify(recountDrawer));
+    const recountDrawer=await evaluate(`(()=>{const shell=document.querySelector('.pn-wc-drawer-shell'),drawer=document.querySelector('.pn-treasury-editor'),r=drawer&&drawer.getBoundingClientRect();return{shell:!!shell,dialog:shell&&shell.getAttribute('role'),height:r&&Math.round(r.height),left:r&&Math.round(r.left),width:r&&Math.round(r.width),viewport:innerWidth}})()`);
+    check("RECOUNT THE HOARD opens as a full-height centered modal",recountDrawer.shell&&recountDrawer.dialog==='dialog'&&recountDrawer.height===1080&&Math.abs((recountDrawer.left+recountDrawer.width/2)-recountDrawer.viewport/2)<=1,JSON.stringify(recountDrawer));
     await evaluate(`document.querySelector('[data-treasury-cancel]').click()`);
     const warChestShot=await cdp.send("Page.captureScreenshot",{format:"png",captureBeyondViewport:false});
     fs.writeFileSync(path.join(os.tmpdir(),"profitnode-war-chest-1920.png"),Buffer.from(warChestShot.data,"base64"));
