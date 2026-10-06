@@ -72,8 +72,12 @@
     return !!(o&&o.questline===true);
   }
 
+  function isManualPaid(o){
+    return !!(o&&o.manualPaidCycle===cycleKey());
+  }
+
   function isPaid(o){
-    return isQuest(o) ? !!currentPayment(o) : String(o&&o.status||"PENDING").toUpperCase()==="PAID";
+    return isQuest(o) ? (!!currentPayment(o)||isManualPaid(o)) : String(o&&o.status||"PENDING").toUpperCase()==="PAID";
   }
 
   function canonicalSeedObject(def){
@@ -128,6 +132,7 @@
       if(!isQuest(o)) return;
       o.recurring=true;
       o.paymentHistory=Array.isArray(o.paymentHistory)?o.paymentHistory:[];
+      if(o.manualPaidCycle&&o.manualPaidCycle!==cycleKey()){delete o.manualPaidCycle;delete o.manualPaidAt;changed=true;}
       const should=isPaid(o)?"PAID":"PENDING";
       if(o.status!==should){o.status=should;changed=true;}
     });
@@ -229,7 +234,7 @@
   function paidThisMonth(treasury,rows){
     return rows.reduce((sum,o)=>{
       const p=currentPayment(o);
-      return sum+(p?eur(p.amount,p.currency||o.currency,treasury.settings):0);
+      return sum+(p?eur(p.amount,p.currency||o.currency,treasury.settings):(isManualPaid(o)?eur(o.amount,o.currency,treasury.settings):0));
     },0);
   }
 
@@ -263,12 +268,22 @@
     },0);
   };
 
+  function incomeForecastCard(e,t,r){
+    const rows=(e.incomes||[]).filter(Boolean),currencies=Array.from(new Set(rows.map(x=>String(x.currency||"EUR").toUpperCase()))),single=rows.length===1?rows[0]:null;
+    const nativeTotal=currencies.length===1?rows.reduce((sum,x)=>sum+(Number(x.amount)||0),0):0;
+    const value=currencies.length===1?pnTreasuryNativeMoney(nativeTotal,currencies[0]):pnTreasuryMoney(t.income);
+    const equivalent=currencies.length===1&&currencies[0]!=="EUR"?"≈ "+pnTreasuryMoney(t.income):"";
+    const meta=pnTreasuryZero(t.income)?"":r?((r.source||"Tribute source")+" · "+pnTreasuryConfidence(r.confidence)):"";
+    const selector=single?'<label class="pn-wc-income-currency"><span>PAID IN</span><select data-wc-income-currency data-income-id="'+escAttr(single.id||"")+'">'+["USD","EUR","RSD"].map(cur=>'<option value="'+cur+'"'+(cur===String(single.currency||"EUR").toUpperCase()?' selected':'')+'>'+cur+'</option>').join("")+'</select></label>':"";
+    return '<div class="pn-treasury-card is-tribute'+(pnTreasuryZero(t.income)?' is-zero':'')+'"><span>'+PN_WC_GLYPH.crown+'Incoming Tribute</span><strong>'+value+'</strong>'+(equivalent?'<small>'+equivalent+'</small>':'')+(meta?'<small>'+escHtml(meta)+'</small>':'')+selector+'</div>';
+  }
+
   pnTreasuryMovements=function(e,t,r){
     ensureSeed(e);
     return'<section class="pn-wc-movements panel"><div class="pn-wc-section-head"><b>FORECAST</b></div><div class="pn-wc-movement-grid">'
       +pnTreasuryCard("Obligations",pnTreasuryMoney(t.obligations),pnTreasuryZero(t.obligations)?"":pendingCount(e)+" pending","is-dues"+(pnTreasuryZero(t.obligations)?" is-zero":""),"chain")
       +pnTreasuryCard("Pending Conversion",pnTreasuryMoney(t.pending),pnTreasuryZero(t.pending)?"":e.pendingAssets.filter(x=>!x.converted).length+" unconverted","is-spoils"+(pnTreasuryZero(t.pending)?" is-zero":""),"crate")
-      +pnTreasuryCard("Incoming Tribute",pnTreasuryMoney(t.income),pnTreasuryZero(t.income)?"":r?((r.source||"Tribute source")+" · "+pnTreasuryConfidence(r.confidence)):"","is-tribute"+(pnTreasuryZero(t.income)?" is-zero":""),"crown")
+      +incomeForecastCard(e,t,r)
       +pnTreasuryCard("Projected Hoard",pnTreasuryMoney(t.afterSalary),"Fortress + conversion + tribute","is-projected","rune")
       +'</div></section>';
   };
@@ -298,7 +313,7 @@
     const fresh=UI.justSlain===o.id;
     const cls=["pn-tribute-row",paid?"is-paid":"is-open",fresh?"is-fresh-slay":"",due.cls?"is-"+due.cls:"",priority?"is-priority":""].filter(Boolean).join(" ");
     const source=pay?(pay.sourceLabel||pay.sourceKey||"Reserve"):"";
-    const paidMeta=pay?("PAID "+fmtDate(String(pay.paidAt||todayISO()).slice(0,10),"short").toUpperCase()+" · "+escHtml(source)):"";
+    const paidMeta=pay?("PAID "+fmtDate(String(pay.paidAt||todayISO()).slice(0,10),"short").toUpperCase()+" · "+escHtml(source)):(isManualPaid(o)?"PAID · RECOUNT":"");
     const meta=paid?paidMeta:(priority?'<span class="pn-tribute-priority-chip">PRIORITY THREAT</span> '+escHtml(due.label):escHtml(due.label));
 
     return '<article class="'+cls+'" data-tribute-id="'+escAttr(o.id)+'">'
@@ -586,6 +601,24 @@
     UI.flash=name.toUpperCase()+" ADDED TO THE QUESTLINE";
     render();
   }
+
+  document.addEventListener("change",function(ev){
+    const incomeCurrency=ev.target.closest&&ev.target.closest("[data-wc-income-currency]");
+    if(incomeCurrency){
+      const treasury=pnTreasuryData();
+      const id=String(incomeCurrency.dataset.incomeId||""),row=(treasury.incomes||[]).find(x=>x&&x.id===id)||((treasury.incomes||[]).length===1?treasury.incomes[0]:null);
+      if(row){row.currency=String(incomeCurrency.value||"USD").toUpperCase();row.updatedAt=nowISO();Store.persist();render();}
+      return;
+    }
+    const field=ev.target.closest&&ev.target.closest("[data-treasury-path]");
+    if(!field||!state.treasuryDraft) return;
+    const match=String(field.dataset.treasuryPath||"").match(/^obligations\.(\d+)\.status$/);
+    if(!match) return;
+    const o=state.treasuryDraft.obligations&&state.treasuryDraft.obligations[Number(match[1])];
+    if(!isQuest(o)) return;
+    if(String(field.value||"").toUpperCase()==="PAID"){o.manualPaidCycle=cycleKey();o.manualPaidAt=nowISO();}
+    else if(o.manualPaidCycle===cycleKey()){delete o.manualPaidCycle;delete o.manualPaidAt;}
+  });
 
   document.addEventListener("click",function(ev){
     const pay=ev.target.closest("[data-tribute-pay]");

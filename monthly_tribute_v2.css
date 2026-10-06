@@ -800,3 +800,32 @@
   background:#130b17 !important;
 }
 /* PN TRIBUTE PICTURE ICONS OVERRIDE FIX V2 END */
+
+/* Incoming Tribute currency control */
+.pn-wc-income-currency{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  width:max-content;
+  margin-top:5px;
+  font-family:var(--mono);
+}
+.pn-wc-income-currency>span{
+  font-size:9px;
+  letter-spacing:.08em;
+  color:var(--wc-text-mute);
+}
+.pn-wc-income-currency select{
+  height:24px;
+  min-width:64px;
+  padding:2px 22px 2px 7px;
+  border:1px solid var(--wc-border-strong);
+  background:#0d0a10;
+  color:var(--wc-silver);
+  font:800 10px var(--mono);
+  cursor:pointer;
+}
+.pn-wc-income-currency select:focus{
+  outline:1px solid var(--wc-gold);
+  outline-offset:1px;
+}
