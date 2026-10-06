@@ -278,13 +278,23 @@
     return '<div class="pn-treasury-card is-tribute'+(pnTreasuryZero(t.income)?' is-zero':'')+'"><span>'+PN_WC_GLYPH.crown+'Incoming Tribute</span><strong>'+value+'</strong>'+(equivalent?'<small>'+equivalent+'</small>':'')+(meta?'<small>'+escHtml(meta)+'</small>':'')+selector+'</div>';
   }
 
+  function projectedHoardCard(e,t){
+    const rows=(e.incomes||[]).filter(Boolean),currencies=Array.from(new Set(rows.map(x=>String(x.currency||"EUR").toUpperCase()))),currency=currencies.length===1?currencies[0]:"EUR";
+    let nativeTotal=t.afterSalary;
+    if(currency==="USD") nativeTotal=(Number(e.settings&&e.settings.usdToEur)||0)>0?t.afterSalary/Number(e.settings.usdToEur):0;
+    else if(currency==="RSD") nativeTotal=(Number(e.settings&&e.settings.rsdToEur)||0)>0?t.afterSalary/Number(e.settings.rsdToEur):0;
+    const value=currency==="EUR"?pnTreasuryMoney(t.afterSalary):pnTreasuryNativeMoney(nativeTotal,currency);
+    const equivalent=currency!=="EUR"?"? "+pnTreasuryMoney(t.afterSalary):"";
+    return '<div class="pn-treasury-card is-projected"><span>'+PN_WC_GLYPH.rune+'Projected Hoard</span><strong>'+value+'</strong>'+(equivalent?'<small>'+equivalent+'</small>':'')+'<small>FORTRESS + CONVERSION + TRIBUTE</small></div>';
+  }
+
   pnTreasuryMovements=function(e,t,r){
     ensureSeed(e);
     return'<section class="pn-wc-movements panel"><div class="pn-wc-section-head"><b>FORECAST</b></div><div class="pn-wc-movement-grid">'
       +pnTreasuryCard("Obligations",pnTreasuryMoney(t.obligations),pnTreasuryZero(t.obligations)?"":pendingCount(e)+" pending","is-dues"+(pnTreasuryZero(t.obligations)?" is-zero":""),"chain")
       +pnTreasuryCard("Pending Conversion",pnTreasuryMoney(t.pending),pnTreasuryZero(t.pending)?"":e.pendingAssets.filter(x=>!x.converted).length+" unconverted","is-spoils"+(pnTreasuryZero(t.pending)?" is-zero":""),"crate")
       +incomeForecastCard(e,t,r)
-      +pnTreasuryCard("Projected Hoard",pnTreasuryMoney(t.afterSalary),"Fortress + conversion + tribute","is-projected","rune")
+      +projectedHoardCard(e,t)
       +'</div></section>';
   };
 
