@@ -157,6 +157,27 @@ checks.push(['sidebar cleanup directly hides the legacy shop label', sidebarClea
 const sidebarSource = fs.readFileSync(path.join(DIR, 'sidebar_cleanup_extension.js'), 'utf8');
 checks.push(['sidebar cleanup has no retry interval or mutation observer', !/setInterval|MutationObserver/.test(sidebarSource)]);
 
+const cloudSource = fs.readFileSync(path.join(DIR, 'cloud_sync_extension.js'), 'utf8');
+const cloudDecisionProbe = env.run(sandbox, `(() => {
+  const api=window.__PN_CLOUD_SYNC_TEST__;
+  const local={projects:[{id:'jana'}],inventory:[{id:'psu'}],sales:[],treasury:{flows:[]}};
+  const stale={projects:[{id:'jana'}],inventory:[],sales:[],treasury:{flows:[]}};
+  const remote={ledger:local,revision:52};
+  return {
+    empty:api.reconcileDecision(null,null,remote),
+    current:api.reconcileDecision(local,{revision:52,fingerprint:api.fingerprint(local)},remote),
+    stale:api.reconcileDecision(stale,{revision:51,fingerprint:api.fingerprint(stale)},remote),
+    edited:api.reconcileDecision(stale,{revision:51,fingerprint:'different'},remote),
+    missing:api.reconcileDecision(local,null,null)
+  };
+})()`);
+checks.push(['cloud boot reconciliation pulls empty or unchanged stale state but preserves unsynced local edits',
+  cloudDecisionProbe.empty==='PULL' && cloudDecisionProbe.current==='CURRENT' && cloudDecisionProbe.stale==='PULL' && cloudDecisionProbe.edited==='CONFLICT' && cloudDecisionProbe.missing==='REMOTE_EMPTY']);
+checks.push(['cloud persistence uses owner scoping and optimistic revision guards',
+  /\.eq\("owner_id",user\.id\)/.test(cloudSource) && /\.eq\("revision",actual\)/.test(cloudSource)]);
+checks.push(['cloud sync no longer disables authenticated sessions or forces local-only mode on boot',
+  !/automatic sync intentionally disabled/.test(cloudSource) && !/sessionStorage\.setItem\("pn_cloud_local_only","1"\).*closeGate\(\)/.test(cloudSource.match(/async function boot\([\s\S]*?client\.auth\.onAuthStateChange/)[0])]);
+
 const treasuryProbe = env.run(sandbox, `(() => {
   const blank = normalizeTreasury(null);
   const sample = {
