@@ -11,7 +11,25 @@
   function localLedger(){return parse(localStorage.getItem(LEDGER_KEY))}
   function syncMeta(){return parse(localStorage.getItem(SYNC_KEY))}
   function pendingQueue(){return parse(localStorage.getItem(QUEUE_KEY))}
-  function fingerprint(value){return signature(value)}
+  function digest(text){
+    let a=2166136261,b=2654435769,c=2246822519;
+    for(let i=0;i<text.length;i++){
+      const n=text.charCodeAt(i);
+      a=Math.imul(a^n,16777619);
+      b=Math.imul(b+n,2246822519)^(b>>>13);
+      c=Math.imul(c^n,3266489917);
+    }
+    return "pn3:"+text.length+":"+[a,b,c].map(n=>(n>>>0).toString(16).padStart(8,"0")).join("");
+  }
+  function fingerprint(value){return digest(signature(value)||"")}
+  function compactLegacyMeta(){
+    const meta=syncMeta();
+    if(!meta||typeof meta.fingerprint!=="string"||meta.fingerprint.length<256)return;
+    const old=parse(meta.fingerprint);
+    if(!old)return;
+    try{localStorage.setItem(SYNC_KEY,JSON.stringify({...meta,fingerprint:fingerprint(old)}))}
+    catch(error){console.warn("PROFITNODE: old sync metadata could not be compacted",error)}
+  }
   function meaningful(x){return !!(x&&((x.projects&&x.projects.length)||(x.inventory&&x.inventory.length)||(x.sales&&x.sales.length)||(x.timeline&&x.timeline.length)||(x.treasury&&x.treasury.balances&&x.treasury.balances.length)))}
   function countOf(x,key){return x&&Array.isArray(x[key])?x[key].length:0}
   function canonical(value){
@@ -39,7 +57,8 @@
   function authorityDecision(local,meta,remote,queue){
     if(!remote||!remote.ledger)return "REMOTE_EMPTY";
     if(queue&&queue.ledger){
-      if(fingerprint(queue.ledger)===fingerprint(remote.ledger))return "CURRENT";
+      if(fingerprint(queue.ledger)===fingerprint(remote.ledger))
+        return !meaningful(local)||fingerprint(local)===fingerprint(remote.ledger)?"CURRENT":"CONFLICT";
       return Number(queue.baseRevision)===Number(remote.revision)?"RESUME_QUEUE":"CONFLICT";
     }
     if(!meaningful(local))return "APPLY_REMOTE";
@@ -53,7 +72,8 @@
   function backupLocal(tag){
     const raw=localStorage.getItem(LEDGER_KEY);if(!raw)return null;
     const key="profitnode_cloud_backup_"+tag+"_"+new Date().toISOString().replace(/[:.]/g,"-");
-    localStorage.setItem(key,raw);return key;
+    try{localStorage.setItem(key,raw);return key}
+    catch(error){console.warn("PROFITNODE: local backup quota reached; preserving the active browser ledger",error);return null}
   }
   function cacheLedger(ledger){
     localStorage.setItem(LEDGER_KEY,JSON.stringify(ledger));
@@ -116,7 +136,11 @@
   }
   function announce(){try{if(channel)channel.postMessage({revision:cloudRevision})}catch(_){}}
   function applyRemote(remote,reason){
-    const before=localLedger();if(fingerprint(before)!==fingerprint(remote.ledger))backupLocal("pre-cloud-"+String(reason||"load").toLowerCase());
+    const before=localLedger();
+    if(meaningful(before)&&fingerprint(before)!==fingerprint(remote.ledger)){
+      const backup=backupLocal("pre-cloud-"+String(reason||"load").toLowerCase());
+      if(!backup){conflictGate(remote);return}
+    }
     cacheLedger(remote.ledger);localStorage.removeItem(QUEUE_KEY);cloudRevision=Number(remote.revision)||0;lastCloudFingerprint=fingerprint(remote.ledger);hydrated=true;setMeta(cloudRevision,remote.ledger);setPhase("SYNCED");wrapPersist();closeGate();
     if(typeof render==="function")render();badgeMsg("CLOUD r"+cloudRevision+" · SYNCED","ok");announce();
   }
@@ -223,7 +247,7 @@
   }
   async function boot(){
     if(!window.supabase||!window.supabase.createClient){console.error("PROFITNODE CLOUD: Supabase client missing");return}
-    setPhase("BOOTING");patchBackupCopy();client=window.supabase.createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});wireCrossTab();
+    setPhase("BOOTING");compactLegacyMeta();patchBackupCopy();client=window.supabase.createClient(URL,KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});wireCrossTab();
     const result=await client.auth.getUser();
     if(result.data&&result.data.user){user=result.data.user;wireAuthenticated();await reconcileOnBoot()}else{setPhase("SIGNED_OUT");wireGate()}
     client.auth.onAuthStateChange((event,session)=>{
