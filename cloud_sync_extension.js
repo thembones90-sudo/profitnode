@@ -14,14 +14,25 @@
   function fingerprint(value){try{return JSON.stringify(value)}catch(_){return ""}}
   function meaningful(x){return !!(x&&((x.projects&&x.projects.length)||(x.inventory&&x.inventory.length)||(x.sales&&x.sales.length)||(x.timeline&&x.timeline.length)||(x.treasury&&x.treasury.balances&&x.treasury.balances.length)))}
   function countOf(x,key){return x&&Array.isArray(x[key])?x[key].length:0}
-  function itemKey(x){return x&&x.id?"id:"+x.id:"json:"+fingerprint(x)}
+  function canonical(value){
+    if(Array.isArray(value))return value.map(canonical);
+    if(value&&typeof value==="object"){
+      const ordered={};Object.keys(value).sort().forEach(key=>{ordered[key]=canonical(value[key])});return ordered;
+    }
+    return value;
+  }
+  function signature(value){try{return JSON.stringify(canonical(value))}catch(_){return ""}}
+  function itemKey(x){return x&&x.id?"id:"+x.id:"json:"+signature(x)}
   function collectionContains(remote,local,key){
     const r=remote&&Array.isArray(remote[key])?remote[key]:[],l=local&&Array.isArray(local[key])?local[key]:[];
-    const keys=new Set(l.map(itemKey));return r.every(x=>keys.has(itemKey(x)));
+    const byKey=new Map(l.map(x=>[itemKey(x),signature(x)]));
+    return r.every(x=>byKey.has(itemKey(x))&&byKey.get(itemKey(x))===signature(x));
   }
   function strictLocalDescendant(local,remote){
     if(!meaningful(local)||!meaningful(remote))return false;
     if(!COLLECTIONS.every(key=>collectionContains(remote,local,key)))return false;
+    const otherKeys=new Set([...Object.keys(local),...Object.keys(remote)].filter(key=>!COLLECTIONS.includes(key)));
+    if([...otherKeys].some(key=>signature(local[key])!==signature(remote[key])))return false;
     const grew=COLLECTIONS.some(key=>countOf(local,key)>countOf(remote,key));
     return grew&&COLLECTIONS.every(key=>countOf(local,key)>=countOf(remote,key));
   }
@@ -71,10 +82,22 @@
     if(label){label.textContent=text;label.style.color=tone==="bad"?"#ff6972":tone==="warn"?"#f6c453":"#8ef0a0"}
     if(retry)retry.hidden=tone!=="bad";
   }
+  function exportRecoverySnapshot(){
+    const saved={};
+    for(let i=0;i<localStorage.length;i++){
+      const key=localStorage.key(i);
+      if(key===LEDGER_KEY||key===QUEUE_KEY||key===SYNC_KEY||key.startsWith("profitnode_cloud_backup_"))saved[key]=localStorage.getItem(key);
+    }
+    if(!saved[LEDGER_KEY]){alert("The browser ledger is missing; do not replace any data.");return}
+    const payload={kind:"PROFITNODE_BROWSER_RECOVERY",capturedAt:new Date().toISOString(),origin:location.origin,saved};
+    const url=window.URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)],{type:"application/json"}));
+    const link=document.createElement("a");link.href=url;link.download="profitnode-browser-recovery-"+new Date().toISOString().slice(0,10)+".json";
+    document.body.appendChild(link);link.click();link.remove();setTimeout(()=>window.URL.revokeObjectURL(url),5000);
+  }
   function conflictGate(remote){
     setPhase("CONFLICT");shell();const card=document.querySelector(".pn-cloud-card");if(!card)return;
-    card.innerHTML='<div class="pn-cloud-kicker">PROFITNODE CLOUD</div><h2>SYNC PAUSED</h2><p>The cloud ledger changed independently from this browser. Nothing was overwritten. Export the browser backup from BLACKBOX before choosing which history to keep.</p><div class="pn-cloud-actions"><button id="pn-conflict-cloud">LOAD CLOUD r'+Number(remote&&remote.revision||0)+'</button><button id="pn-conflict-retry">RECHECK</button></div>';
-    card.querySelector("#pn-conflict-cloud").onclick=()=>{if(!confirm("Load cloud revision "+Number(remote&&remote.revision||0)+"? The browser cache will be backed up first."))return;backupLocal("pre-conflict-cloud");applyRemote(remote,"CONFLICT_RESOLVED")};
+    card.innerHTML='<div class="pn-cloud-kicker">PROFITNODE CLOUD</div><h2>SYNC PAUSED</h2><p>Both ledgers must be preserved before reconciliation. Export this browser and compare its history with the cloud. Nothing will be replaced automatically.</p><div class="pn-cloud-actions"><button id="pn-conflict-backup">EXPORT BROWSER BACKUP</button><button id="pn-conflict-retry">RECHECK</button></div>';
+    card.querySelector("#pn-conflict-backup").onclick=exportRecoverySnapshot;
     card.querySelector("#pn-conflict-retry").onclick=()=>reconcileOnBoot().catch(handleOffline);
     badgeMsg("CLOUD r"+Number(remote&&remote.revision||0)+" · SYNC PAUSED","bad");
   }
