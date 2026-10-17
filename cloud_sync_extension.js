@@ -5,7 +5,7 @@
   const KEY="sb_publishable__tkOfCLkhpkz4BtvSXNQTg_FAmNF3CO";
   const LEDGER_KEY="profitnode_ledger_v1",ROW_ID="primary",SYNC_KEY="profitnode_cloud_sync_v3",QUEUE_KEY="profitnode_cloud_queue_v1";
   const COLLECTIONS=["projects","inventory","deals","sales","timeline","plans","repairs","rigs","roadTo","mail"];
-  let client=null,user=null,cloudRevision=0,saveTimer=null,wrapped=false,phase="BOOTING",channel=null,checking=false,lastCloudFingerprint="";
+  let client=null,user=null,cloudRevision=0,saveTimer=null,wrapped=false,phase="BOOTING",channel=null,checking=false,lastCloudFingerprint="",hydrated=false;
 
   function parse(raw){try{return JSON.parse(raw||"null")}catch(_){return null}}
   function localLedger(){return parse(localStorage.getItem(LEDGER_KEY))}
@@ -74,7 +74,7 @@
     el.innerHTML='<span id="pn-cloud-badge-text">CLOUD · CONNECTING</span><button id="pn-cloud-retry" hidden>RETRY</button><button id="pn-cloud-signout">SIGN OUT</button>';
     document.body.appendChild(el);
     el.querySelector("#pn-cloud-retry").onclick=()=>reconcileOnBoot().catch(handleOffline);
-    el.querySelector("#pn-cloud-signout").onclick=async()=>{await client.auth.signOut();user=null;cloudRevision=0;setPhase("SIGNED_OUT");el.remove();wireGate()};
+    el.querySelector("#pn-cloud-signout").onclick=async()=>{await client.auth.signOut();user=null;hydrated=false;cloudRevision=0;setPhase("SIGNED_OUT");el.remove();wireGate()};
     return el;
   }
   function badgeMsg(text,tone){
@@ -117,7 +117,7 @@
   function announce(){try{if(channel)channel.postMessage({revision:cloudRevision})}catch(_){}}
   function applyRemote(remote,reason){
     const before=localLedger();if(fingerprint(before)!==fingerprint(remote.ledger))backupLocal("pre-cloud-"+String(reason||"load").toLowerCase());
-    cacheLedger(remote.ledger);localStorage.removeItem(QUEUE_KEY);cloudRevision=Number(remote.revision)||0;lastCloudFingerprint=fingerprint(remote.ledger);setMeta(cloudRevision,remote.ledger);setPhase("SYNCED");wrapPersist();closeGate();
+    cacheLedger(remote.ledger);localStorage.removeItem(QUEUE_KEY);cloudRevision=Number(remote.revision)||0;lastCloudFingerprint=fingerprint(remote.ledger);hydrated=true;setMeta(cloudRevision,remote.ledger);setPhase("SYNCED");wrapPersist();closeGate();
     if(typeof render==="function")render();badgeMsg("CLOUD r"+cloudRevision+" · SYNCED","ok");announce();
   }
   function queueLedger(ledger){
@@ -153,7 +153,7 @@
   function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>flushQueue().catch(handleOffline),450)}
   function wrapPersist(){
     if(wrapped||typeof Store==="undefined")return;wrapped=true;const old=Store.persist.bind(Store);
-    Store.persist=function(){const ok=old();if(ok&&user&&phase!=="BOOTING"&&phase!=="CONFLICT"&&queueLedger(Store.load()))scheduleSave();return ok};
+    Store.persist=function(){const ok=old();if(ok&&user&&hydrated&&phase!=="CONFLICT"&&queueLedger(Store.load()))scheduleSave();return ok};
   }
   function handleOffline(error){setPhase("OFFLINE");badgeMsg("OFFLINE · CHANGES QUEUED","bad");console.warn("PROFITNODE CLOUD: save deferred",error)}
   async function promoteLocal(local,remote){
@@ -161,7 +161,7 @@
     if(!saved){conflictGate(await fetchCloud());return}applyRemote(saved,"LOCAL_DESCENDANT_PROMOTED");
   }
   async function reconcileOnBoot(){
-    if(!user||checking)return;checking=true;setPhase("BOOTING");badgeMsg("CLOUD · RECONCILING","warn");
+    if(!user||checking)return;checking=true;if(!hydrated)setPhase("BOOTING");badgeMsg("CLOUD · RECONCILING","warn");
     try{
       let remote=await fetchCloud();const local=localLedger(),queue=pendingQueue();
       if(!remote){remote=await seedCloud(local||((typeof Store!=="undefined"&&Store.load)?Store.load():{}));applyRemote(remote,"INITIALIZED");return}
@@ -173,7 +173,7 @@
       conflictGate(remote);
     }finally{checking=false}
   }
-  function wireAuthenticated(){closeGate();syncBadge();wrapPersist()}
+  function wireAuthenticated(){const el=shell();el.querySelector(".pn-cloud-card").innerHTML='<div class="pn-cloud-kicker">PROFITNODE CLOUD</div><h2>RECONCILING</h2><p>Opening the authoritative ledger. Browser changes remain protected until synchronization finishes.</p>';syncBadge();wrapPersist()}
   async function signIn(){
     const email=document.getElementById("pn-cloud-email").value.trim(),password=document.getElementById("pn-cloud-pass").value;message("Signing in...");
     const result=await client.auth.signInWithPassword({email,password});if(result.error)throw result.error;user=result.data.user;wireAuthenticated();await reconcileOnBoot();
@@ -216,7 +216,7 @@
     const result=await client.auth.getUser();
     if(result.data&&result.data.user){user=result.data.user;wireAuthenticated();await reconcileOnBoot()}else{setPhase("SIGNED_OUT");wireGate()}
     client.auth.onAuthStateChange((event,session)=>{
-      if(event==="SIGNED_OUT"){user=null;cloudRevision=0;setPhase("SIGNED_OUT");const badge=document.getElementById("pn-cloud-badge");if(badge)badge.remove();wireGate()}
+      if(event==="SIGNED_OUT"){user=null;hydrated=false;cloudRevision=0;setPhase("SIGNED_OUT");const badge=document.getElementById("pn-cloud-badge");if(badge)badge.remove();wireGate()}
       else if(session&&session.user&&!user){user=session.user;wireAuthenticated();reconcileOnBoot().catch(handleOffline)}
     });
   }
