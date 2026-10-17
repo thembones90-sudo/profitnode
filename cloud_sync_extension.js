@@ -114,11 +114,11 @@
     const result=await client.from("profitnode_ledger").update({ledger,revision:next,source_device:navigator.userAgent,updated_at:new Date().toISOString()}).eq("id",ROW_ID).eq("owner_id",user.id).eq("revision",Number(baseRevision)).select("ledger,revision,updated_at,owner_id").maybeSingle();
     if(result.error)throw result.error;return result.data;
   }
-  function announce(ledger){try{if(channel)channel.postMessage({revision:cloudRevision,ledger})}catch(_){}}
+  function announce(){try{if(channel)channel.postMessage({revision:cloudRevision})}catch(_){}}
   function applyRemote(remote,reason){
     const before=localLedger();if(fingerprint(before)!==fingerprint(remote.ledger))backupLocal("pre-cloud-"+String(reason||"load").toLowerCase());
     cacheLedger(remote.ledger);localStorage.removeItem(QUEUE_KEY);cloudRevision=Number(remote.revision)||0;setMeta(cloudRevision,remote.ledger);setPhase("SYNCED");wrapPersist();closeGate();
-    if(typeof render==="function")render();badgeMsg("CLOUD r"+cloudRevision+" · SYNCED","ok");announce(remote.ledger);
+    if(typeof render==="function")render();badgeMsg("CLOUD r"+cloudRevision+" · SYNCED","ok");announce();
   }
   function queueLedger(ledger){
     const existing=pendingQueue();
@@ -176,7 +176,11 @@
   function wireCrossTab(){
     if(typeof BroadcastChannel==="function"){
       channel=new BroadcastChannel("profitnode-cloud-ledger");
-      channel.onmessage=event=>{const msg=event&&event.data;if(!msg||!msg.ledger||Number(msg.revision)<=cloudRevision)return;if(pendingQueue())return conflictGate({ledger:msg.ledger,revision:msg.revision});applyRemote({ledger:msg.ledger,revision:msg.revision},"CROSS_TAB")};
+      channel.onmessage=event=>{
+        const revision=Number(event&&event.data&&event.data.revision);
+        if(!user||!Number.isSafeInteger(revision)||revision<=cloudRevision)return;
+        reconcileOnBoot().catch(handleOffline);
+      };
     }
     addEventListener("online",()=>{if(user)reconcileOnBoot().catch(handleOffline)});
     addEventListener("visibilitychange",()=>{if(user&&document.visibilityState==="visible"&&!pendingQueue())reconcileOnBoot().catch(handleOffline)});
