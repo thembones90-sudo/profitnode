@@ -289,15 +289,19 @@ function createSandbox(){
   let uuidN = 0;
   const crypto = { randomUUID: () => 'test-uuid-' + (uuidN++) };
 
+  const winListeners = {};
   const window = {
     claude: undefined,
-    addEventListener(){}, removeEventListener(){},
+    addEventListener(ev, fn){ (winListeners[ev] = winListeners[ev] || []).push(fn); },
+    removeEventListener(ev, fn){ const list = winListeners[ev] || []; const i = list.indexOf(fn); if (i > -1) list.splice(i, 1); },
+    dispatchEvent(evt){ (winListeners[evt && evt.type] || []).slice().forEach(fn => { try { fn(evt); } catch (_){} }); },
     innerWidth: 1280, innerHeight: 900,
     getComputedStyle(){ return { borderTopWidth: '0px', borderBottomWidth: '0px' }; },
     ResizeObserver: undefined,
     requestAnimationFrame(){ return 0; }, cancelAnimationFrame(){},
     __pnTree: extraRoots,
     __pnDocListeners: docListeners,
+    __pnWinListeners: winListeners,
   };
 
   class MutationObserver { constructor(cb){ this.cb = cb; } observe(){} disconnect(){} takeRecords(){ return []; } }

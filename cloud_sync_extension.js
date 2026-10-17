@@ -76,7 +76,7 @@
     catch(error){console.warn("PROFITNODE: local backup quota reached; preserving the active browser ledger",error);return null}
   }
   function cacheLedger(ledger){
-    localStorage.setItem(LEDGER_KEY,JSON.stringify(ledger));
+    if(fingerprint(ledger)!==fingerprint(localLedger()))localStorage.setItem(LEDGER_KEY,JSON.stringify(ledger));
     if(typeof Store!=="undefined"){Store._data=ledger;Store.error=null;Store._writeLocked=false}
   }
   function setPhase(next){phase=next;document.documentElement.setAttribute("data-pn-cloud",String(next).toLowerCase())}
