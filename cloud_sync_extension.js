@@ -147,11 +147,37 @@
     redundant.forEach(key=>localStorage.removeItem(key));
     applyRemote(fresh,"VERIFIED_RECOVERY",true);
   }
+  let deviceRecoveryExported=false;
+  async function useCloudOnDevice(){
+    if(!deviceRecoveryExported){
+      alert("First export this browser backup and save the downloaded file. Then choose USE CLOUD ON THIS DEVICE again.");
+      return;
+    }
+    if(!user||checking)return;
+    const before=localLedger();
+    const queued=pendingQueue();
+    if(!before){
+      alert("Cannot inspect this browser ledger. No data was replaced.");
+      return;
+    }
+    const current=await fetchCloud();
+    if(!current||!current.ledger){
+      alert("Cannot verify the current cloud ledger. No data was replaced.");
+      return;
+    }
+    if(!confirm("Use the current Supabase cloud ledger on THIS device? This will replace the phone's existing local ledger and pending edits. You must have SAVED the browser backup download first. The cloud database itself will NOT be overwritten."))return;
+    if(!backupLocal("before-explicit-device-cloud-load")){
+      alert("This browser could not preserve a local recovery copy (storage quota). Nothing was replaced. Keep the exported backup and do not clear browser data.");
+      return;
+    }
+    applyRemote(current,"EXPLICIT_DEVICE_CLOUD_LOAD");
+  }
   function conflictGate(remote){
     setPhase("CONFLICT");shell();const card=document.querySelector(".pn-cloud-card");if(!card)return;
     const audited=isAuditedRecovery(remote);
-    card.innerHTML='<div class="pn-cloud-kicker">PROFITNODE CLOUD</div><h2>'+(audited?"RECOVERY VERIFIED":"SYNC PAUSED")+'</h2><p>'+(audited?"The browser and cloud histories were reconciled and backed up. Cloud revision 100 contains the verified 48 inventory items and 6 sales.":"Both ledgers must be preserved before reconciliation. Export this browser and compare its history with the cloud. Nothing will be replaced automatically.")+'</p><div class="pn-cloud-actions"><button id="pn-conflict-backup">EXPORT BROWSER BACKUP</button><button id="pn-conflict-retry">RECHECK</button>'+(audited?'<button id="pn-verified-recovery" style="grid-column:1/-1">APPLY VERIFIED RECOVERY r100</button>':"")+'</div>';
-    card.querySelector("#pn-conflict-backup").onclick=exportRecoverySnapshot;
+    card.innerHTML='<div class="pn-cloud-kicker">PROFITNODE CLOUD</div><h2>'+(audited?"RECOVERY VERIFIED":"SYNC PAUSED")+'</h2><p>'+(audited?"The browser and cloud histories were reconciled and backed up. Cloud revision 100 contains the verified 48 inventory items and 6 sales.":"Both ledgers must be preserved before reconciliation. Export this browser and compare its history with the cloud. Nothing will be replaced automatically.")+'</p><div class="pn-cloud-actions"><button id="pn-conflict-backup">EXPORT BROWSER BACKUP</button><button id="pn-conflict-retry">RECHECK</button>'+(audited?'<button id="pn-verified-recovery" style="grid-column:1/-1">APPLY VERIFIED RECOVERY r100</button>':"")+'<button id="pn-device-use-cloud" style="grid-column:1/-1">USE CLOUD ON THIS DEVICE</button></div>';
+    card.querySelector("#pn-conflict-backup").onclick=()=>{exportRecoverySnapshot();deviceRecoveryExported=true};
+    card.querySelector("#pn-device-use-cloud").onclick=()=>useCloudOnDevice().catch(handleOffline);
     card.querySelector("#pn-conflict-retry").onclick=()=>reconcileOnBoot().catch(handleOffline);
     const recover=card.querySelector("#pn-verified-recovery");if(recover)recover.onclick=()=>acceptAuditedRecovery().catch(handleOffline);
     badgeMsg("CLOUD r"+Number(remote&&remote.revision||0)+(audited?" · RECOVERY READY":" · SYNC PAUSED"),audited?"warn":"bad");
