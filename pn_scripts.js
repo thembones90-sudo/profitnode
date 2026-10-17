@@ -53,10 +53,11 @@ window.__PN_SCRIPTS = [
   "case_already_owned_extension.js?v=case-already-owned-v1-20261002",
   "project_budget_extension.js?v=project-budget-gauge-labels-v8-20261003",
   "loadout_command_extension.js?v=workspace-command-v7-currency-20261003",
-  "ram_sticks_extension.js?v=ram-sticks-v3-stick-alloc-20261003",
+  "ram_sticks_extension.js?v=ram-sticks-v4-single-stick-visible-20261009",
   "currency_entry_extension.js?v=currency-entry-v1-20261003",
   "rig_assembly_command_extension.js?v=rig-assembly-command-v1-20261003",
   "scroll_preserve_extension.js?v=scroll-preserve-v1-20261003",
   "audit_integrity_extension.js?v=audit-correctness-v1",
-  "cloud_sync_extension.js?v=cloud-sync-safe-reconcile-v2"
+  "cloud_sync_extension.js?v=cloud-authority-v3-20261017"
 ];
+

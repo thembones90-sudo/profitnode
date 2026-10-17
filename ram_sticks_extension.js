@@ -27,12 +27,27 @@
   const UI = { idx: null, mode: "VAULT", price: false };
 
   const slotOf = p => p && p.slots ? p.slots.RAM || null : null;
+  const legacySlotIsKit = p => {
+    const slot = slotOf(p);
+    if (!slot || Array.isArray(slot.sticks)) return false;
+    const ids = Actions.projectSlotInventoryIds(slot);
+    if (ids.length > 1) return true;
+    if (ids.length === 1){
+      const item = Store.get("inventory", ids[0]);
+      let d = null;
+      try { d = item && typeof inventoryRamDetails === "function" ? inventoryRamDetails(item) : null; } catch (_){}
+      return !!(d && (Number(d.moduleCount) > 1 || d.matchedKit === true));
+    }
+    const ram = slot.ram || {};
+    return Number(ram.moduleCount) > 1 || ram.matchedKit === true;
+  };
   const isPaired = p => {
     if (!p) return false;
-    if (p.ramPaired === true) return true;
     if (p.ramPaired === false) return false;
     const slot = slotOf(p);
-    return !!(slot && !Array.isArray(slot.sticks));
+    if (!slot) return false;
+    if (Array.isArray(slot.sticks)) return slot.sticks.filter(Boolean).length > 1 && p.ramPaired === true;
+    return legacySlotIsKit(p);
   };
   // Sticks shown in the split view; a legacy single RAM slot shows as stick A.
   const sticksOf = p => {
@@ -295,6 +310,11 @@
     if (pair){
       const p = project();
       if (!p) return;
+      if (pair.dataset.pbRamPair === "on" && sticksOf(p).filter(Boolean).length < 2 && !legacySlotIsKit(p)){
+        pbSetNotice("err", "Add both RAM sticks before switching to paired view.");
+        close();
+        return render();
+      }
       Store.update("projects", p.id, { ramPaired: pair.dataset.pbRamPair === "on" });
       close();
       if (typeof PBUI !== "undefined" && PBUI.slotKey === "RAM"){ PBUI.slotKey = null; PBUI.slot = null; }
@@ -330,3 +350,4 @@
     + L + " .pn-lo-stick-editor .pn-lo-alloc-edit input{width:120px}";
   document.head.appendChild(style);
 })();
+

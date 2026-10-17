@@ -160,23 +160,28 @@ checks.push(['sidebar cleanup has no retry interval or mutation observer', !/set
 const cloudSource = fs.readFileSync(path.join(DIR, 'cloud_sync_extension.js'), 'utf8');
 const cloudDecisionProbe = env.run(sandbox, `(() => {
   const api=window.__PN_CLOUD_SYNC_TEST__;
-  const local={projects:[{id:'jana'}],inventory:[{id:'psu'}],sales:[],treasury:{flows:[]}};
-  const stale={projects:[{id:'jana'}],inventory:[],sales:[],treasury:{flows:[]}};
-  const remote={ledger:local,revision:52};
+  const base={projects:[{id:'jana'}],inventory:[{id:'psu'}],sales:[],timeline:[],treasury:{balances:[]}};
+  const newer={projects:[{id:'jana'}],inventory:[{id:'psu'},{id:'ram'}],sales:[{id:'sale'}],timeline:[{id:'event'}],treasury:{balances:[]}};
+  const stale={projects:[{id:'jana'}],inventory:[],sales:[],timeline:[],treasury:{balances:[]}};
+  const remote={ledger:base,revision:54};
   return {
-    empty:api.reconcileDecision(null,null,remote),
-    current:api.reconcileDecision(local,{revision:52,fingerprint:api.fingerprint(local)},remote),
-    stale:api.reconcileDecision(stale,{revision:51,fingerprint:api.fingerprint(stale)},remote),
-    edited:api.reconcileDecision(stale,{revision:51,fingerprint:'different'},remote),
-    missing:api.reconcileDecision(local,null,null)
+    empty:api.authorityDecision(null,null,remote,null),
+    current:api.authorityDecision(base,{revision:54,fingerprint:api.fingerprint(base)},remote,null),
+    stale:api.authorityDecision(stale,{revision:53,fingerprint:api.fingerprint(stale)},remote,null),
+    newer:api.authorityDecision(newer,{revision:54,fingerprint:'previous'},remote,null),
+    queued:api.authorityDecision(newer,{revision:54,fingerprint:'previous'},remote,{baseRevision:54,ledger:newer}),
+    conflict:api.authorityDecision(stale,{revision:53,fingerprint:'different'},remote,{baseRevision:53,ledger:stale}),
+    missing:api.authorityDecision(base,null,null,null)
   };
 })()`);
-checks.push(['cloud boot reconciliation pulls empty or unchanged stale state but preserves unsynced local edits',
-  cloudDecisionProbe.empty==='PULL' && cloudDecisionProbe.current==='CURRENT' && cloudDecisionProbe.stale==='PULL' && cloudDecisionProbe.edited==='CONFLICT' && cloudDecisionProbe.missing==='REMOTE_EMPTY']);
+checks.push(['cloud authority loads remote state and safely promotes a strict newer local descendant',
+  cloudDecisionProbe.empty==='APPLY_REMOTE' && cloudDecisionProbe.current==='CURRENT' && cloudDecisionProbe.stale==='APPLY_REMOTE' && cloudDecisionProbe.newer==='PROMOTE_LOCAL' && cloudDecisionProbe.missing==='REMOTE_EMPTY']);
+checks.push(['cloud offline queue resumes only at its recorded base revision and otherwise stops on conflict',
+  cloudDecisionProbe.queued==='RESUME_QUEUE' && cloudDecisionProbe.conflict==='CONFLICT']);
 checks.push(['cloud persistence uses owner scoping and optimistic revision guards',
-  /\.eq\("owner_id",user\.id\)/.test(cloudSource) && /\.eq\("revision",actual\)/.test(cloudSource)]);
-checks.push(['cloud sync no longer disables authenticated sessions or forces local-only mode on boot',
-  !/automatic sync intentionally disabled/.test(cloudSource) && !/sessionStorage\.setItem\("pn_cloud_local_only","1"\).*closeGate\(\)/.test(cloudSource.match(/async function boot\([\s\S]*?client\.auth\.onAuthStateChange/)[0])]);
+  /\.eq\("owner_id",user\.id\)/.test(cloudSource) && /\.eq\("revision",Number\(baseRevision\)\)/.test(cloudSource)]);
+checks.push(['cloud sync exposes one authority path without normal pull/push or local-only controls',
+  !/pn-cloud-pull|pn-cloud-push|USE LOCAL ONLY|pn_cloud_local_only/.test(cloudSource) && /QUEUE_KEY/.test(cloudSource)]);
 
 const treasuryProbe = env.run(sandbox, `(() => {
   const blank = normalizeTreasury(null);
@@ -1499,6 +1504,12 @@ const projectBuildProbe = `
   Actions.setProjectSlot(p.id, 'COOLER', 'INVENTORY', {inventoryItemId: cooler.id});
   out.push(['componentIds mirrors every inventory item reserved through slots', (function(){const proj=Store.get('projects',p.id);return proj.componentIds.length===4 && [mobo.id,cpu.id,ram.id,cooler.id].every(id=>proj.componentIds.includes(id))})()]);
 
+  const singleRamProject=Store.get('projects',p.id);
+  Store.update('projects',p.id,{ramPaired:true});
+  const singleRamHtml=pbSlotCardHtml(Store.get('projects',p.id),'RAM',false);
+  out.push(['a single RAM inventory item always exposes Stick B instead of claiming a paired kit', singleRamHtml.includes('STICK A') && singleRamHtml.includes('STICK B') && singleRamHtml.includes('+ ADD STICK B') && !singleRamHtml.includes('PAIRED ✓')]);
+  Store.update('projects',p.id,{ramPaired:singleRamProject.ramPaired});
+
   const swap = Actions.setProjectSlot(p.id, 'RAM', 'PLANNED', {label:'Corsair Vengeance 16GB', cost:5000, currency:'RSD'});
   out.push(['swapping a slot from an owned part to a planned part releases the old reservation', swap.ok && Store.get('inventory', ram.id).status === 'IN_STORAGE' && Store.get('inventory', ram.id).assignedProjectId === null]);
   out.push(['a planned (not-yet-owned) slot never touches inventory', swap.project.slots.RAM.kind === 'PLANNED' && swap.project.slots.RAM.label === 'Corsair Vengeance 16GB']);
@@ -1818,3 +1829,4 @@ for (const [name, ok] of all){
 }
 console.log('\n' + (fail === 0 ? 'ALL PASSED' : fail + ' FAILED') + ' (' + all.length + ' assertions)');
 process.exit(fail === 0 ? 0 : 1);
+
