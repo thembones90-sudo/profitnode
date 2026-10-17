@@ -155,7 +155,18 @@
     if(wrapped||typeof Store==="undefined")return;wrapped=true;const old=Store.persist.bind(Store);
     Store.persist=function(){const ok=old();if(ok&&user&&hydrated&&phase!=="CONFLICT"&&queueLedger(Store.load()))scheduleSave();return ok};
   }
-  function handleOffline(error){setPhase("OFFLINE");badgeMsg("OFFLINE · CHANGES QUEUED","bad");console.warn("PROFITNODE CLOUD: save deferred",error)}
+  function handleOffline(error){
+    const detail=String(error&&error.message||error||"Unknown synchronization error").slice(0,300);
+    const isOffline=navigator.onLine===false||/failed to fetch|network|offline/i.test(detail);
+    setPhase(isOffline?"OFFLINE":"ERROR");
+    badgeMsg(isOffline?"OFFLINE · CHANGES QUEUED":"SYNC ERROR · RETRY","bad");
+    const gate=document.getElementById("pn-cloud-gate");
+    if(gate){
+      const p=gate.querySelector(".pn-cloud-card p");
+      if(p)p.textContent="Cloud reconciliation stopped: "+detail+". Your browser ledger has not been replaced.";
+    }
+    console.warn("PROFITNODE CLOUD: sync interrupted",error);
+  }
   async function promoteLocal(local,remote){
     backupLocal("pre-authority-migration");const saved=await casWrite(local,remote.revision);
     if(!saved){conflictGate(await fetchCloud());return}applyRemote(saved,"LOCAL_DESCENDANT_PROMOTED");
