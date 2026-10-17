@@ -115,8 +115,8 @@
     document.body.appendChild(link);link.click();link.remove();setTimeout(()=>window.URL.revokeObjectURL(url),5000);
   }
   const RECOVERY_COMPARE_KEYS=["inventory","projects","sales","timeline","treasury","rigs","roadTo","mail","plans","repairs","deals"];
-  const RECOVERY_ACCEPTED_CACHE="pn3:70811:1c73ca3b4861d7d767a54d9d";
-  const RECOVERY_ACCEPTED_QUEUE="pn3:69713:606fdbd5a8aa4ee874542e89";
+  const RECOVERY_ACCEPTED_CACHE="pn3:70713:f88e1115fd0e7b211ce0c06b";
+  const RECOVERY_ACCEPTED_QUEUE="pn3:69616:b53715db1cb7943225ceaff9";
   function recoveryCoreFingerprint(ledger){
     if(!ledger)return "";
     const core={};
