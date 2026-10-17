@@ -5,13 +5,13 @@
   const KEY="sb_publishable__tkOfCLkhpkz4BtvSXNQTg_FAmNF3CO";
   const LEDGER_KEY="profitnode_ledger_v1",ROW_ID="primary",SYNC_KEY="profitnode_cloud_sync_v3",QUEUE_KEY="profitnode_cloud_queue_v1";
   const COLLECTIONS=["projects","inventory","deals","sales","timeline","plans","repairs","rigs","roadTo","mail"];
-  let client=null,user=null,cloudRevision=0,saveTimer=null,wrapped=false,phase="BOOTING",channel=null,checking=false;
+  let client=null,user=null,cloudRevision=0,saveTimer=null,wrapped=false,phase="BOOTING",channel=null,checking=false,lastCloudFingerprint="";
 
   function parse(raw){try{return JSON.parse(raw||"null")}catch(_){return null}}
   function localLedger(){return parse(localStorage.getItem(LEDGER_KEY))}
   function syncMeta(){return parse(localStorage.getItem(SYNC_KEY))}
   function pendingQueue(){return parse(localStorage.getItem(QUEUE_KEY))}
-  function fingerprint(value){try{return JSON.stringify(value)}catch(_){return ""}}
+  function fingerprint(value){return signature(value)}
   function meaningful(x){return !!(x&&((x.projects&&x.projects.length)||(x.inventory&&x.inventory.length)||(x.sales&&x.sales.length)||(x.timeline&&x.timeline.length)||(x.treasury&&x.treasury.balances&&x.treasury.balances.length)))}
   function countOf(x,key){return x&&Array.isArray(x[key])?x[key].length:0}
   function canonical(value){
@@ -117,28 +117,43 @@
   function announce(){try{if(channel)channel.postMessage({revision:cloudRevision})}catch(_){}}
   function applyRemote(remote,reason){
     const before=localLedger();if(fingerprint(before)!==fingerprint(remote.ledger))backupLocal("pre-cloud-"+String(reason||"load").toLowerCase());
-    cacheLedger(remote.ledger);localStorage.removeItem(QUEUE_KEY);cloudRevision=Number(remote.revision)||0;setMeta(cloudRevision,remote.ledger);setPhase("SYNCED");wrapPersist();closeGate();
+    cacheLedger(remote.ledger);localStorage.removeItem(QUEUE_KEY);cloudRevision=Number(remote.revision)||0;lastCloudFingerprint=fingerprint(remote.ledger);setMeta(cloudRevision,remote.ledger);setPhase("SYNCED");wrapPersist();closeGate();
     if(typeof render==="function")render();badgeMsg("CLOUD r"+cloudRevision+" · SYNCED","ok");announce();
   }
   function queueLedger(ledger){
     const existing=pendingQueue();
+    if(existing&&fingerprint(existing.ledger)===fingerprint(ledger))return false;
+    if(!existing&&fingerprint(ledger)===lastCloudFingerprint)return false;
     localStorage.setItem(QUEUE_KEY,JSON.stringify({baseRevision:existing?Number(existing.baseRevision):cloudRevision,ledger,queuedAt:new Date().toISOString()}));
     setPhase(navigator.onLine===false?"OFFLINE":"SAVING");badgeMsg(navigator.onLine===false?"OFFLINE · 1 CHANGE QUEUED":"CLOUD r"+cloudRevision+" · SAVING","warn");
+    return true;
   }
   async function flushQueue(){
     if(!user||checking)return;const queued=pendingQueue();if(!queued||!queued.ledger)return;checking=true;
     try{
       const remote=await fetchCloud();if(!remote)throw new Error("Authoritative ledger row is missing.");
-      if(fingerprint(remote.ledger)===fingerprint(queued.ledger)){applyRemote(remote,"QUEUE_ALREADY_APPLIED");return}
+      if(fingerprint(remote.ledger)===fingerprint(queued.ledger)){finalizeSave(remote,queued,"QUEUE_ALREADY_APPLIED");return}
       if(Number(remote.revision)!==Number(queued.baseRevision)){conflictGate(remote);return}
       const saved=await casWrite(queued.ledger,queued.baseRevision);if(!saved){conflictGate(await fetchCloud());return}
-      applyRemote(saved,"QUEUE_SAVED");
+      finalizeSave(saved,queued,"QUEUE_SAVED");
     }finally{checking=false}
+  }
+  function finalizeSave(saved,snapshot,reason){
+    const newer=pendingQueue();
+    if(newer&&fingerprint(newer.ledger)!==fingerprint(snapshot.ledger)){
+      cloudRevision=Number(saved.revision)||0;
+      lastCloudFingerprint=fingerprint(saved.ledger);
+      localStorage.setItem(QUEUE_KEY,JSON.stringify({...newer,baseRevision:cloudRevision}));
+      setMeta(cloudRevision,saved.ledger);
+      scheduleSave();
+      return;
+    }
+    applyRemote(saved,reason);
   }
   function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>flushQueue().catch(handleOffline),450)}
   function wrapPersist(){
     if(wrapped||typeof Store==="undefined")return;wrapped=true;const old=Store.persist.bind(Store);
-    Store.persist=function(){const ok=old();if(ok&&user&&phase!=="BOOTING"&&phase!=="CONFLICT"){queueLedger(Store.load());scheduleSave()}return ok};
+    Store.persist=function(){const ok=old();if(ok&&user&&phase!=="BOOTING"&&phase!=="CONFLICT"&&queueLedger(Store.load()))scheduleSave();return ok};
   }
   function handleOffline(error){setPhase("OFFLINE");badgeMsg("OFFLINE · CHANGES QUEUED","bad");console.warn("PROFITNODE CLOUD: save deferred",error)}
   async function promoteLocal(local,remote){
