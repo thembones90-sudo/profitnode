@@ -58,6 +58,6 @@ window.__PN_SCRIPTS = [
   "rig_assembly_command_extension.js?v=rig-assembly-command-v1-20261003",
   "scroll_preserve_extension.js?v=scroll-preserve-v1-20261003",
   "audit_integrity_extension.js?v=audit-correctness-v1",
-  "cloud_sync_extension.js?v=crosstab-flicker-fix-v1-20261017"
+  "cloud_sync_extension.js?v=mobile-conflict-cloud-restore-v1-20261017"
 ];
 
