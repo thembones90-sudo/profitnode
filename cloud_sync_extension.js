@@ -114,12 +114,47 @@
     const link=document.createElement("a");link.href=url;link.download="profitnode-browser-recovery-"+new Date().toISOString().slice(0,10)+".json";
     document.body.appendChild(link);link.click();link.remove();setTimeout(()=>window.URL.revokeObjectURL(url),5000);
   }
+  const RECOVERY_COMPARE_KEYS=["inventory","projects","sales","timeline","treasury","rigs","roadTo","mail","plans","repairs","deals"];
+  const RECOVERY_ACCEPTED_CACHE="pn3:70811:1c73ca3b4861d7d767a54d9d";
+  const RECOVERY_ACCEPTED_QUEUE="pn3:69713:606fdbd5a8aa4ee874542e89";
+  function recoveryCoreFingerprint(ledger){
+    if(!ledger)return "";
+    const core={};
+    RECOVERY_COMPARE_KEYS.forEach(key=>{core[key]=ledger[key]});
+    return fingerprint(core);
+  }
+  function isAuditedRecovery(remote){
+    const ledger=remote&&remote.ledger,m=ledger&&ledger.meta&&ledger.meta.cloudRecovery20261017;
+    if(!ledger||Number(remote.revision)!==100||!m||Number(m.sourceRevision)!==99||!m.financialBalancesPreserved||!m.duplicateRevenantSaleExcluded)return false;
+    if(countOf(ledger,"inventory")!==48||countOf(ledger,"sales")!==6||countOf(ledger,"timeline")!==82)return false;
+    if(!ledger.inventory.some(x=>x&&x.id==="1f2d304c-f1a0-4f38-844a-6854389f7849"))return false;
+    if(!ledger.sales.some(x=>x&&x.id==="00de8529-7e59-4f67-a3df-3e951788a114"))return false;
+    if(!ledger.sales.some(x=>x&&x.id==="15e534da-7d65-49f3-ae52-797808147c7d"))return false;
+    if(ledger.sales.filter(x=>x&&String(x.itemName||"").includes("REVENANT III")&&x.saleState!=="CANCELLED").length!==1)return false;
+    const local=localLedger(),queue=pendingQueue();
+    return recoveryCoreFingerprint(local)===RECOVERY_ACCEPTED_CACHE&&recoveryCoreFingerprint(queue&&queue.ledger)===RECOVERY_ACCEPTED_QUEUE;
+  }
+  async function acceptAuditedRecovery(){
+    const fresh=await fetchCloud();
+    if(!isAuditedRecovery(fresh)){conflictGate(fresh);return}
+    if(!confirm("Apply the verified cloud recovery r100? Your full browser histories are already exported and preserved in the PROFITNODE recovery vault. This replaces this browser cache, not the cloud."))return;
+    exportRecoverySnapshot();
+    const redundant=[];
+    for(let i=0;i<localStorage.length;i++){
+      const key=localStorage.key(i);
+      if(key&&key.startsWith("profitnode_cloud_backup_pre-cloud-queue_saved_2026-10-17T19-30-"))redundant.push(key);
+    }
+    redundant.forEach(key=>localStorage.removeItem(key));
+    applyRemote(fresh,"VERIFIED_RECOVERY",true);
+  }
   function conflictGate(remote){
     setPhase("CONFLICT");shell();const card=document.querySelector(".pn-cloud-card");if(!card)return;
-    card.innerHTML='<div class="pn-cloud-kicker">PROFITNODE CLOUD</div><h2>SYNC PAUSED</h2><p>Both ledgers must be preserved before reconciliation. Export this browser and compare its history with the cloud. Nothing will be replaced automatically.</p><div class="pn-cloud-actions"><button id="pn-conflict-backup">EXPORT BROWSER BACKUP</button><button id="pn-conflict-retry">RECHECK</button></div>';
+    const audited=isAuditedRecovery(remote);
+    card.innerHTML='<div class="pn-cloud-kicker">PROFITNODE CLOUD</div><h2>'+(audited?"RECOVERY VERIFIED":"SYNC PAUSED")+'</h2><p>'+(audited?"The browser and cloud histories were reconciled and backed up. Cloud revision 100 contains the verified 48 inventory items and 6 sales.":"Both ledgers must be preserved before reconciliation. Export this browser and compare its history with the cloud. Nothing will be replaced automatically.")+'</p><div class="pn-cloud-actions"><button id="pn-conflict-backup">EXPORT BROWSER BACKUP</button><button id="pn-conflict-retry">RECHECK</button>'+(audited?'<button id="pn-verified-recovery" style="grid-column:1/-1">APPLY VERIFIED RECOVERY r100</button>':"")+'</div>';
     card.querySelector("#pn-conflict-backup").onclick=exportRecoverySnapshot;
     card.querySelector("#pn-conflict-retry").onclick=()=>reconcileOnBoot().catch(handleOffline);
-    badgeMsg("CLOUD r"+Number(remote&&remote.revision||0)+" · SYNC PAUSED","bad");
+    const recover=card.querySelector("#pn-verified-recovery");if(recover)recover.onclick=()=>acceptAuditedRecovery().catch(handleOffline);
+    badgeMsg("CLOUD r"+Number(remote&&remote.revision||0)+(audited?" · RECOVERY READY":" · SYNC PAUSED"),audited?"warn":"bad");
   }
   async function fetchCloud(){
     const result=await client.from("profitnode_ledger").select("ledger,revision,updated_at,owner_id").eq("id",ROW_ID).eq("owner_id",user.id).maybeSingle();
@@ -135,9 +170,9 @@
     if(result.error)throw result.error;return result.data;
   }
   function announce(){try{if(channel)channel.postMessage({revision:cloudRevision})}catch(_){}}
-  function applyRemote(remote,reason){
+  function applyRemote(remote,reason,alreadyExported){
     const before=localLedger();
-    if(meaningful(before)&&fingerprint(before)!==fingerprint(remote.ledger)){
+    if(!alreadyExported&&meaningful(before)&&fingerprint(before)!==fingerprint(remote.ledger)){
       const backup=backupLocal("pre-cloud-"+String(reason||"load").toLowerCase());
       if(!backup){conflictGate(remote);return}
     }
@@ -255,7 +290,7 @@
       else if(session&&session.user&&!user){user=session.user;wireAuthenticated();reconcileOnBoot().catch(handleOffline)}
     });
   }
-  window.__PN_CLOUD_SYNC_TEST__={authorityDecision,strictLocalDescendant,fingerprint,meaningful};
+  window.__PN_CLOUD_SYNC_TEST__={authorityDecision,strictLocalDescendant,fingerprint,meaningful,recoveryCoreFingerprint,isAuditedRecovery};
   const style=document.createElement("style");style.textContent='#pn-cloud-gate{position:fixed;inset:0;z-index:9999;background:rgba(5,3,9,.92);display:grid;place-items:center;padding:20px}.pn-cloud-card{width:min(470px,100%);background:#15111c;border:1px solid #7e22ce;box-shadow:0 0 40px rgba(168,85,247,.25);padding:24px;font-family:IBM Plex Mono,monospace}.pn-cloud-kicker{font-size:10px;letter-spacing:.16em;color:#a855f7}.pn-cloud-card h2{margin:6px 0 8px;font:700 24px Oswald,sans-serif}.pn-cloud-card p{color:#c6bbd3;min-height:34px}.pn-cloud-card input{margin:5px 0}.pn-cloud-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.pn-cloud-card button{background:#261e32;color:#fff;border:1px solid #4a3760;padding:9px;cursor:pointer;font:600 11px Oswald,sans-serif;letter-spacing:.05em}.pn-cloud-card button:hover{border-color:#a855f7}#pn-cloud-badge{position:fixed;right:14px;bottom:14px;z-index:9998;background:#15111c;border:1px solid #4a3760;padding:8px 10px;font:600 10px IBM Plex Mono,monospace;display:flex;gap:8px;align-items:center;color:#c6bbd3}#pn-cloud-badge button{background:#261e32;color:#fff;border:1px solid #4a3760;padding:4px 8px;cursor:pointer;font:600 10px Oswald,sans-serif}#pn-cloud-badge button:hover{border-color:#a855f7}';document.head.appendChild(style);
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>boot().catch(handleOffline));else boot().catch(handleOffline);
 })();
