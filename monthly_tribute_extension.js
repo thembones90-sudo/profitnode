@@ -387,7 +387,7 @@
     return '<section class="panel pn-monthly-tribute '+(complete?'is-complete ':'')+(freshComplete?'is-fresh-complete':'')+'">'
       +'<div class="pn-tribute-atmosphere" aria-hidden="true"></div>'
       +'<div class="pn-tribute-head">'
-        +'<div class="pn-tribute-title-block"><span class="pn-tribute-kicker">MONTHLY TRIBUTE · '+cycleLabel()+'</span><h2>'+(complete?'QUESTLINE COMPLETE':'OBLIGATION QUESTLINE')+'</h2><p>'+(complete?'All recurring enemies neutralized for this cycle.':'Nine recurring enemies. Kill them one by one.')+'</p></div>'
+        +'<div class="pn-tribute-title-block"><span class="pn-tribute-kicker">MONTHLY TRIBUTE · '+cycleLabel()+'</span><h2>'+(complete?'QUESTLINE COMPLETE':'OBLIGATION QUESTLINE')+'</h2><p>'+(complete?'All recurring enemies neutralized for this cycle.':total+' recurring '+(total===1?'enemy':'enemies')+'. Kill '+(total===1?'it':'them')+' one by one.')+'</p></div>'
         +'<div class="pn-tribute-head-actions"><button type="button" class="btn btn-sm pn-tribute-manage" data-treasury-new>MANAGE</button><button type="button" class="btn btn-sm pn-tribute-add-btn" data-tribute-add>+ ADD TRIBUTE</button></div>'
       +'</div>'
 
@@ -661,3 +661,4 @@
 
   console.info("[PROFITNODE] MONTHLY TRIBUTE V2 active · campaign board online · tribute button wording pass engaged.");
 })();
+
