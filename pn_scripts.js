@@ -56,6 +56,7 @@ window.__PN_SCRIPTS = [
   "ram_sticks_extension.js?v=ram-sticks-v4-single-stick-visible-20261009",
   "currency_entry_extension.js?v=currency-entry-v1-20261003",
   "rig_assembly_command_extension.js?v=rig-assembly-command-v1-20261003",
+  "rig_assembly_compact_extension.js?v=rig-assembly-compact-budget-v2-20261020",
   "scroll_preserve_extension.js?v=scroll-preserve-v1-20261003",
   "audit_integrity_extension.js?v=audit-correctness-v1",
   "cloud_sync_extension.js?v=cloud-authority-v3-20261017",
