@@ -1,0 +1,95 @@
+/* HALL OF LEGENDS: live LIM presentation. Scoped: no styles leak into ledger, rig assembly or other routes. */
+.pn-legends-v2{--hl-gold:#f5c96d;--hl-ink:#f3f1ef;--hl-muted:#a4a3b0;--hl-edge:rgba(219,166,79,.27);position:relative;isolation:isolate;color:var(--hl-ink);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;max-width:1600px;margin:0 auto;padding:12px 0 40px}
+.pn-legends-v2 *{box-sizing:border-box}
+.pn-legends-v2 button{cursor:pointer}
+.pn-legends-v2 button:focus-visible{outline:2px solid #ffce75;outline-offset:3px}
+.pn-legends-v2 .hl-hero{min-height:182px;display:flex;align-items:center;position:relative;overflow:hidden;padding:25px 30px;border:1px solid #9e703b;border-radius:14px;background:radial-gradient(ellipse at 75% 12%,rgba(202,92,61,.24),transparent 50%),linear-gradient(115deg,#23191a,#11131c);box-shadow:inset 0 0 35px #0006,0 12px 25px #0003}
+.pn-legends-v2 .hl-hero:before{content:"";position:absolute;inset:0;background:url("assets/hall_legacy_fortress.svg") right center/auto 100% no-repeat;opacity:.90}
+.pn-legends-v2 .hl-hero:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#161016 2%,rgba(19,15,20,.90) 33%,rgba(15,12,22,.04) 78%);pointer-events:none}
+.pn-legends-v2 .hl-hero-copy{position:relative;z-index:1}
+.pn-legends-v2 .hl-overline{font-size:10px;letter-spacing:2.5px;color:#e5c5a0;font-weight:750;margin-bottom:10px}
+.pn-legends-v2 .hl-hero h2{font-family:Georgia,"Times New Roman",serif;font-size:clamp(27px,3.4vw,43px);line-height:1.1;letter-spacing:1.8px;color:#f7d18a;text-shadow:0 2px 17px #ca863f40;margin:0 0 8px;font-weight:750}
+.pn-legends-v2 .hl-hero-sub{font-family:Georgia,serif;color:#cfbfc2;font-size:clamp(12px,1.3vw,15px);margin:0 0 19px}
+.pn-legends-v2 .hl-hero-trophies{display:flex;align-items:center;gap:11px;font-size:12px;font-weight:800;letter-spacing:.5px}
+.pn-legends-v2 .hl-hero-trophies .hl-symbol{color:#f7c36d;font-size:21px}
+.pn-legends-v2 .hl-hero-trophies .hl-sep{color:#be9f72}
+.pn-legends-v2 .hl-level{margin:12px 0 14px;padding:13px 16px 14px;border:1px solid #55402f;border-radius:10px;background:linear-gradient(90deg,rgba(51,34,24,.54),rgba(18,19,27,.75))}
+.pn-legends-v2 .hl-level-head{display:flex;justify-content:space-between;align-items:center;gap:8px 20px;flex-wrap:wrap}
+.pn-legends-v2 .hl-level-title{font:800 clamp(13px,1.65vw,17px) Georgia,serif;letter-spacing:.9px;color:#fbd788}
+.pn-legends-v2 .hl-xp-caption{font-size:10px;color:#e4bf83;letter-spacing:1.25px;font-weight:750}
+.pn-legends-v2 .hl-bar{display:block;height:7px;width:100%;border-radius:12px;background:#343843;overflow:hidden;box-shadow:inset 0 2px 5px #050509}
+.pn-legends-v2 .hl-bar>i{display:block;height:100%;max-width:100%;border-radius:12px;background:linear-gradient(180deg,#fff1b6,#f6c75d 50%,#c58b30);box-shadow:0 0 10px #e3af65}
+.pn-legends-v2 .hl-level .hl-bar{height:10px;margin:11px 0}
+.pn-legends-v2 .hl-level-foot{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.pn-legends-v2 .hl-level-foot small{font-size:10px;color:#9d97a1}
+.pn-legends-v2 .hl-founder-btn{background:transparent;border:0;color:#e9b969;letter-spacing:1.2px;font-size:10px;font-weight:800;padding:5px 0}
+.pn-legends-v2 .hl-founder-btn:hover{color:#ffe4ac}
+.pn-legends-v2 .hl-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;margin-bottom:24px}
+.pn-legends-v2 .hl-stat{position:relative;overflow:hidden;display:flex;gap:12px;align-items:center;min-width:0;min-height:94px;padding:15px;border:1px solid #624a3a;border-radius:12px;background:radial-gradient(circle at 110% 95%,rgba(206,115,43,.14),transparent 65%),linear-gradient(145deg,#1b1c25,#11141d 80%);box-shadow:inset 0 0 20px #0003}
+.pn-legends-v2 .hl-stat:after{content:"";position:absolute;bottom:0;left:12%;width:76%;height:1px;background:linear-gradient(90deg,transparent,#df9d4d91,transparent)}
+.pn-legends-v2 .hl-stat-icon{flex:none;width:39px;height:39px;border-radius:50%;display:grid;place-items:center;background:#10121b;border:1px solid #a9774254;color:#f2c26b;box-shadow:0 0 15px #b97b2730}
+.pn-legends-v2 .hl-stat-icon svg{width:22px;height:22px}
+.pn-legends-v2 .hl-stat-label{display:block;font-size:10px;font-weight:800;letter-spacing:1.05px;color:#aaa8b1}
+.pn-legends-v2 .hl-stat-value{display:block;font-size:clamp(16px,2.05vw,24px);font-weight:800;color:#f7cd7f;margin-top:5px;font-variant-numeric:tabular-nums;line-height:1.18}
+.pn-legends-v2 .hl-section-head{display:flex;gap:12px;align-items:center;margin:19px 0 13px}
+.pn-legends-v2 .hl-section-head .hl-section-glyph{color:#f4c574;font-size:22px;text-shadow:0 0 9px #e9b95690}
+.pn-legends-v2 .hl-section-head h3{font:750 clamp(17px,1.9vw,23px) Georgia,serif;letter-spacing:1.2px;color:#f4ede5;margin:0}
+.pn-legends-v2 .hl-head-line{height:1px;flex:1;background:linear-gradient(90deg,#745338,transparent)}
+.pn-legends-v2 .hl-section-note{font-size:9px;color:#ad9877;letter-spacing:1.2px;white-space:nowrap}
+.pn-legends-v2 .hl-filters{display:flex;gap:7px;overflow-x:auto;padding:2px 2px 9px;margin-bottom:6px;scrollbar-width:thin}
+.pn-legends-v2 .hl-filter{border:1px solid #40404d;border-radius:6px;background:#151820;color:#aeabb7;white-space:nowrap;flex:none;padding:10px 12px;font:750 10px/1.1 Inter,system-ui,sans-serif;letter-spacing:.45px}
+.pn-legends-v2 .hl-filter:hover{color:#ffdf9d;border-color:#a17642}
+.pn-legends-v2 .hl-filter.selected{color:#ffdf94;border-color:#edb54f;background:linear-gradient(180deg,#3c2a1b,#251b16);box-shadow:0 0 12px #f6ad4230,inset 0 0 9px #efaa381c}
+.pn-legends-v2 .hl-controls{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 1px 12px;flex-wrap:wrap}
+.pn-legends-v2 .hl-controls small{font-size:10px;color:#a6a2b1}
+.pn-legends-v2 .hl-toggle-set{display:flex;gap:4px;flex-wrap:wrap}
+.pn-legends-v2 .hl-toggle{border:1px solid transparent;background:transparent;color:#928e9f;border-radius:5px;font:650 11px Inter,system-ui,sans-serif;padding:6px 10px}
+.pn-legends-v2 .hl-toggle.selected{background:#29232c;color:#efc57b;border-color:#694c36}
+.pn-legends-v2 .hl-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px}
+.pn-legends-v2 .pn-hall-card{--rarity:#e3b065;--border:#765b3f;--glow:rgba(228,140,48,.15);position:relative;display:flex;flex-direction:column;text-align:left;color:#eeeaf0;min-width:0;min-height:190px;padding:13px 11px;border:1px solid var(--border);border-radius:10px;background:radial-gradient(circle at 0 0,var(--glow),transparent 57%),linear-gradient(150deg,#1b1c26,#10131d 83%);transition:transform .16s,border-color .16s,box-shadow .16s;box-shadow:inset 0 0 16px #0002}
+.pn-legends-v2 .pn-hall-card:hover{transform:translateY(-2px);border-color:var(--rarity);box-shadow:0 8px 22px #0007,0 0 12px var(--glow)}
+.pn-legends-v2 .pn-hall-card.earned{box-shadow:inset 0 0 19px var(--glow),0 0 10px var(--glow)}
+.pn-legends-v2 .pn-hall-card:not(.earned){opacity:.85}
+.pn-legends-v2 .pn-hall-card.bronze{--rarity:#e8ad62;--border:#8b5e37;--glow:rgba(227,134,42,.18)}
+.pn-legends-v2 .pn-hall-card.silver{--rarity:#c7d5e9;--border:#566070;--glow:rgba(154,183,225,.10)}
+.pn-legends-v2 .pn-hall-card.gold{--rarity:#f4c763;--border:#776339;--glow:rgba(237,171,42,.12)}
+.pn-legends-v2 .pn-hall-card.epic{--rarity:#d49cf9;--border:#6d477f;--glow:rgba(168,64,229,.16)}
+.pn-legends-v2 .pn-hall-card.legendary{--rarity:#ff9858;--border:#995b36;--glow:rgba(235,105,25,.15)}
+.pn-legends-v2 .hl-card-head{display:flex;justify-content:space-between;align-items:center;gap:5px;margin-bottom:12px}
+.pn-legends-v2 .hl-medal{font-size:20px;color:var(--rarity);flex:0 0 31px;width:31px;height:31px;display:grid;place-items:center;border:1px solid var(--border);border-radius:50%;background:#10121a;text-shadow:0 0 8px var(--rarity);box-shadow:0 0 15px var(--glow)}
+.pn-legends-v2 .hl-rarity{font:800 9px/1.5 ui-monospace,Consolas,monospace;color:var(--rarity);text-align:right;letter-spacing:.3px}
+.pn-legends-v2 .pn-hall-card h4{font-size:12px;line-height:1.35;color:#f4f1ef;margin:0 0 6px;font-weight:800;min-height:31px}
+.pn-legends-v2 .pn-hall-card p{color:#aca6b6;font-size:10px;line-height:1.45;margin:0 0 10px;min-height:29px}
+.pn-legends-v2 .hl-card-base{display:block;margin-top:auto}
+.pn-legends-v2 .pn-hall-card .hl-bar{height:7px}
+.pn-legends-v2 .hl-card-current{display:block;font:10px/1.5 ui-monospace,Consolas,monospace;color:#c0bccc;margin:7px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pn-legends-v2 .hl-card-state{display:flex;gap:6px;align-items:center;color:#9695a5;margin-top:10px;font-size:9px;letter-spacing:.6px;font-weight:800}
+.pn-legends-v2 .hl-card-state .hl-status-icon{font-size:12px}
+.pn-legends-v2 .pn-hall-card.earned .hl-card-state{color:#ffce79}
+.pn-legends-v2 .hl-info-note{padding:12px 15px;margin:13px 0;border:1px solid #68513a;border-radius:8px;background:#3b2a1c64;color:#e3bf8c;font-size:11px}
+.pn-legends-v2 .hl-secondary{margin-top:25px;display:grid;grid-template-columns:minmax(270px,1fr) minmax(320px,1.55fr);gap:12px}
+.pn-legends-v2 .hl-panel{border:1px solid #453949;border-radius:11px;padding:15px;background:linear-gradient(155deg,#1a1b25,#10131c)}
+.pn-legends-v2 .hl-panel h3{font:750 17px Georgia,serif;letter-spacing:1px;color:#efd4a3;margin:0 0 12px}
+.pn-legends-v2 .hl-record{padding:8px 0;display:flex;justify-content:space-between;gap:10px;border-top:1px solid #433b4266}
+.pn-legends-v2 .hl-record span{font-size:11px;color:#aea6b2}
+.pn-legends-v2 .hl-record strong{font-size:12px;color:#efc77c;font-variant-numeric:tabular-nums}
+.pn-legends-v2 .hl-event{padding:9px 0;display:flex;gap:9px;justify-content:space-between;border-top:1px solid #433b4266;font-size:11px}
+.pn-legends-v2 .hl-event b{min-width:0;max-width:55%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#ded6ce}
+.pn-legends-v2 .hl-event span{font-size:10px;color:#aba0a8;text-align:right}
+.pn-legends-v2 .hl-empty{font-size:12px;color:#898694;margin:6px 0}
+.pn-legends-v2 .hl-overlay[hidden]{display:none}
+.pn-legends-v2 .hl-overlay{position:fixed;z-index:650;inset:0;display:grid;place-items:center;padding:16px;background:rgba(2,3,9,.82);backdrop-filter:blur(7px)}
+.pn-legends-v2 .hl-dialog{width:min(100%,490px);max-height:min(86vh,750px);overflow-y:auto;position:relative;padding:26px;border-radius:14px;border:1px solid #a7783f;background:radial-gradient(ellipse at 15% 0%,#61412540,transparent 53%),linear-gradient(145deg,#24212b,#10131c 72%);box-shadow:0 25px 90px #000c}
+.pn-legends-v2 .hl-close{position:absolute;top:12px;right:12px;background:#25232c;color:#d4cabd;border:1px solid #654d34;border-radius:6px;padding:7px 11px;font-size:16px}
+.pn-legends-v2 .hl-dialog-medal{display:inline-grid;place-items:center;font-size:35px;width:62px;height:62px;border-radius:50%;background:#12131c;border:1px solid #795c37;color:#edb96e;text-shadow:0 0 10px #efbd79}
+.pn-legends-v2 .hl-dialog-rarity{font:800 10px ui-monospace,Consolas,monospace;color:#e1ad67;letter-spacing:1.5px;margin:15px 0 9px}
+.pn-legends-v2 .hl-dialog h3{font:750 27px Georgia,serif;color:#fbd695;margin:0 0 10px}
+.pn-legends-v2 .hl-dialog p{font-size:13px;color:#b9b2bc;line-height:1.7}
+.pn-legends-v2 .hl-dialog-metrics{display:flex;justify-content:space-between;margin:14px 0 8px;font:12px ui-monospace,monospace;color:#e4c392;gap:10px}
+.pn-legends-v2 .hl-dialog-state{margin:17px 0;padding:12px 14px;border-radius:7px;border:1px solid #654b31;background:#302419;color:#f2c77b;font-size:12px}
+.pn-legends-v2 .hl-dialog-back{padding:12px 15px;border-radius:7px;border:1px solid #ab824a;background:#342618;color:#f5d69e;width:100%;font-weight:800}
+@media(max-width:1350px){.pn-legends-v2 .hl-grid{grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media(max-width:1020px){.pn-legends-v2 .hl-grid{grid-template-columns:repeat(4,minmax(0,1fr))}.pn-legends-v2 .hl-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.pn-legends-v2 .hl-section-note{display:none}}
+@media(max-width:710px){.pn-legends-v2 .hl-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.pn-legends-v2 .hl-secondary{grid-template-columns:1fr}}
+@media(max-width:510px){.pn-legends-v2 .hl-hero{padding:20px 16px;min-height:164px}.pn-legends-v2 .hl-hero h2{font-size:26px}.pn-legends-v2 .hl-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.pn-legends-v2 .pn-hall-card{padding:11px 9px}.pn-legends-v2 .hl-stat{padding:11px;gap:8px;min-height:80px}.pn-legends-v2 .hl-stat-icon{height:28px;width:28px}.pn-legends-v2 .hl-stat-icon svg{height:17px;width:17px}.pn-legends-v2 .hl-stat-value{font-size:16px}.pn-legends-v2 .hl-level-foot{align-items:flex-start;flex-wrap:wrap}}
+@media(prefers-reduced-motion:reduce){.pn-legends-v2 .pn-hall-card{transition:none}}
