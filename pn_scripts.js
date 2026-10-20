@@ -1,6 +1,6 @@
 "use strict";
 window.__PN_SCRIPTS = [
-  "app_core.js?v=crosstab-flicker-fix-v1-20261017",
+  "app_core.js?v=xfx-rx580-8gb-identity-v1",
   "cpu_revaluation_extension.js?v=cpu-passmark-v5-hardening-20261004",
   "gpu_revaluation_extension.js?v=gpu-master-v4-hardening-20261005",
   "motherboard_revaluation_extension.js?v=v3-stack-20260912b",
@@ -30,7 +30,7 @@ window.__PN_SCRIPTS = [
   "sidebar_cleanup_extension.js?v=product-refinement-v3",
   "mail_extension.js?v=posta-widget-caption-fix-v1",
   "treasury_flow_extension.js?v=audit-cash-outflows-v1",
-  "monthly_tribute_extension.js?v=projected-hoard-native-currency-v1",
+  "monthly_tribute_extension.js?v=dynamic-questline-count-v2-20261020",
   "official_tribute_icons_v1.js?v=official-tribute-icons-v1",
   "official_tribute_icon_scale_v2.js?v=official-tribute-icon-scale-v2",
   "tribute_icon_normalize_v1.js?v=tribute-icon-normalize-v1",
@@ -58,6 +58,6 @@ window.__PN_SCRIPTS = [
   "rig_assembly_command_extension.js?v=rig-assembly-command-v1-20261003",
   "scroll_preserve_extension.js?v=scroll-preserve-v1-20261003",
   "audit_integrity_extension.js?v=audit-correctness-v1",
-  "cloud_sync_extension.js?v=mobile-conflict-cloud-restore-v1-20261017"
+  "cloud_sync_extension.js?v=cloud-authority-v3-20261017"
 ];
 
