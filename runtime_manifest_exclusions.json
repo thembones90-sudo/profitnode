@@ -19,6 +19,19 @@
     "profit_blueprints_rare_v3.js": "dormant blueprint prototype; requires explicit product review",
     "profit_blueprints_uncommon_art_v7_rare_geometry.js": "dormant blueprint prototype; requires explicit product review",
     "profit_blueprints_v1.js": "dormant blueprint prototype; requires explicit product review",
-    "profit_blueprints_visual_v1.js": "dormant blueprint prototype; requires explicit product review"
+    "profit_blueprints_visual_v1.js": "dormant blueprint prototype; requires explicit product review",
+    "auditcorrectnesstest.js": "test-only audit harness; never production runtime",
+    "cputest.js": "test-only CPU assessment harness",
+    "flicker_regression_test.js": "test-only cloud reconciliation regression harness",
+    "gpu_registry_test.js": "test-only GPU catalog verification",
+    "gpu_runtime_v4_test.js": "test-only GPU runtime verification",
+    "projectsaletest.js": "test-only project sales regression suite",
+    "hall_of_legends_test.js": "test-only achievement evaluation regression suite",
+    "cloud_sync_extension_v2.js": "superseded cloud sync experiment; authoritative v3 is loaded",
+    "financial_recovery_extension.js": "dormant legacy financial recovery module; excluded from manifest",
+    "realized_profit_ledger_v3.js": "dormant older profit ledger integration; not authoritative runtime",
+    "reset_safety_extension.js": "dormant reset safety experiment; not production runtime",
+    "revenant_iii_for_sale_migration_v1.js": "one-off sale migration; must not replay at runtime",
+    "storage_recovery_extension.js": "dormant legacy storage recovery module; not production runtime"
   }
 }

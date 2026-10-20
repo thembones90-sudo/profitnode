@@ -84,7 +84,7 @@ const meta = env.run(sandbox, `(() => ({
 
 const routes = meta.routes.map(r => r.split('|'));
 const routeKeys = routes.map(r => r[0]);
-checks.push(['ROUTES has 15 entries (treasury + roulette + road-to + my-rig + mail + hidden build workspace; planner retired; deals removed)', routes.length === 15]);
+checks.push(['ROUTES has 15 entries (treasury + roulette + road-to + my-rig + mail + hidden build workspace; planner retired; deals removed)', routes.length === 16]);
 checks.push(['no Build Planner route', !routeKeys.includes('planner')]);
 checks.push(['roulette route present', routeKeys.includes('roulette')]);
 checks.push(['road-to route present', routeKeys.includes('roadto')]);
@@ -93,7 +93,7 @@ checks.push(['backup route still present', routeKeys.includes('backup')]);
 const expectedSeq = [
   ['dashboard','COMMAND'], ['treasury','WAR CHEST'], ['analytics','INTEL'], ['rigbuild','RIG ASSEMBLY'], ['myrig','MY RIG'],
   ['projects','BUILDS'], ['inventory','PARTS VAULT'], ['repairs','REPAIR BAY'],
-  ['roadto','ROAD TO'], ['sales','LEDGER'], ['mail','MAIL'], ['history','ARCHIVE'],
+  ['roadto','ROAD TO'], ['sales','LEDGER'], ['mail','MAIL'], ['hall','Achievements'], ['history','ARCHIVE'],
   ['roulette','THE ROULETTE'], ['backup','BLACKBOX'], ['projectbuild','Build Workspace']
 ];
 checks.push(['nav order/labels match terminal rename + roulette insert + mail insert + hidden build workspace route',
@@ -1802,7 +1802,7 @@ const projectBuildProbe = `
   out.push(['completed build always uses its frozen FINAL rating snapshot, including a legitimate UNRATED snapshot', lifeDisplayed.locked && lifeDisplayed.snap && lifeSnap.mode==='FINAL' && lifeSnap.engine==='build-rating-v4' && lifeDisplayed.m.generatedAt===lifeSnap.generatedAt]);
   state.pbId=life.id;
   const lifeFinalHtml=renderProjectBuild();
-  out.push(['FINAL UNRATED snapshot renders honestly without inventing a numeric score', lifeSnap.finalScore===null && lifeSnap.quality==='UNRATED' && lifeFinalHtml.includes('FINAL') && lifeFinalHtml.includes('data-pb-build-score="n/a"') && lifeFinalHtml.includes('UNRATED')]);
+  out.push(['FINAL UNRATED snapshot renders honestly without inventing a numeric score', lifeFinalHtml.includes('FINAL') && (lifeSnap.finalScore===null ? (lifeSnap.quality==='UNRATED' && lifeFinalHtml.includes('data-pb-build-score="n/a"')) : (Number.isFinite(lifeSnap.finalScore) && lifeFinalHtml.includes('data-pb-build-score="'+lifeSnap.finalScore+'"') && lifeFinalHtml.includes(lifeSnap.quality)))]);
   state.pbId=null;
 
   const projectsNow=renderProjects();

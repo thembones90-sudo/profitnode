@@ -195,3 +195,13 @@
   }
 }
 /* PN MAIL BADGE POLISH V6 END */
+/* Hall release: accessible visual feedback on inactive navigation entries. */
+@media (hover:hover) {
+  .mainnav .navlink:not(.active):hover {
+    color:rgb(241,243,245);
+    padding-left:31px;
+    border-left-color:rgba(174,183,193,.75);
+    background:linear-gradient(90deg,rgba(174,183,193,.12),rgba(174,183,193,.025) 65%,transparent);
+    transform:none;
+  }
+}
