@@ -10,6 +10,7 @@
     const rig = baseNewRigDraft.apply(this, arguments);
     if (rig.budget == null) rig.budget = 0;
     if (!rig.budgetMode) rig.budgetMode = "NEW_CASH";
+    if (!rig.budgetCurrency) rig.budgetCurrency = displayCurrency() === "EUR" ? "EUR" : "RSD";
     return rig;
   };
 
@@ -26,8 +27,31 @@
     return { owned, planned, total: owned + planned };
   }
 
+  // The stored budget and component costs remain in canonical RSD.
+  // budgetCurrency controls only entry and presentation, independently of the global display setting.
+  function budgetCurrencyOf(rig){
+    return rig.budgetCurrency === "EUR" || rig.budgetCurrency === "RSD"
+      ? rig.budgetCurrency : (displayCurrency() === "EUR" ? "EUR" : "RSD");
+  }
+
+  function budgetDisplayValue(value, currency){
+    return currency === "EUR" ? rsdToEur(value) : value;
+  }
+
+  function budgetMoney(value, currency){
+    return money(budgetDisplayValue(value, currency), currency);
+  }
+
+  function budgetInputValue(value, currency){
+    const converted = budgetDisplayValue(value, currency);
+    return currency === "EUR"
+      ? converted.toLocaleString("en-IE", {maximumFractionDigits:2})
+      : converted.toLocaleString("en-US", {maximumFractionDigits:0}).replace(/,/g, ".");
+  }
+
   function rigBudgetRail(rig){
     const budget = Number(rig.budget) || 0;
+    const currency = budgetCurrencyOf(rig);
     const mode = rig.budgetMode === "TOTAL_COST" ? "TOTAL_COST" : "NEW_CASH";
     const costs = rigBudgetCosts(rig);
     const committed = mode === "NEW_CASH" ? costs.planned : costs.total;
@@ -35,14 +59,13 @@
     const used = budget > 0 ? Math.round(committed / budget * 100) : 0;
     const tone = !(budget > 0) ? "is-unset" : remaining < 0 ? "is-over" : used >= 80 ? "is-warn" : "is-ok";
     const width = budget > 0 ? Math.min(100, Math.max(0, used)) : 0;
-    const cur = typeof displayCurrency === "function" ? displayCurrency() : (rig.currency || "RSD");
-    const remainingText = !(budget > 0) ? "SET LIMIT" : formatMoney(Math.abs(remaining)) + (remaining < 0 ? " OVER" : " LEFT");
-    return '<section class="pn-rig-budget '+tone+'" data-rig-budget-rail data-budget-mode="'+mode+'">'
+    const remainingText = !(budget > 0) ? "SET LIMIT" : budgetMoney(Math.abs(remaining), currency) + (remaining < 0 ? " OVER" : " LEFT");
+    return '<section class="pn-rig-budget '+tone+'" data-rig-budget-rail data-budget-mode="'+mode+'" data-budget-currency="'+currency+'">'
       + '<div class="pn-rig-budget-main"><span class="pn-rig-budget-k">BUILD BUDGET</span>'
-      + '<div class="pn-rig-budget-entry"><input type="text" inputmode="decimal" autocomplete="off" aria-label="Build budget" data-rig-budget-input value="'+escAttr(budget > 0 ? formatMoneyInput(budget) : "")+'" placeholder="SET BUDGET"><b>'+cur+'</b></div></div>'
+      + '<div class="pn-rig-budget-entry"><input type="text" inputmode="decimal" autocomplete="off" aria-label="Build budget amount" data-rig-budget-input value="'+escAttr(budget > 0 ? budgetInputValue(budget, currency) : "")+'" placeholder="SET BUDGET"><select data-rig-budget-currency aria-label="Build budget currency"><option value="EUR"'+(currency === "EUR" ? " selected" : "")+'>EUR</option><option value="RSD"'+(currency === "RSD" ? " selected" : "")+'>RSD</option></select></div></div>'
       + '<label class="pn-rig-budget-mode"><span>BUDGET MODE</span><select data-rig-budget-mode><option value="TOTAL_COST"'+(mode === "TOTAL_COST" ? " selected" : "")+'>TOTAL COST BASIS</option><option value="NEW_CASH"'+(mode === "NEW_CASH" ? " selected" : "")+'>NEW CASH SPEND</option></select></label>'
-      + '<div class="pn-rig-budget-stat"><span>OWNED BASIS</span><b>'+formatMoney(costs.owned)+'</b></div>'
-      + '<div class="pn-rig-budget-stat"><span>PLANNED CASH</span><b>'+formatMoney(costs.planned)+'</b></div>'
+      + '<div class="pn-rig-budget-stat"><span>OWNED BASIS</span><b>'+budgetMoney(costs.owned, currency)+'</b></div>'
+      + '<div class="pn-rig-budget-stat"><span>PLANNED CASH</span><b>'+budgetMoney(costs.planned, currency)+'</b></div>'
       + '<div class="pn-rig-budget-stat is-result"><span>'+(remaining < 0 ? "OVER BUDGET" : "AVAILABLE")+'</span><b>'+remainingText+'</b></div>'
       + '<div class="pn-rig-budget-meter"><i style="width:'+width+'%"></i></div>'
       + '<div class="pn-rig-budget-foot">'+(!(budget > 0) ? "Set a limit to track this build." : used+"% committed · "+(mode === "NEW_CASH" ? "planned purchases only" : "owned basis + planned purchases"))+'</div>'
@@ -97,10 +120,19 @@
     root.addEventListener("input", e => {
       const input = e.target.closest && e.target.closest("[data-rig-budget-input]");
       if (!input || !state.rigDraft) return;
-      state.rigDraft.budget = Math.max(0, displayValueToRsd(parseMoneyInput(input.value)));
+      const currency = budgetCurrencyOf(state.rigDraft);
+      const amount = Math.max(0, parseMoneyInput(input.value));
+      state.rigDraft.budget = currency === "EUR" ? eurToRsd(amount) : amount;
       if (typeof renderDebounced === "function") renderDebounced("[data-rig-budget-input]", 180);
     });
     root.addEventListener("change", e => {
+      const currencyInput = e.target.closest && e.target.closest("[data-rig-budget-currency]");
+      if (currencyInput && state.rigDraft) {
+        // Switching currencies never changes the actual spending limit.
+        state.rigDraft.budgetCurrency = currencyInput.value === "EUR" ? "EUR" : "RSD";
+        render();
+        return;
+      }
       const mode = e.target.closest && e.target.closest("[data-rig-budget-mode]");
       if (!mode || !state.rigDraft) return;
       state.rigDraft.budgetMode = mode.value === "NEW_CASH" ? "NEW_CASH" : "TOTAL_COST";
@@ -121,7 +153,7 @@
     + C+" .pn-rig-budget{--budget-tone:#58aee8;position:relative;display:grid;grid-template-columns:minmax(210px,1.25fr) minmax(220px,1fr) repeat(3,minmax(145px,.8fr));gap:10px 18px;align-items:end;margin-bottom:8px;padding:10px 16px 12px;border:1px solid color-mix(in srgb,var(--budget-tone) 48%,transparent);border-left:4px solid var(--budget-tone);background:linear-gradient(90deg,color-mix(in srgb,var(--budget-tone) 12%,transparent),rgba(8,8,18,.7) 45%);clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,0 100%)}"
     + C+" .pn-rig-budget.is-ok{--budget-tone:#3ee07a}"+C+" .pn-rig-budget.is-warn{--budget-tone:#f2c94c}"+C+" .pn-rig-budget.is-over{--budget-tone:#ff4a4a}"
     + C+" .pn-rig-budget-k,"+C+" .pn-rig-budget-stat span,"+C+" .pn-rig-budget-mode span{display:block;margin-bottom:4px;font:600 10px var(--stamp);letter-spacing:.18em;color:color-mix(in srgb,var(--budget-tone) 72%,#fff)}"
-    + C+" .pn-rig-budget-entry{display:flex;align-items:center;gap:8px}"+C+" .pn-rig-budget-entry input{min-width:0;height:34px;font:700 20px var(--stamp)!important;color:#fff}"+C+" .pn-rig-budget-entry b{font:600 11px var(--stamp);color:var(--budget-tone)}"
+    + C+" .pn-rig-budget-entry{display:flex;align-items:center;gap:8px}"+C+" .pn-rig-budget-entry input{flex:1 1 0;min-width:0;height:34px;font:700 20px var(--stamp)!important;color:#fff}"+C+" .pn-rig-budget-entry select{flex:0 0 76px;width:76px;min-width:76px;height:34px;padding:4px 6px;font:700 12px var(--stamp)!important;letter-spacing:.04em;color:var(--budget-tone);border-color:var(--budget-tone)!important}"
     + C+" .pn-rig-budget-mode select{height:34px;padding-top:4px;padding-bottom:4px;font:600 11px var(--stamp)!important;letter-spacing:.08em}"
     + C+" .pn-rig-budget-stat{min-width:0;padding-left:10px;border-left:2px solid color-mix(in srgb,var(--budget-tone) 36%,transparent)}"+C+" .pn-rig-budget-stat b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:700 17px var(--stamp);letter-spacing:.03em;color:#fff}"+C+" .pn-rig-budget-stat.is-result b{color:var(--budget-tone)}"
     + C+" .pn-rig-budget-meter{grid-column:1/-1;height:4px;background:rgba(255,255,255,.07);overflow:hidden}"+C+" .pn-rig-budget-meter i{display:block;height:100%;background:var(--budget-tone);box-shadow:0 0 10px var(--budget-tone)}"

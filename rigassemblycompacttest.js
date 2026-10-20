@@ -7,7 +7,7 @@ const results = require("vm").runInContext(`(function(){
   Store.load();
   const out = [];
   const rig = newRigDraft("COMPACT TEST");
-  out.push(["new rigs default to the New Cash budget, without a mandatory limit", rig.budget === 0 && rig.budgetMode === "NEW_CASH"]);
+  out.push(["new rigs default to the New Cash budget, without a mandatory limit", rig.budget === 0 && rig.budgetMode === "NEW_CASH" && rig.budgetCurrency === "RSD"]);
   rig.slots.CPU = {kind:"PLANNED",label:"AMD Ryzen 5 5600",cost:10000,originalPrice:12000,currency:"RSD"};
   rig.budget = 50000;
   state.route = "rigbuild";
@@ -16,6 +16,7 @@ const results = require("vm").runInContext(`(function(){
   let html = route.render();
   out.push(["editor exposes budget strip", html.includes("data-rig-budget-rail") && html.includes("BUILD BUDGET")]);
   out.push(["budget offers both basis modes", html.includes("TOTAL COST BASIS") && html.includes("NEW CASH SPEND")]);
+  out.push(["budget currency is selectable independently of overall app", html.includes("data-rig-budget-currency") && html.includes("<option value=\\"EUR\\"") && html.includes("<option value=\\"RSD\\"")]);
   out.push(["new cash ignores inventory basis", html.includes("40.000 RSD LEFT") && html.includes('data-budget-mode="NEW_CASH"')]);
   out.push(["rating, details and Build Check use compact folds", ["rating","details","check"].every(k => html.includes('data-rig-fold="'+k+'"'))]);
   const severe = ["FAIL","WARNING"].includes(buildCheckModel(rig).verdict);
@@ -31,14 +32,23 @@ const results = require("vm").runInContext(`(function(){
   html = route.render();
   out.push(["total basis includes owned GPU and planned CPU", html.includes("28.250 RSD LEFT")]);
 
-  Store.setMeta({displayCurrency:"EUR"});
+  rig.budgetCurrency = "EUR";
   rig.budget = 23500;
   html = route.render();
+  out.push(["EUR budget works while global display remains RSD", html.includes('data-budget-currency="EUR"') && html.includes('value="200"') && html.includes("€100.00") && html.includes("€85.11") && html.includes("€14.89 LEFT")]);
+  Store.setMeta({displayCurrency:"EUR"});
+  html = route.render();
   out.push(["EUR mode converts budget and costs consistently", html.includes('value="200"') && html.includes("€100.00") && html.includes("€85.11") && html.includes("€14.89 LEFT")]);
+  Store.setMeta({displayCurrency:"RSD"});
+  html = route.render();
+  out.push(["EUR budget remains EUR after global switch back to RSD", html.includes('data-budget-currency="EUR"') && html.includes('value="200"') && html.includes("€14.89 LEFT")]);
   rig.budgetMode = "NEW_CASH";
   html = route.render();
   out.push(["EUR new-cash remaining is converted once", html.includes("€114.89 LEFT")]);
 
+  rig.budgetCurrency = "RSD";
+  html = route.render();
+  out.push(["switching budget view to RSD preserves the canonical limit", rig.budget === 23500 && html.includes('value="23.500"') && html.includes("13.500 RSD LEFT")]);
   delete rig.budgetMode;
   html = route.render();
   out.push(["older rigs without budgetMode default to new cash", html.includes('data-budget-mode="NEW_CASH"')]);
