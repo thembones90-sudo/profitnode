@@ -157,6 +157,10 @@ checks.push(['sidebar cleanup directly hides the legacy shop label', sidebarClea
 const sidebarSource = fs.readFileSync(path.join(DIR, 'sidebar_cleanup_extension.js'), 'utf8');
 checks.push(['sidebar cleanup has no retry interval or mutation observer', !/setInterval|MutationObserver/.test(sidebarSource)]);
 
+const monthlyTributeSource = fs.readFileSync(path.join(DIR, 'monthly_tribute_extension.js'), 'utf8');
+checks.push(['monthly tribute questline copy follows the live obligation count',
+  /total\+' recurring '/.test(monthlyTributeSource) && !/Nine recurring enemies/.test(monthlyTributeSource)]);
+
 const cloudSource = fs.readFileSync(path.join(DIR, 'cloud_sync_extension.js'), 'utf8');
 const cloudDecisionProbe = env.run(sandbox, `(() => {
   const api=window.__PN_CLOUD_SYNC_TEST__;
