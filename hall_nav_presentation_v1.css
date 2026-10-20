@@ -1,0 +1,30 @@
+/* Hall of Legends gets permanent, above-the-fold navigation identity. */
+.sidebar .mainnav .navlink[data-route="hall"]{
+  color:#e8bd70 !important;
+  font-size:12.8px;
+  letter-spacing:.07em;
+  font-weight:800;
+  border-left:3px solid rgba(232,182,86,.65);
+  background:linear-gradient(90deg,rgba(154,103,31,.20),rgba(154,103,31,.045) 75%,transparent);
+  text-shadow:0 0 10px rgba(214,157,59,.22);
+  padding-left:27px;
+}
+.sidebar .mainnav .navlink[data-route="hall"] .pn-nav-icon{
+  opacity:1;
+  filter:drop-shadow(0 0 4px rgba(243,195,89,.35));
+  width:19px;height:19px;
+  right:18px;
+}
+.sidebar .mainnav .navlink[data-route="hall"]:hover,
+.sidebar .mainnav .navlink[data-route="hall"].active{
+  color:#ffe2a1 !important;
+  border-left-color:#ffcf75;
+  background:linear-gradient(90deg,rgba(202,143,50,.28),rgba(170,106,32,.075) 74%,transparent);
+  box-shadow:inset 3px 0 10px rgba(247,193,78,.25);
+}
+.sidebar .mainnav .navlink[data-route="hall"].active .pn-nav-icon{
+  filter:drop-shadow(0 0 7px rgba(255,205,98,.72));
+}
+@media (prefers-reduced-motion: reduce) {
+  .sidebar .mainnav .navlink[data-route="hall"]{transition:none}
+}

@@ -110,6 +110,8 @@ async function main() {
     const shell=await evaluate(`({brand:document.title==='PROFITNODE'&&!!document.querySelector('[aria-label="PROFITNODE"]'),routes:new Set(Array.from(document.querySelectorAll('[data-route]'),e=>e.dataset.route)).size,legacy:!!document.querySelector('.brand-shop:not([data-pn-sidebar-cleanup="hidden"])'),schema:Store.load().meta.schemaVersion})`);
     check("app loads its complete visible navigation in a real browser",shell.brand&&shell.routes===15,JSON.stringify(shell));
     check("sidebar cleanup runs in the real DOM",!shell.legacy);
+    const hallNav=await evaluate(`(()=>{const item=document.querySelector('[data-route="hall"]'),nav=document.querySelector(".mainnav"),rect=item&&item.getBoundingClientRect();return{label:item&&item.textContent.trim(),position:Array.from(nav.children).indexOf(item),top:rect&&rect.top,viewport:window.innerHeight,icon:item&&item.querySelector("img")?.getAttribute("src"),gold:item&&getComputedStyle(item).color}})()`);
+    check("HALL OF LEGENDS is the second visible sidebar item with its own trophy icon",hallNav.label==="HALL OF LEGENDS"&&hallNav.position===1&&hallNav.top>0&&hallNav.top<hallNav.viewport*.48&&hallNav.icon==="assets/nav/hall-of-legends.svg"&&hallNav.gold!=="rgb(197, 203, 210)",JSON.stringify(hallNav));
     const hall=await evaluate(`(()=>{state.route='hall';render();const cards=document.querySelectorAll('.pn-hall-card').length,hero=document.querySelector('.pn-hall-hero')?.textContent||'',level=document.querySelector('.pn-hall-level')?.textContent||'',hasChronicle=(document.querySelector('#page-mount')?.textContent||'').includes('THE CHRONICLE');const data={sales:[{id:'historical-rig',saleType:'RIG',saleState:'COMPLETED',disposition:'SALE',currency:'EUR',buyerPrice:350,originalInvestment:250,additionalCosts:0}],inventory:[],projects:[],repairs:[]};const history=PN_HALL.evaluate(data,convert),rank=PN_HALL.level(history.xp);state.route='dashboard';render();return{cards,hero,level,hasChronicle,historicalXP:history.xp,historicalLevel:rank.level}})()`);
     check("Hall of Legends renders 90 trophy cards and founder progression",hall.cards===90&&hall.hero.includes('HALL OF LEGENDS')&&hall.level.includes('LEVEL')&&hall.hasChronicle&&hall.historicalXP>0&&hall.historicalLevel>1,JSON.stringify(hall));
     check("browser storage initializes on the current schema",shell.schema===5);
@@ -325,6 +327,12 @@ async function main() {
     check("MY RIG slot persists in the live ledger with no value panel",rigVal);
     await delay(300);
     check("browser run has no console errors or warnings",errors.length===0,errors.join(" | "));
+    const hallDeepLoad=loadedPromise();
+    await cdp.send("Page.navigate",{url:url+"?view=hall"});
+    await hallDeepLoad;
+    await delay(900);
+    const directHall=await evaluate(`({route:state.route,title:document.querySelector(".pn-hall-hero h2")?.textContent,nav:document.querySelector('[data-route="hall"]')?.getAttribute("aria-current")})`);
+    check("direct Hall URL opens Hall, overcoming prior F5 route persistence",directHall.route==="hall"&&directHall.title==="HALL OF LEGENDS"&&directHall.nav==="page",JSON.stringify(directHall));
   } finally {
     if (cdp) cdp.close();
     browser.kill();
