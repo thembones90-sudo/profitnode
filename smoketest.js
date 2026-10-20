@@ -91,9 +91,9 @@ checks.push(['road-to route present', routeKeys.includes('roadto')]);
 checks.push(['mail route present', routeKeys.includes('mail')]);
 checks.push(['backup route still present', routeKeys.includes('backup')]);
 const expectedSeq = [
-  ['dashboard','COMMAND'], ['treasury','WAR CHEST'], ['analytics','INTEL'], ['rigbuild','RIG ASSEMBLY'], ['myrig','MY RIG'],
+  ['dashboard','COMMAND'], ['hall','HALL OF LEGENDS'], ['treasury','WAR CHEST'], ['analytics','INTEL'], ['rigbuild','RIG ASSEMBLY'], ['myrig','MY RIG'],
   ['projects','BUILDS'], ['inventory','PARTS VAULT'], ['repairs','REPAIR BAY'],
-  ['roadto','ROAD TO'], ['sales','LEDGER'], ['mail','MAIL'], ['hall','Achievements'], ['history','ARCHIVE'],
+  ['roadto','ROAD TO'], ['sales','LEDGER'], ['mail','MAIL'], ['history','ARCHIVE'],
   ['roulette','THE ROULETTE'], ['backup','BLACKBOX'], ['projectbuild','Build Workspace']
 ];
 checks.push(['nav order/labels match terminal rename + roulette insert + mail insert + hidden build workspace route',

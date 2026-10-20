@@ -116,8 +116,11 @@ function pnHallRender(){
  (result.unverified.length?'<div class="info-note">'+result.unverified.length+' sale record(s) lack valid cost/revenue provenance; profit from these sales is excluded until verified. Revenue may still be counted.</div>':'')+
  '<h2>ACHIEVEMENTS</h2><div class="pn-hall-tabs">'+tabs+'</div><div class="pn-hall-grid">'+cards+'</div><h2>PROFIT RECORD BOARD</h2><div class="pn-hall-stats">'+record("BEST RIG FLIP",m.bestRig)+record("BEST PART FLIP",m.bestPart)+tile("BEST VERIFIED ROI",m.bestROI?m.bestROI.roi.toFixed(1)+"%":"UNVERIFIED")+'</div><h2>THE CHRONICLE</h2><div class="panel"><div class="panel-body">'+chronicle+'</div></div></div>';
 }
-if(typeof ROUTES!=="undefined"&&!ROUTES.some(r=>r.key==="hall"))ROUTES.splice(Math.max(0,ROUTES.findIndex(r=>r.key==="history")),0,{key:"hall",label:"Achievements",nix:"12",render:pnHallRender});
-if(typeof NAV_ICON!=="undefined")NAV_ICON.hall="assets/nav/archive.svg";
+if(typeof ROUTES!=="undefined"&&!ROUTES.some(r=>r.key==="hall"))ROUTES.splice(Math.max(0,ROUTES.findIndex(r=>r.key==="dashboard")+1),0,{key:"hall",label:"HALL OF LEGENDS",nix:"02",render:pnHallRender});
+if(typeof NAV_ICON!=="undefined")NAV_ICON.hall="assets/nav/hall-of-legends.svg";
+if(typeof window!=="undefined"&&typeof document!=="undefined"&&window.location&&typeof URLSearchParams==="function"&&new URLSearchParams(window.location.search).get("view")==="hall"){
+  window.addEventListener("DOMContentLoaded",()=>setTimeout(()=>{state.route="hall";render();},30),{once:true});
+}
 if(typeof document!=="undefined"&&document.addEventListener)document.addEventListener("click",e=>{const el=e.target.closest("[data-hall-filter]");if(el){hallState.filter=el.dataset.hallFilter;render()}});
 globalThis.PN_HALL={evaluate:pnHallEvaluate,facts:pnHallFacts,level:pnHallLevel,chains:PN_HALL_CHAINS};
 })();

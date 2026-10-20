@@ -60,6 +60,6 @@ window.__PN_SCRIPTS = [
   "scroll_preserve_extension.js?v=scroll-preserve-v1-20261003",
   "audit_integrity_extension.js?v=audit-correctness-v1",
   "cloud_sync_extension.js?v=cloud-authority-v3-20261017",
-  "hall_of_legends_extension.js?v=hall-founder-20261020"
+  "hall_of_legends_extension.js?v=hall-visible-and-deeplink-20261020"
 ];
 
