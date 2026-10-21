@@ -1147,8 +1147,12 @@ const roadToProbe = `
   const detail = renderRoadTo();
   out.push(['ROAD TO detail exposes every required action', ['data-roadto-add','data-roadto-remove','data-roadto-set-target','data-roadto-pause','data-roadto-archive','data-roadto-purchase'].every(k => detail.indexOf(k) > -1)]);
   out.push(['ROAD TO detail renders the signed quest history', detail.indexOf('QUEST HISTORY') > -1 && detail.indexOf('+47.500 RSD') > -1 && detail.indexOf('-3.000 RSD') > -1]);
-  RoadTo.markPurchased(g.id);
+  out.push(['ROAD TO premium dossier renders mission hero, milestone route, intelligence and compact funding controls', ['pn-rt-hero','pn-rt-route','pn-rt-intel','FUND THIS OBJECTIVE','TARGET SETTINGS / ADVANCED'].every(k => detail.indexOf(k) > -1)]);
+  const strategy = RoadTo.setStrategy(g.id, 52000, '2027-02-01');
+  out.push(['ROAD TO target strategy persists target and deadline without replacing the quest', strategy.ok && RoadTo.get(g.id).target === 52000 && RoadTo.get(g.id).deadline === '2027-02-01']);
+  const acquired = RoadTo.completePurchase(g.id,{price:48000,currency:'RSD',date:'2026-10-21',source:'KP',createVault:true});
   const purchasedDetail = renderRoadTo();
+  out.push(['ROAD TO acquisition records actual purchase evidence and creates one optional Vault item', acquired.ok && acquired.inventoryId && Store.get('inventory',acquired.inventoryId).purchasePrice === 48000 && RoadTo.get(g.id).purchase.actualPrice === 48000]);
   out.push(['ROAD TO purchase closes the quest but preserves its history', RoadTo.get(g.id).status === 'PURCHASED' && purchasedDetail.indexOf('Quest closed') > -1 && purchasedDetail.indexOf('+47.500 RSD') > -1]);
   RoadToUI.focusId = null;
   const closedHtml = renderRoadTo();
