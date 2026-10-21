@@ -25,6 +25,7 @@ window.__PN_SCRIPTS = [
   "roulette_ui_extension.js?v=rig-assembly-nav-v1",
   "treasury_extension.js?v=fortress-liquid-total-v1",
   "road_to_extension.js?v=roadto-eur-funds-v1",
+  "road_to_premium_extension.js?v=roadto-premium-campaign-v1-20261021",
   "my_rig_extension.js?v=audit-transfer-v1",
   "my_rig_cleanup_v1.js?v=my-rig-cleanup-v1",
   "sidebar_cleanup_extension.js?v=product-refinement-v3",
@@ -60,7 +61,7 @@ window.__PN_SCRIPTS = [
   "scroll_preserve_extension.js?v=scroll-preserve-v1-20261003",
   "audit_integrity_extension.js?v=audit-correctness-v1",
   "cloud_sync_extension.js?v=cloud-authority-v3-20261017",
-  "hall_of_legends_extension.js?v=hall-visible-and-deeplink-20261020",
-  "hall_of_legends_visual_v2.js?v=hall-lim-premium-v2-20261020"
+  "hall_of_legends_extension.js?v=hall-progression-v3-20261021",
+  "hall_of_legends_visual_v2.js?v=hall-campaign-v3-20261021"
 ];
 
