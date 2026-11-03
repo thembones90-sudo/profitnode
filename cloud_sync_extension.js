@@ -5,7 +5,7 @@
   const KEY="sb_publishable__tkOfCLkhpkz4BtvSXNQTg_FAmNF3CO";
   const LEDGER_KEY="profitnode_ledger_v1",ROW_ID="primary",SYNC_KEY="profitnode_cloud_sync_v3",QUEUE_KEY="profitnode_cloud_queue_v1";
   const COLLECTIONS=["projects","inventory","deals","sales","timeline","plans","repairs","rigs","roadTo","mail"];
-  let client=null,user=null,cloudRevision=0,saveTimer=null,wrapped=false,phase="BOOTING",channel=null,checking=false,lastCloudFingerprint="",hydrated=false;
+  let client=null,user=null,cloudRevision=0,saveTimer=null,wrapped=false,phase="BOOTING",channel=null,checking=false,lastCloudFingerprint="",hydrated=false,localWorkspace=false;
 
   function parse(raw){try{return JSON.parse(raw||"null")}catch(_){return null}}
   function localLedger(){return parse(localStorage.getItem(LEDGER_KEY))}
@@ -57,6 +57,7 @@
   function authorityDecision(local,meta,remote,queue){
     if(!remote||!remote.ledger)return "REMOTE_EMPTY";
     if(queue&&queue.ledger){
+      if(meaningful(local)&&fingerprint(local)!==fingerprint(queue.ledger))return "CONFLICT";
       if(fingerprint(queue.ledger)===fingerprint(remote.ledger))
         return !meaningful(local)||fingerprint(local)===fingerprint(remote.ledger)?"CURRENT":"CONFLICT";
       return Number(queue.baseRevision)===Number(remote.revision)?"RESUME_QUEUE":"CONFLICT";
@@ -91,16 +92,18 @@
   function syncBadge(){
     let el=document.getElementById("pn-cloud-badge");if(el)return el;
     el=document.createElement("div");el.id="pn-cloud-badge";
-    el.innerHTML='<span id="pn-cloud-badge-text">CLOUD · CONNECTING</span><button id="pn-cloud-retry" hidden>RETRY</button><button id="pn-cloud-signout">SIGN OUT</button>';
+    el.innerHTML='<span id="pn-cloud-badge-text">CLOUD · CONNECTING</span><button id="pn-cloud-resolve" hidden>RESOLVE SYNC</button><button id="pn-cloud-retry" hidden>RETRY</button><button id="pn-cloud-signout">SIGN OUT</button>';
     document.body.appendChild(el);
-    el.querySelector("#pn-cloud-retry").onclick=()=>reconcileOnBoot().catch(handleOffline);
+    el.querySelector("#pn-cloud-resolve").onclick=()=>{localWorkspace=false;reconcileOnBoot().catch(handleOffline)};
+    el.querySelector("#pn-cloud-retry").onclick=()=>{localWorkspace=false;reconcileOnBoot().catch(handleOffline)};
     el.querySelector("#pn-cloud-signout").onclick=async()=>{await client.auth.signOut();user=null;hydrated=false;cloudRevision=0;setPhase("SIGNED_OUT");el.remove();wireGate()};
     return el;
   }
   function badgeMsg(text,tone){
-    syncBadge();const label=document.getElementById("pn-cloud-badge-text"),retry=document.getElementById("pn-cloud-retry");
+    syncBadge();const label=document.getElementById("pn-cloud-badge-text"),retry=document.getElementById("pn-cloud-retry"),resolve=document.getElementById("pn-cloud-resolve");
     if(label){label.textContent=text;label.style.color=tone==="bad"?"#ff6972":tone==="warn"?"#f6c453":"#8ef0a0"}
-    if(retry)retry.hidden=tone!=="bad";
+    if(retry)retry.hidden=localWorkspace||tone!=="bad";
+    if(resolve)resolve.hidden=!localWorkspace;
   }
   function exportRecoverySnapshot(){
     const saved={};
@@ -172,10 +175,21 @@
     }
     applyRemote(current,"EXPLICIT_DEVICE_CLOUD_LOAD");
   }
+  function enterLocalWorkspace(){
+    const local=localLedger();
+    if(!meaningful(local)){alert("No usable browser ledger found. Nothing was changed; use a verified recovery backup or the cloud recovery option.");return}
+    localWorkspace=true;
+    clearTimeout(saveTimer);
+    if(typeof Store!=="undefined"){Store._data=local;Store.error=null;Store._writeLocked=false}
+    setPhase("LOCAL_ONLY");closeGate();
+    if(typeof render==="function")render();
+    badgeMsg("BROWSER WORKSPACE · CLOUD SYNC PAUSED","warn");
+  }
   function conflictGate(remote){
     setPhase("CONFLICT");shell();const card=document.querySelector(".pn-cloud-card");if(!card)return;
     const audited=isAuditedRecovery(remote);
-    card.innerHTML='<div class="pn-cloud-kicker">PROFITNODE CLOUD</div><h2>'+(audited?"RECOVERY VERIFIED":"SYNC PAUSED")+'</h2><p>'+(audited?"The browser and cloud histories were reconciled and backed up. Cloud revision 100 contains the verified 48 inventory items and 6 sales.":"Both ledgers must be preserved before reconciliation. Export this browser and compare its history with the cloud. Nothing will be replaced automatically.")+'</p><div class="pn-cloud-actions"><button id="pn-conflict-backup">EXPORT BROWSER BACKUP</button><button id="pn-conflict-retry">RECHECK</button>'+(audited?'<button id="pn-verified-recovery" style="grid-column:1/-1">APPLY VERIFIED RECOVERY r100</button>':"")+'<button id="pn-device-use-cloud" style="grid-column:1/-1">USE CLOUD ON THIS DEVICE</button></div>';
+    card.innerHTML='<div class="pn-cloud-kicker">PROFITNODE CLOUD</div><h2>'+(audited?"RECOVERY VERIFIED":"SYNC PAUSED")+'</h2><p>'+(audited?"The browser and cloud histories were reconciled and backed up. Cloud revision 100 contains the verified 48 inventory items and 6 sales.":"Browser and cloud histories differ. Open your browser workspace without overwriting either ledger; cloud sync stays paused until you resolve it.")+'</p><div class="pn-cloud-actions"><button id="pn-conflict-workspace" style="grid-column:1/-1">OPEN BROWSER WORKSPACE · SYNC OFF</button><button id="pn-conflict-backup">EXPORT BROWSER BACKUP</button><button id="pn-conflict-retry">RECHECK</button>'+(audited?'<button id="pn-verified-recovery" style="grid-column:1/-1">APPLY VERIFIED RECOVERY r100</button>':"")+'<button id="pn-device-use-cloud" style="grid-column:1/-1">USE CLOUD ON THIS DEVICE</button></div>';
+    card.querySelector("#pn-conflict-workspace").onclick=enterLocalWorkspace;
     card.querySelector("#pn-conflict-backup").onclick=()=>{exportRecoverySnapshot();deviceRecoveryExported=true};
     card.querySelector("#pn-device-use-cloud").onclick=()=>useCloudOnDevice().catch(handleOffline);
     card.querySelector("#pn-conflict-retry").onclick=()=>reconcileOnBoot().catch(handleOffline);
@@ -214,7 +228,7 @@
     return true;
   }
   async function flushQueue(){
-    if(!user||checking)return;const queued=pendingQueue();if(!queued||!queued.ledger)return;checking=true;
+    if(!user||checking||localWorkspace)return;const queued=pendingQueue();if(!queued||!queued.ledger)return;checking=true;
     try{
       const remote=await fetchCloud();if(!remote)throw new Error("Authoritative ledger row is missing.");
       if(fingerprint(remote.ledger)===fingerprint(queued.ledger)){finalizeSave(remote,queued,"QUEUE_ALREADY_APPLIED");return}
@@ -238,7 +252,7 @@
   function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>flushQueue().catch(handleOffline),450)}
   function wrapPersist(){
     if(wrapped||typeof Store==="undefined")return;wrapped=true;const old=Store.persist.bind(Store);
-    Store.persist=function(){const ok=old();if(ok&&user&&hydrated&&phase!=="CONFLICT"&&queueLedger(Store.load()))scheduleSave();return ok};
+    Store.persist=function(){const ok=old();if(ok&&user&&hydrated&&!localWorkspace&&phase!=="CONFLICT"&&queueLedger(Store.load()))scheduleSave();return ok};
   }
   function handleOffline(error){
     const detail=String(error&&error.message||error||"Unknown synchronization error").slice(0,300);
@@ -257,7 +271,7 @@
     if(!saved){conflictGate(await fetchCloud());return}applyRemote(saved,"LOCAL_DESCENDANT_PROMOTED");
   }
   async function reconcileOnBoot(){
-    if(!user||checking)return;checking=true;if(!hydrated)setPhase("BOOTING");badgeMsg("CLOUD · RECONCILING","warn");
+    if(!user||checking||localWorkspace)return;checking=true;if(!hydrated)setPhase("BOOTING");badgeMsg("CLOUD · RECONCILING","warn");
     try{
       let remote=await fetchCloud();const local=localLedger(),queue=pendingQueue();
       if(!remote){remote=await seedCloud(local||((typeof Store!=="undefined"&&Store.load)?Store.load():{}));applyRemote(remote,"INITIALIZED");return}
@@ -293,8 +307,8 @@
         reconcileOnBoot().catch(handleOffline);
       };
     }
-    addEventListener("online",()=>{if(user)reconcileOnBoot().catch(handleOffline)});
-    addEventListener("visibilitychange",()=>{if(user&&document.visibilityState==="visible"&&!pendingQueue())reconcileOnBoot().catch(handleOffline)});
+    addEventListener("online",()=>{if(user&&!localWorkspace)reconcileOnBoot().catch(handleOffline)});
+    addEventListener("visibilitychange",()=>{if(user&&!localWorkspace&&document.visibilityState==="visible"&&!pendingQueue())reconcileOnBoot().catch(handleOffline)});
   }
   function patchBackupCopy(){
     if(typeof renderBackup!=="function"||renderBackup.__pnCloudCopy)return;
