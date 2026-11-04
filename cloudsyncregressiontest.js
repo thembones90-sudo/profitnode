@@ -34,7 +34,7 @@ assert.strictEqual(authorityDecision(queue.ledger,null,remote,queue),"RESUME_QUE
   "matching local queue can still resume its unchanged cloud revision");
 assert.strictEqual(authorityDecision(remote.ledger,{fingerprint:fingerprint(remote.ledger),revision:42},remote,null),"CURRENT");
 assert.strictEqual(authorityDecision(null,null,remote,null),"APPLY_REMOTE");
-assert.match(source, /OPEN BROWSER WORKSPACE · SYNC OFF/);
+assert.match(source, /archiveThenApply/);
 assert.match(source, /function enterLocalWorkspace\(\)/);
 assert.match(source, /if\(!user\|\|checking\|\|localWorkspace\)return/);
 assert.match(source, /hydrated&&!localWorkspace&&phase!=="CONFLICT"/);

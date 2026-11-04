@@ -61,7 +61,7 @@ window.__PN_SCRIPTS = [
   "rig_assembly_compact_extension.js?v=budget-command-v1-20261104",
   "scroll_preserve_extension.js?v=scroll-preserve-v1-20261003",
   "audit_integrity_extension.js?v=audit-correctness-v1",
-  "cloud_sync_extension.js?v=cloud-workspace-unblock-20261103",
+  "cloud_sync_extension.js?v=one-authoritative-database-20261104",
   "hall_of_legends_extension.js?v=hall-progression-v3-20261021",
   "hall_of_legends_visual_v2.js?v=hall-campaign-v3-20261021"
 ];
