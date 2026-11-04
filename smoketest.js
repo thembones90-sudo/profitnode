@@ -51,7 +51,7 @@ checks.push(['app shell keeps height:100vh on .main with overflow:hidden (no doc
   /\.main\{[^}]*height:100vh[^}]*overflow:hidden/.test(indexCss)]);
 checks.push(['.content is the single internal scroll container with min-height:0',
   /\.content\{[^}]*min-height:0/.test(indexCss) && /\.content\{[^}]*overflow-y:auto/.test(indexCss)]);
-checks.push(['RIG ASSEMBLY editor keeps a full-width scroll target while centering its 1680px workspace',
+checks.push(['BLOODWORKS editor keeps a full-width scroll target while centering its 1680px workspace',
   /\.rig-editor-content\{[^}]*padding:10px max\(14px,calc\(\(100% - 1680px\)\/2\)\) 24px[^}]*max-width:none/.test(indexCss)]);
 checks.push(['rig slot grid collapses to stacked rows by 1180px so controls never clip',
   /@media \(max-width:1180px\)\{[\s\S]*?\.rig-slot-row\{grid-template-columns:1fr 1fr/.test(indexCss)]);
@@ -91,7 +91,7 @@ checks.push(['road-to route present', routeKeys.includes('roadto')]);
 checks.push(['mail route present', routeKeys.includes('mail')]);
 checks.push(['backup route still present', routeKeys.includes('backup')]);
 const expectedSeq = [
-  ['dashboard','COMMAND'], ['hall','HALL OF LEGENDS'], ['treasury','WAR CHEST'], ['analytics','INTEL'], ['rigbuild','RIG ASSEMBLY'], ['myrig','MY RIG'],
+  ['dashboard','COMMAND'], ['hall','HALL OF LEGENDS'], ['treasury','WAR CHEST'], ['analytics','INTEL'], ['rigbuild','BLOODWORKS'], ['myrig','MY RIG'],
   ['projects','BUILDS'], ['inventory','PARTS VAULT'], ['repairs','REPAIR BAY'],
   ['roadto','ROAD TO'], ['sales','LEDGER'], ['mail','MAIL'], ['history','ARCHIVE'],
   ['roulette','THE ROULETTE'], ['backup','BLACKBOX'], ['projectbuild','Build Workspace']

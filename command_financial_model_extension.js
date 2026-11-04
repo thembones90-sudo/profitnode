@@ -208,7 +208,7 @@
               '<span class="pn-op-node warn"></span>'+
               '<div class="pn-op-main">'+
                 '<b>'+escHtml(rig.family+(rig.variantName?" / "+rig.variantName:""))+'</b>'+
-                '<span>RIG ASSEMBLY \u00B7 TEST BUILD</span>'+
+                '<span>BLOODWORKS \u00B7 TEST BUILD</span>'+
               '</div>'+
               '<span class="chip '+RIG_STATUS_META[rig.status].chip+'">TEST BUILD</span>'+
             '</div>'
@@ -230,7 +230,7 @@
       .slice(0,2);
 
     if (!rigs.length){
-      return '<div class="pn-command-empty">RIG ASSEMBLY IDLE</div>';
+      return '<div class="pn-command-empty">BLOODWORKS IDLE</div>';
     }
 
     return rigs.map(rig=>{
@@ -329,7 +329,7 @@
       return {tone:"warn",code:"STL",title:"STALE STOCK REQUIRES ACTION",detail:staleCount+" vault item"+(staleCount===1?" has":"s have")+" crossed the holding threshold",route:"inventory",action:"REVIEW VAULT"};
     }
     if (activeRigs){
-      return {tone:"active",code:"BLD",title:"BUILD PIPELINE ACTIVE",detail:activeRigs+" live rig"+(activeRigs===1?" is":"s are")+" currently in assembly",route:"rigbuild",action:"OPEN RIG ASSEMBLY"};
+      return {tone:"active",code:"BLD",title:"BUILD PIPELINE ACTIVE",detail:activeRigs+" live rig"+(activeRigs===1?" is":"s are")+" currently in assembly",route:"rigbuild",action:"OPEN BLOODWORKS"};
     }
     if (activeBuilds){
       return {tone:"active",code:"OPS",title:"BUILD OPERATIONS ACTIVE",detail:activeBuilds+" active build record"+(activeBuilds===1?"":"s")+" in the current pipeline",route:"projects",action:"OPEN BUILDS"};
@@ -424,7 +424,7 @@
           '<div class="panel-body pn-no-pad">'+pnCmdOperationQueue()+'</div>'+
         '</section>'+
         '<section class="panel pn-command-panel pn-command-panel-operational">'+
-          '<div class="panel-head"><h2>RIG ASSEMBLY</h2><button class="pn-command-link" data-route="rigbuild">OPEN ASSEMBLY</button></div>'+
+          '<div class="panel-head"><h2>BLOODWORKS</h2><button class="pn-command-link" data-route="rigbuild">OPEN ASSEMBLY</button></div>'+
           '<div class="panel-body pn-no-pad">'+pnCmdRigSnapshot()+'</div>'+
         '</section>'+
       '</div>';
