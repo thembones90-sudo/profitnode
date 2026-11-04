@@ -7,7 +7,7 @@ const results = require("vm").runInContext(`(function(){
   Store.load();
   const out = [];
   const rig = newRigDraft("COMPACT TEST");
-  out.push(["new rigs default to the New Cash budget, without a mandatory limit", rig.budget === 0 && rig.budgetMode === "NEW_CASH" && rig.budgetCurrency === "RSD"]);
+  out.push(["new rigs default to the New Cash budget with an unset (null) limit, never a silent zero", rig.budget === null && rig.budgetMode === "NEW_CASH" && rig.budgetCurrency === "RSD"]);
   rig.slots.CPU = {kind:"PLANNED",label:"AMD Ryzen 5 5600",cost:10000,originalPrice:12000,currency:"RSD"};
   rig.budget = 50000;
   state.route = "rigbuild";
