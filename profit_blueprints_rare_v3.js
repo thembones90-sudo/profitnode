@@ -112,7 +112,12 @@
   }
 
   function deployRare(bp){
+    const capBudget = Number.isFinite(Number(RARE_CAP)) && Number(RARE_CAP) > 0 ? Number(RARE_CAP) : (bp.parts || []).reduce((s, p) => s + (Number(p.cost) || 0), 0);
+    if (!(capBudget > 0)){ if (typeof alert === "function") alert("This blueprint has no hard cap or priced parts, so it cannot set a build budget. Create the project from NEW PROJECT instead."); return null; }
     const project = Actions.addProject({
+      budget:capBudget,
+      budgetMode:"TOTAL_COST",
+      budgetRequired:true,
       name:uniqueProjectName(bp.name),
       startDate:todayISO(),
       completionDate:null,

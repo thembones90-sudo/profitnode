@@ -12,9 +12,11 @@
   actually spent" figure already used everywhere else in the build
   workspace) passes the budget.
 
-  This is additive only: no field is required, nothing here blocks
-  adding parts past budget — it's a tracked limit, not a hard stop.
-  Projects with no budget set render exactly as before.
+  Budget Command Center (2026-11-04): NEW PROJECT requires a positive
+  budget plus a NEW CASH / TOTAL COST mode; math comes from the shared
+  build_budget_model.js. Older projects keep the budget optional and
+  default to TOTAL COST, so their numbers are unchanged. Nothing here
+  blocks adding parts past budget — it's a tracked limit, not a hard stop.
 */
 (function installProjectBudgetV1(){
 
@@ -35,21 +37,111 @@
       })
       .filter(a => a.amount > 0);
   };
-  const allocatedTotal = project => pnBudgetAllocations(project).reduce((sum, a) => sum + a.amount, 0);
 
-  // 1. Add the field to the project form (NEW PROJECT + EDIT DETAILS).
+  const B = globalThis.PN_BUDGET;
+
+  // 1. Budget fields on the project form. NEW PROJECT (and projects created under the
+  // budget policy) require a positive budget; older projects keep it optional.
   if (typeof FORM_SCHEMAS !== "undefined" && typeof FORM_SCHEMAS.project === "function" && !FORM_SCHEMAS.project.__pnBudgetV1){
     const baseSchema = FORM_SCHEMAS.project;
     const wrappedSchema = function(existing){
       const schema = baseSchema(existing);
-      const budgetField = { key: "budget", label: "Planned Budget (optional)", type: "number", half: true };
+      const required = !existing || !!existing.budgetRequired;
+      const budgetField = { key: "budget", label: required ? "Build Budget (required)" : "Build Budget", type: "number", half: true, min: 0.01, required: required, pnBudget: true };
+      const modeField = { key: "budgetMode", label: "Budget Mode", type: "select", options: ["NEW_CASH", "TOTAL_COST"], default: existing ? "TOTAL_COST" : "NEW_CASH", required: true, half: true, pnBudget: true };
       const afterCurrency = schema.fields.findIndex(f => f.key === "currency");
-      if (afterCurrency >= 0) schema.fields.splice(afterCurrency + 1, 0, budgetField);
-      else schema.fields.push(budgetField);
+      if (afterCurrency >= 0) schema.fields.splice(afterCurrency + 1, 0, budgetField, modeField);
+      else schema.fields.push(budgetField, modeField);
       return schema;
     };
     wrappedSchema.__pnBudgetV1 = true;
     FORM_SCHEMAS.project = wrappedSchema;
+  }
+
+  if (typeof renderFieldHtml === "function" && !renderFieldHtml.__pnBudgetHintV1){
+    const baseField = renderFieldHtml;
+    const wrappedField = function(field){
+      const html = baseField.apply(this, arguments);
+      if (!field || !field.pnBudget) return html;
+      if (field.key === "budget"){
+        return String(html)
+          .replace('<input type="number" name="budget"', '<input type="number" name="budget" inputmode="decimal" data-pb-budget-input aria-describedby="pn-pb-budget-hint"')
+          .replace(/<\/label>$/, '<small class="pn-pb-budget-hint" id="pn-pb-budget-hint">In the project currency above. Changing currency later converts it.</small><small class="pn-pb-budget-err" data-pb-budget-error role="alert" hidden></small></label>');
+      }
+      return String(html).replace(/<\/label>$/, '<small class="pn-pb-budget-hint">NEW CASH = parts bought for this build + extra costs. TOTAL COST = also counts reused Vault basis.</small></label>');
+    };
+    wrappedField.__pnBudgetHintV1 = true;
+    renderFieldHtml = wrappedField;
+  }
+
+  function showBudgetError(form, input, message){
+    const slot = form.querySelector("[data-pb-budget-error]");
+    if (slot){ slot.textContent = message; slot.hidden = false; }
+    if (input){
+      if (input.setAttribute) input.setAttribute("aria-invalid", "true");
+      if (typeof input.setCustomValidity === "function"){ input.setCustomValidity(message); if (typeof input.reportValidity === "function") input.reportValidity(); }
+      if (input.focus) input.focus();
+    }
+  }
+  function clearBudgetError(form, input){
+    const slot = form.querySelector("[data-pb-budget-error]");
+    if (slot){ slot.textContent = ""; slot.hidden = true; }
+    if (input){
+      if (input.removeAttribute) input.removeAttribute("aria-invalid");
+      if (typeof input.setCustomValidity === "function") input.setCustomValidity("");
+    }
+  }
+
+  // Validates the budget before the core submit runs. Returns null when valid, else the error text.
+  globalThis.pnProjectFormBudgetError = function(form){
+    if (!form || !form.dataset || form.dataset.entityForm !== "project") return null;
+    const id = form.dataset.id || null, existing = id ? Store.get("projects", id) : null;
+    const input = form.querySelector('[name="budget"]');
+    const currencyEl = form.querySelector('[name="currency"]');
+    const raw = input ? input.value : "";
+    const required = !existing || !!existing.budgetRequired;
+    if (!required && String(raw == null ? "" : raw).trim() === "") return null;
+    const res = B.parse(raw, (currencyEl && currencyEl.value) || (existing && existing.currency) || "RSD", { format: "number" });
+    return res.ok ? null : res.error;
+  };
+
+  if (typeof document !== "undefined" && document.addEventListener) document.addEventListener("input", e => {
+    const input = e.target && e.target.closest && e.target.closest("[data-pb-budget-input]");
+    const form = input && input.closest("[data-entity-form]");
+    if (form) clearBudgetError(form, input);
+  });
+
+  if (typeof handleFormSubmit === "function" && !handleFormSubmit.__pnBudgetV1){
+    const baseSubmit = handleFormSubmit;
+    const wrappedSubmit = function(form){
+      if (!form || !form.dataset || form.dataset.entityForm !== "project") return baseSubmit.apply(this, arguments);
+      const input = form.querySelector('[name="budget"]');
+      const error = pnProjectFormBudgetError(form);
+      if (error){ showBudgetError(form, input, error); return; }
+      clearBudgetError(form, input);
+      const isNew = !form.dataset.id;
+      const before = isNew ? new Set(Store.all("projects").map(p => p.id)) : null;
+      const out = baseSubmit.apply(this, arguments);
+      if (isNew){
+        const created = Store.all("projects").find(p => !before.has(p.id));
+        if (created && !created.budgetRequired) Store.update("projects", created.id, { budgetRequired: true });
+      }
+      return out;
+    };
+    wrappedSubmit.__pnBudgetV1 = true;
+    handleFormSubmit = wrappedSubmit;
+  }
+
+  // Currency changes on EDIT keep the budget's meaning (converted) and pin allocation currency.
+  if (typeof Actions !== "undefined" && typeof Actions.updateProject === "function" && !Actions.updateProject.__pnBudgetCurrencyV1){
+    const baseUpdate = Actions.updateProject;
+    const wrappedUpdate = function(id, data){
+      const prev = Store.get("projects", id);
+      if (prev && data && data.currency && prev.currency && data.currency !== prev.currency) data = B.projectCurrencyPatch(prev, data);
+      return baseUpdate.call(this, id, data);
+    };
+    wrappedUpdate.__pnBudgetCurrencyV1 = true;
+    Actions.updateProject = wrappedUpdate;
   }
 
   // 1b. Route-dispatch fix (unrelated bug, found while building this feature):
@@ -77,33 +169,35 @@
     const wrappedRender = function(){
       let html = baseRender();
       const p = typeof pbProject === "function" ? pbProject() : null;
-      const budget = p ? Number(p.budget) : 0;
-      if (!p || !(budget > 0)) return html;
-
-      const stats = Actions.projectBuildStats(p);
-      const spent = Number(stats.totalCostBasis) || 0;
-      const remaining = budget - spent;
-      const pctUsed = Math.round((spent / budget) * 100);
+      if (!p) return html;
+      const m = B.projectModel(p);
+      if (!m.valid){
+        if (!m.required) return html;
+        const missing = '<div class="pn-pb-budget-alert is-required" role="alert" data-pb-budget-alert="required"><b>BUDGET REQUIRED</b><span>This build has no valid budget. Open EDIT DETAILS and set a positive Build Budget.</span></div>';
+        return html.replace('<div class="content pn-pb-page">', '<div class="content pn-pb-page">' + missing);
+      }
+      const budget = m.limit, cur = m.currency;
+      const remaining = m.leftNow;
+      const pctUsed = Math.round(m.usedPct);
       const over = remaining < 0;
 
-      const tile = '<div class="kpi" data-pb-budget="' + budget + '" data-pb-budget-remaining="' + remaining + '">'
-        + '<div class="kpi-label">BUDGET</div>'
-        + '<div class="kpi-value" style="color:' + (over ? "var(--red)" : "var(--green)") + '">'
-          + money(Math.abs(remaining), p.currency) + (over ? " OVER" : " LEFT")
+      const tile = '<div class="kpi" data-pb-budget="' + budget + '" data-pb-budget-remaining="' + remaining + '" data-pb-budget-mode="' + m.mode + '" title="' + escAttr(m.modeInfo.help) + '">'
+        + '<div class="kpi-label">BUDGET · ' + m.modeInfo.short + '</div>'
+        + '<div class="kpi-value" style="color:' + (over ? "var(--red)" : m.tone === "over" || m.tone === "warn" ? "#f2c94c" : "var(--green)") + '">'
+          + money(Math.abs(remaining), cur) + (over ? " OVER" : " LEFT")
         + '</div>'
-        + '<div class="kpi-sub">' + pctUsed + '% of ' + money(budget, p.currency) + ' spent' + (allocatedTotal(p) > 0 ? ' · ' + money(allocatedTotal(p), p.currency) + ' allocated' : '') + '</div>'
+        + '<div class="kpi-sub">' + pctUsed + '% committed of ' + money(budget, cur) + (m.allocated > 0 ? ' · ' + money(m.allocated, cur) + ' allocated' : '') + '</div>'
         + '</div>';
 
       // Fixed anchor text that always follows the EST. MARKET VALUE tile,
       // regardless of that tile's own (dynamic) value.
       html = html.replace('manual current estimate</div></div>', 'manual current estimate</div></div>' + tile);
 
-      if (over){
-        const warning = '<div class="panel" style="margin-top:8px;border-color:var(--red)"><div class="panel-body" style="color:var(--red)">'
-          + 'OVER BUDGET — ' + money(Math.abs(remaining), p.currency) + ' past the planned ' + money(budget, p.currency) + ' for this build.'
-          + '</div></div>';
-        html = html.replace('<div class="content pn-pb-page">', '<div class="content pn-pb-page">' + warning);
-      }
+      let alert = "";
+      if (over) alert = '<div class="pn-pb-budget-alert is-breach" role="alert" data-pb-budget-alert="breach"><b>OVER BUDGET</b><span>' + money(-remaining, cur) + ' past the ' + money(budget, cur) + ' ' + m.modeInfo.short.toLowerCase() + ' budget for this build.</span></div>';
+      else if (m.available < 0) alert = '<div class="pn-pb-budget-alert is-planned" role="status" data-pb-budget-alert="planned"><b>PLANNED BREACH</b><span>Planned parts and reserves would overshoot the budget by ' + money(-m.available, cur) + '.</span></div>';
+      else if (m.tone === "warn") alert = '<div class="pn-pb-budget-alert is-warn" role="status" data-pb-budget-alert="warn"><b>NEAR LIMIT</b><span>' + pctUsed + '% of the budget is committed · ' + money(m.available, cur) + ' left after planned parts.</span></div>';
+      if (alert) html = html.replace('<div class="content pn-pb-page">', '<div class="content pn-pb-page">' + alert);
 
       return html;
     };
@@ -128,23 +222,22 @@
     };
     const wrappedCostHtml = function(project){
       const html = baseCostHtml.apply(this, arguments);
-      const budget = project ? Number(project.budget) : 0;
-      if (!(budget > 0) || typeof pbBuildCostRows !== "function") return html;
+      if (!project || !B.isValid(project.budget) || typeof pbBuildCostRows !== "function") return html;
 
-      const cur = project.currency;
+      const model = B.projectModel(project);
+      const budget = model.limit, cur = model.currency, newCash = model.mode === "NEW_CASH";
       const m = v => money(v, cur);
       const signed = v => (v < 0 ? "−" : "") + money(Math.abs(v), cur);
-      const stats = Actions.projectBuildStats(project);
-      const spent = Number(stats.totalCostBasis) || 0;
-      const planned = Number(stats.plannedCost) || 0;
-      const allocs = pnBudgetAllocations(project);
-      const allocated = allocs.reduce((sum, a) => sum + a.amount, 0);
-      const left = budget - spent;
-      const leftAfterPlanned = left - planned - allocated;
-      const committed = spent + planned + allocated;
+      const spent = model.spent;
+      const planned = model.plannedCash;
+      const allocs = model.allocations;
+      const allocated = model.allocated;
+      const left = model.leftNow;
+      const leftAfterPlanned = model.available;
+      const committed = model.committed;
       const breach = leftAfterPlanned < 0;
-      const status = left < 0 ? "BUDGET BREACH" : breach ? "PLANNED BREACH" : pct(committed, budget) >= 90 ? "NEAR LIMIT" : "WITHIN PARAMETERS";
-      const statusCls = left < 0 || breach ? "is-breach" : pct(committed, budget) >= 90 ? "is-warn" : "is-ok";
+      const status = model.status;
+      const statusCls = model.tone === "over" ? "is-breach" : model.tone === "warn" ? "is-warn" : "is-ok";
 
       const groups = pbBuildCostRows(project);
       const tag = (rows, kind) => (rows || []).map(r => Object.assign({ amount: Number(r.amount) || 0, kind, label: r.label }, rowMeta(r.label)));
@@ -154,9 +247,10 @@
       });
       const rows = [].concat(tag(groups.direct, "PAID"), tag(groups.reused, "REUSED"), tag(groups.planned, "PLANNED"), allocRows).sort((a, b) => b.amount - a.amount);
 
+      const counts = r => !(newCash && r.kind === "REUSED");
       const scale = Math.max(budget, committed);
       let cursor = 0;
-      const segData = rows.filter(r => r.amount > 0).map(r => {
+      const segData = rows.filter(r => r.amount > 0 && counts(r)).map(r => {
         const width = pct(r.amount, scale), sg = { r, width, center: cursor + width / 2, text: r.short + " " + pct(r.amount, budget) + "%" };
         cursor += width;
         return sg;
@@ -164,36 +258,47 @@
       const segs = segData.map(sg => '<span class="pn-cc-seg' + (sg.r.kind === "PLANNED" ? " is-planned" : sg.r.kind === "ALLOCATED" ? " is-alloc" : "") + '" title="' + escHtml(sg.r.slot + " · " + sg.r.name + " · " + m(sg.r.amount)) + '" style="--c:' + sg.r.color + ';width:' + sg.width + '%"></span>').join("");
       const pills = segData.map((sg, i) => '<span class="pn-cc-pill" data-pill="' + i + '" data-start="' + (sg.center - sg.width / 2) + '" data-width="' + sg.width + '" data-full="' + escAttr(sg.text) + '" data-name="' + escAttr(sg.r.short) + '" style="--c:' + sg.r.color + '">' + escHtml(sg.text) + "</span>").join("");
       const limitAt = pct(budget, scale);
-      const ticks = [25, 50, 75].map(t => '<span class="pn-cc-tick" style="left:' + (limitAt * t / 100) + '%"></span>').join("")
+      const MARKS = [25, 50, B.WARN_PCT];
+      const ticks = MARKS.map(t => '<span class="pn-cc-tick' + (t === B.WARN_PCT ? " is-warn-line" : "") + '" style="left:' + (limitAt * t / 100) + '%"></span>').join("")
         + (scale > budget ? '<span class="pn-cc-limit" style="left:' + limitAt + '%"></span>' : "");
 
       const mini = (label, value, cls, attr) => '<div class="pn-cc-mini' + (cls ? " " + cls : "") + '"' + attr + '><span class="pn-cc-k">' + label + '</span><b>' + value + '</b></div>';
-      const head = '<div class="pn-cc-head"><span class="pn-cc-title"><i></i>FISCAL OPS // BUDGET TELEMETRY</span><span class="pn-cc-status ' + statusCls + '">' + status + '</span></div>';
+      const head = '<div class="pn-cc-head"><span class="pn-cc-title"><i></i>FISCAL OPS // BUDGET TELEMETRY</span><span class="pn-cc-head-r"><span class="pn-cc-mode" data-pb-budget-mode-chip="' + model.mode + '" title="' + escAttr(model.modeInfo.help) + '">' + model.modeInfo.label + '</span><span class="pn-cc-status ' + statusCls + '" role="status" aria-live="polite">' + status + '</span></span></div>';
       const top = '<div class="pn-cc-top">'
-        + '<div class="pn-cc-hero"><span class="pn-cc-k">LEFT AFTER PLANNED' + (allocated > 0 ? " + ALLOCATED" : "") + '</span><div class="pn-cc-big' + (breach ? " is-neg" : "") + '" data-pb-budget-left-after-planned="' + leftAfterPlanned + '">' + signed(leftAfterPlanned) + '</div>'
+        + '<div class="pn-cc-hero"><span class="pn-cc-k">LEFT AFTER PLANNED' + (allocated > 0 ? " + ALLOCATED" : "") + '</span><div class="pn-cc-big' + (breach ? " is-neg" : model.tone === "warn" ? " is-warn" : "") + '" data-pb-budget-left-after-planned="' + leftAfterPlanned + '">' + signed(leftAfterPlanned) + '</div>'
           + '<div class="pn-cc-sub">of ' + m(budget) + ' budget · ' + pct(committed, budget) + '% committed</div></div>'
         + '<div class="pn-cc-minis">'
           + mini("BUDGET", m(budget), "", ' data-pb-budget-total="' + budget + '"')
-          + mini("SPENT", m(spent), "", ' data-pb-budget-spent="' + spent + '"')
+          + mini(newCash ? "PAID CASH" : "SPENT · BASIS", m(spent), "", ' data-pb-budget-spent="' + spent + '"')
+          + (newCash && model.reusedBasis > 0 ? mini("REUSED · NOT COUNTED", m(model.reusedBasis), "is-excluded", ' data-pb-budget-reused="' + model.reusedBasis + '"') : "")
           + mini("PLANNED", m(planned), "is-planned", ' data-pb-budget-planned="' + planned + '"')
           + (allocated > 0 ? mini("ALLOCATED", m(allocated), "is-alloc", ' data-pb-budget-allocated="' + allocated + '"') : "")
           + mini("LEFT NOW", signed(left), left < 0 ? "is-neg" : "is-pos", ' data-pb-budget-left="' + left + '"')
         + '</div></div>';
-      const bar = '<div class="pn-cc-gauge" data-pn-cc-gauge><div class="pn-cc-bar">' + segs + ticks + '</div><div class="pn-cc-labels">' + pills + "</div></div>"
-        + '<div class="pn-cc-scale"><span style="left:0">0</span>' + [25, 50, 75].map(t => '<span class="is-mid" style="left:' + (limitAt * t / 100) + '%">' + t + '%</span>').join("") + '<span class="is-end" style="left:' + limitAt + '%">' + m(budget) + '</span></div>';
+      const bar = '<div class="pn-cc-gauge" data-pn-cc-gauge role="img" aria-label="' + escAttr(pct(committed, budget) + "% of " + m(budget) + " committed · " + status) + '"><div class="pn-cc-bar">' + segs + ticks + '</div><div class="pn-cc-labels">' + pills + "</div></div>"
+        + '<div class="pn-cc-scale"><span style="left:0">0</span>' + MARKS.map(t => '<span class="is-mid' + (t === B.WARN_PCT ? " is-warn-line" : "") + '" style="left:' + (limitAt * t / 100) + '%">' + t + '%</span>').join("") + '<span class="is-end" style="left:' + limitAt + '%">' + m(budget) + '</span></div>';
+      const r = model.resale;
+      const outlook = r ? '<div class="pn-cc-outlook" data-pb-sale-outlook>'
+          + '<span class="pn-cc-k">SALE OUTLOOK</span>'
+          + '<div><small>' + r.source + '</small><b>' + m(r.target) + '</b></div>'
+          + '<div><small>BREAK-EVEN · PROJECTED BASIS</small><b data-pb-break-even="' + r.breakEven + '">' + m(r.breakEven) + '</b></div>'
+          + '<div class="' + (r.profitBasis < 0 ? "is-neg" : "is-pos") + '"><small>PROJECTED PROFIT</small><b data-pb-projected-profit="' + r.profitBasis + '">' + signed(r.profitBasis) + '</b></div>'
+          + '<div class="' + (r.marginPct < 0 ? "is-neg" : "") + '"><small>MARGIN</small><b>' + (Math.round(r.marginPct * 10) / 10) + '%</b></div>'
+          + '<div><small>CASH BACK AFTER NEW SPEND</small><b data-pb-cash-recovery="' + r.cashRecovery + '">' + signed(r.cashRecovery) + '</b></div>'
+        + '</div>' : "";
       const partRows = rows.length
-        ? rows.map(r => '<div class="pn-cc-row" data-pb-budget-row="' + r.kind + '" style="--c:' + r.color + '">'
+        ? rows.map(r => '<div class="pn-cc-row' + (counts(r) ? "" : " is-excluded") + '" data-pb-budget-row="' + r.kind + '" style="--c:' + r.color + '">'
             + '<span class="pn-cc-slot">' + escHtml(r.slot) + '</span>'
             + '<span class="pn-cc-name">' + escHtml(r.name) + '</span>'
-            + '<span class="pn-cc-kind is-' + r.kind.toLowerCase() + '">' + r.kind + '</span>'
+            + '<span class="pn-cc-kind is-' + r.kind.toLowerCase() + '">' + (counts(r) ? r.kind : "REUSED · SUNK") + '</span>'
             + '<span class="pn-cc-amt">' + m(r.amount) + '</span>'
-            + '<span class="pn-cc-pct">' + pct(r.amount, budget) + '%</span>'
+            + '<span class="pn-cc-pct">' + (counts(r) ? pct(r.amount, budget) + '%' : "—") + '</span>'
             + '</div>').join("")
         : '<p class="pn-cc-empty">No parts with a cost logged yet.</p>';
 
-      const section = '<div class="pn-cc ' + statusCls + '" data-pb-budget-breakdown>'
+      const section = '<div class="pn-cc ' + statusCls + '" data-pb-budget-breakdown data-pb-budget-mode="' + model.mode + '">'
         + '<span class="pn-cc-corner tl"></span><span class="pn-cc-corner br"></span>'
-        + head + top + bar + '<div class="pn-cc-rows">' + partRows + '</div></div>';
+        + head + top + bar + outlook + '<details class="pn-cc-ledger"' + (rows.length <= 10 ? " open" : "") + '><summary>PER-PART COST LEDGER · ' + rows.length + ' ROW' + (rows.length === 1 ? "" : "S") + '</summary><div class="pn-cc-rows">' + partRows + '</div></details></div>';
 
       return String(html).replace('<div class="panel-body">', '<div class="panel-body">' + section);
     };
@@ -248,6 +353,26 @@
       + "@media(max-width:760px){.pn-cc{padding:14px 14px 12px}.pn-cc-big{font-size:36px}.pn-cc-minis{gap:14px 18px}.pn-cc-mini b{font-size:18px}"
         + ".pn-cc-row{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:'slot amt' 'name pct' 'kind kind';row-gap:3px}"
         + ".pn-cc-slot{grid-area:slot}.pn-cc-name{grid-area:name;white-space:normal}.pn-cc-amt{grid-area:amt}.pn-cc-pct{grid-area:pct}.pn-cc-kind{grid-area:kind;justify-self:start;padding:2px 8px}}"
+      + ".pn-cc-head-r{display:flex;align-items:center;gap:8px;flex-wrap:wrap}"
+      + ".pn-cc-mode{font:600 10.5px var(--stamp);letter-spacing:.18em;padding:4px 10px;color:#9fd6ff;border:1px dashed rgba(88,174,232,.55);background:rgba(88,174,232,.06);cursor:help}"
+      + ".pn-cc-big.is-warn{color:#f2c94c;text-shadow:0 0 22px rgba(242,201,76,.3)}"
+      + ".pn-cc-mini.is-excluded b{color:var(--text-muted);text-decoration:line-through;text-decoration-color:rgba(195,155,255,.6)}"
+      + ".pn-cc-tick.is-warn-line{width:2px;background:rgba(242,201,76,.75);box-shadow:0 0 6px rgba(242,201,76,.5)}.pn-cc-scale>.is-warn-line{color:#f2c94c}"
+      + ".pn-cc-row.is-excluded{opacity:.6}.pn-cc-row.is-excluded .pn-cc-kind{border-style:dotted}"
+      + ".pn-cc-outlook{display:grid;grid-template-columns:auto repeat(5,minmax(0,1fr));align-items:center;gap:8px 14px;margin:0 0 12px;padding:8px 12px;border:1px solid rgba(88,174,232,.22);background:rgba(8,8,18,.45)}"
+      + ".pn-cc-outlook>div{min-width:0;padding-left:10px;border-left:2px solid rgba(88,174,232,.3)}.pn-cc-outlook small{display:block;font:600 9.5px var(--stamp);letter-spacing:.14em;color:var(--text-muted)}"
+      + ".pn-cc-outlook b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 16px var(--stamp);color:var(--text)}.pn-cc-outlook .is-pos b{color:var(--green)}.pn-cc-outlook .is-neg b{color:var(--red)}"
+      + ".pn-cc-ledger>summary{cursor:pointer;margin-bottom:6px;font:600 11px var(--stamp);letter-spacing:.18em;color:var(--text-muted)}.pn-cc-ledger>summary:focus-visible{outline:2px solid var(--cc-edge);outline-offset:2px}"
+      + ".pn-pb-budget-alert{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:8px 0;padding:9px 14px;border:1px solid;border-left-width:4px;font:500 13px var(--sans);clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)}"
+      + ".pn-pb-budget-alert b{font:600 12px var(--stamp);letter-spacing:.2em}"
+      + ".pn-pb-budget-alert.is-breach{color:#ffb3b3;border-color:var(--red);background:rgba(255,70,70,.09)}.pn-pb-budget-alert.is-breach b{color:var(--red)}"
+      + ".pn-pb-budget-alert.is-planned,.pn-pb-budget-alert.is-warn{color:#f6e2a8;border-color:#f2c94c;background:rgba(242,201,76,.07)}.pn-pb-budget-alert.is-planned b,.pn-pb-budget-alert.is-warn b{color:#f2c94c}"
+      + ".pn-pb-budget-alert.is-required{color:#ffd2a6;border-color:#ff9f43;background:rgba(255,159,67,.08)}.pn-pb-budget-alert.is-required b{color:#ff9f43}"
+      + ".pn-pb-budget-hint{display:block;margin-top:4px;font:500 11px/1.35 var(--sans);color:var(--text-muted);text-transform:none;letter-spacing:0}"
+      + ".pn-pb-budget-err{display:block;margin-top:4px;font:600 11.5px var(--mono);color:#ff8c8c;text-transform:none;letter-spacing:0}.pn-pb-budget-err[hidden]{display:none}"
+      + "[data-pb-budget-input][aria-invalid=true]{border-color:var(--red)!important;box-shadow:0 0 0 1px var(--red)}"
+      + "@media(max-width:1100px){.pn-cc-outlook{grid-template-columns:repeat(3,minmax(0,1fr))}.pn-cc-outlook>.pn-cc-k{grid-column:1/-1}}"
+      + "@media(max-width:520px){.pn-cc-outlook{grid-template-columns:repeat(2,minmax(0,1fr))}.pn-cc-big{font-size:30px}.pn-cc-head-r{width:100%}.pn-cc-scale>.is-mid{display:none}}"
       + "@media(prefers-reduced-motion:reduce){.pn-cc-title i,.pn-cc-status.is-breach{animation:none}}";
     document.head.appendChild(style);
 

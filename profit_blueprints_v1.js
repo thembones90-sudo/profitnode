@@ -198,8 +198,19 @@
     return base+" "+i;
   }
 
+  function blueprintBudget(cap, parts){
+    if (Number.isFinite(Number(cap)) && Number(cap) > 0) return Number(cap);
+    const sum = (parts || []).reduce((s, p) => s + (Number(p.cost) || 0), 0);
+    return sum > 0 ? sum : null;
+  }
+
   function deployBlueprint(bp){
+    const budget = blueprintBudget(HARD_CAP_RSD, bp.parts);
+    if (!budget){ if (typeof alert === "function") alert("This blueprint has no hard cap or priced parts, so it cannot set a build budget. Create the project from NEW PROJECT instead."); return null; }
     const project = Actions.addProject({
+      budget:budget,
+      budgetMode:"TOTAL_COST",
+      budgetRequired:true,
       name:uniqueProjectName(bp.name),
       startDate:todayISO(),
       completionDate:null,

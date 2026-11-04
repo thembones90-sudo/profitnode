@@ -14,6 +14,8 @@ jobs:
         with:
           node-version: 22
       - run: node manifestintegritytest.js
+      - run: node budgetcommandtest.js
+      - run: node rigassemblycompacttest.js
       - run: node smoketest.js
       - run: node rendertest.js
       - run: node hardwaretest.js
@@ -23,3 +25,4 @@ jobs:
       - run: node auditcorrectnesstest.js
       - run: node manifestintegritytest.js
       - run: node browsertest.js
+      - run: node rigassemblycompactbrowsertest.js
