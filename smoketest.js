@@ -30,6 +30,9 @@ checks.push(['Claude command-console visual stack remains active after accountin
   before('loadout_command_extension.js','ram_sticks_extension.js') &&
   before('currency_entry_extension.js','rig_assembly_command_extension.js') &&
   manifestNames.includes('scroll_preserve_extension.js')]);
+checks.push(['BLOODWORKS premium visual layer loads after compact layout and before scroll preservation',
+  before('rig_assembly_compact_extension.js','bloodworks_premium_visual_v1.js') &&
+  before('bloodworks_premium_visual_v1.js','scroll_preserve_extension.js')]);
 checks.push(['every manifest entry has a cache-busting ?v= suffix',
   entries.every(e => /\.js\?v=.+/.test(e))]);
 checks.push(['every manifest entry maps to a real file on disk',
@@ -38,6 +41,7 @@ checks.push(['every manifest entry maps to a real file on disk',
 const appJs = fs.readFileSync(path.join(DIR, 'app.js'), 'utf8');
 const appCoreJs = fs.readFileSync(path.join(DIR, 'app_core.js'), 'utf8');
 const psuExtensionJs = fs.readFileSync(path.join(DIR, 'psu_extension.js'), 'utf8');
+const bloodworksVisualJs = fs.readFileSync(path.join(DIR, 'bloodworks_premium_visual_v1.js'), 'utf8');
 checks.push(['app.js loader streams the manifest via document.write',
   /document\.write\(/.test(appJs) && /window\.__PN_SCRIPTS/.test(appJs)]);
 const indexCss = fs.readFileSync(path.join(DIR, 'index.html'), 'utf8');
@@ -59,6 +63,10 @@ checks.push(['no global viewport squeeze via transform:scale in the shell CSS', 
 checks.push(['motherboard form factor has no model-name guessing path', !/function detectFormFactor/.test(appCoreJs) && !/detectFormFactor/.test(psuExtensionJs) && !/\[A-Z\]\\d\{3\}M/.test(appCoreJs)]);
 checks.push(['mobile media query detaches content from the fixed-height shell',
   /@media \(max-width:760px\)\{[\s\S]*?\.main\{height:auto;min-height:100vh\}/.test(indexCss) && /\.content\{overflow-y:visible;flex:none\}/.test(indexCss)]);
+checks.push(['BLOODWORKS premium treatment stays visual-only and exposes stable UI markers',
+  bloodworksVisualJs.includes('data-bloodworks-premium="v1"') &&
+  bloodworksVisualJs.includes('data-bloodworks-bus') &&
+  !/Store\.(?:save|update|remove)|Actions\./.test(bloodworksVisualJs)]);
 
 const v1SaleSandbox = env.createSandbox();
 v1SaleSandbox.localStorage.setItem('profitnode_ledger_v1', JSON.stringify({
