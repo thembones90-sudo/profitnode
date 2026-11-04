@@ -66,7 +66,7 @@ const probe = `
   // --- NAV LABELS (terminal naming — replaces old 'RIG BUILD' assertion) ---
   render();
   const shellHtml = renderShell();
-  const navLabels = ['COMMAND','WAR CHEST','INTEL','RIG ASSEMBLY','MY RIG','BUILDS','PARTS VAULT','REPAIR BAY','ROAD TO','LEDGER','ARCHIVE','THE ROULETTE','BLACKBOX'];
+  const navLabels = ['COMMAND','WAR CHEST','INTEL','BLOODWORKS','MY RIG','BUILDS','PARTS VAULT','REPAIR BAY','ROAD TO','LEDGER','ARCHIVE','THE ROULETTE','BLACKBOX'];
   out.push(['nav shows terminal labels', navLabels.every(l => shellHtml.includes(l))]);
   out.push(['nav no longer shows legacy labels', !shellHtml.includes('RIG BUILD') && !shellHtml.includes('BUILD PLANNER') && !shellHtml.includes('>DASHBOARD<')]);
   out.push(['nav includes the roulette button', shellHtml.includes('data-route="roulette"')]);

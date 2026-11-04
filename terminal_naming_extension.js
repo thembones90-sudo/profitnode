@@ -9,7 +9,7 @@
   const routeNames = {
     dashboard: "COMMAND",
     analytics: "INTEL",
-    rigbuild: "RIG ASSEMBLY",
+    rigbuild: "BLOODWORKS",
     projects: "BUILDS",
     inventory: "PARTS VAULT",
     repairs: "REPAIR BAY",
@@ -34,7 +34,7 @@
       subtitle: "Profit, turnover and acquisition analysis"
     },
     "RIG BUILD": {
-      title: "RIG ASSEMBLY",
+      title: "BLOODWORKS",
       subtitle: "Plan \u00B7 simulate \u00B7 assemble \u00B7 test"
     },
     "PROJECTS": {
@@ -135,9 +135,9 @@
   }
 
   .mainnav .navlink[data-route="rigbuild"]{
-    --pn-nav-hover:#f0ca69;
-    --pn-nav-accent:#e7bc4e;
-    --pn-nav-rgb:231,188,78;
+    --pn-nav-hover:#ff7892;
+    --pn-nav-accent:#ff2349;
+    --pn-nav-rgb:255,35,73;
   }
 
   .mainnav .navlink[data-route="mail"]{
@@ -187,14 +187,14 @@
   }
 
   .mainnav .navlink[data-route="rigbuild"]:before{
-    content:"RIG ASSEMBLY";
+    content:"BLOODWORKS";
     position:absolute;
     left:28px;
     top:50%;
-    color:#e7bc4e;
+    color:#ff2349;
     background:none;
-    -webkit-text-fill-color:#e7bc4e;
-    filter:drop-shadow(0 0 3px rgba(231,188,78,.5)) drop-shadow(0 0 8px rgba(231,188,78,.2));
+    -webkit-text-fill-color:#ff2349;
+    filter:drop-shadow(0 0 3px rgba(255,35,73,.5)) drop-shadow(0 0 8px rgba(255,35,73,.2));
     pointer-events:none;
     transform:translateY(-50%);
     transition:left .15s ease,filter .15s ease;
@@ -210,9 +210,9 @@
     height:3px;
     opacity:0;
     pointer-events:none;
-    background:#e7bc4e;
+    background:#ff2349;
     clip-path:polygon(0 48%,18% 40%,24% 0,31% 84%,47% 35%,54% 100%,64% 24%,72% 64%,100% 50%,72% 82%,62% 45%,54% 100%,46% 58%,29% 92%,22% 22%,16% 68%,0 55%);
-    filter:drop-shadow(0 0 2px rgba(231,188,78,.9)) drop-shadow(0 0 7px rgba(231,188,78,.62));
+    filter:drop-shadow(0 0 2px rgba(255,35,73,.9)) drop-shadow(0 0 7px rgba(255,35,73,.62));
     transform-origin:left center;
     transition:left .15s ease,filter .15s ease;
     animation:pnRigAssemblyLightning 4.4s infinite steps(1,end);
@@ -228,17 +228,17 @@
 
   .mainnav .navlink[data-route="rigbuild"]:hover:before,
   .mainnav .navlink[data-route="rigbuild"].active:before{
-    filter:drop-shadow(0 0 4px rgba(231,188,78,.72)) drop-shadow(0 0 11px rgba(231,188,78,.4));
+    filter:drop-shadow(0 0 4px rgba(255,35,73,.72)) drop-shadow(0 0 11px rgba(255,35,73,.4));
   }
 
   @keyframes pnRigAssemblyChrome{
-    0%,61%,68%,100%{opacity:1;transform:translateY(-50%);filter:drop-shadow(0 0 3px rgba(231,188,78,.5)) drop-shadow(0 0 8px rgba(231,188,78,.2))}
-    62%{opacity:.42;transform:translate(1px,-50%);filter:drop-shadow(0 0 13px rgba(231,188,78,.86))}
-    63%{opacity:1;transform:translate(-1px,-50%);filter:drop-shadow(0 0 16px rgba(231,188,78,.92))}
-    64%{opacity:.68;transform:translateY(-50%);filter:drop-shadow(0 0 18px rgba(231,188,78,.95))}
-    65%{opacity:1;transform:translateY(-50%);filter:drop-shadow(0 0 15px rgba(231,188,78,.78))}
+    0%,61%,68%,100%{opacity:1;transform:translateY(-50%);filter:drop-shadow(0 0 3px rgba(255,35,73,.5)) drop-shadow(0 0 8px rgba(255,35,73,.2))}
+    62%{opacity:.42;transform:translate(1px,-50%);filter:drop-shadow(0 0 13px rgba(255,35,73,.86))}
+    63%{opacity:1;transform:translate(-1px,-50%);filter:drop-shadow(0 0 16px rgba(255,35,73,.92))}
+    64%{opacity:.68;transform:translateY(-50%);filter:drop-shadow(0 0 18px rgba(255,35,73,.95))}
+    65%{opacity:1;transform:translateY(-50%);filter:drop-shadow(0 0 15px rgba(255,35,73,.78))}
     66%{opacity:.54;transform:translate(1px,-50%)}
-    67%{opacity:1;transform:translateY(-50%);filter:drop-shadow(0 0 11px rgba(231,188,78,.68))}
+    67%{opacity:1;transform:translateY(-50%);filter:drop-shadow(0 0 11px rgba(255,35,73,.68))}
   }
 
   @keyframes pnRigAssemblyLightning{
