@@ -12,9 +12,16 @@ const errors = [];
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const check = (name, ok, detail = "") => checks.push([name, !!ok, detail]);
 
-function browserPath(){
+function browserPath() {
+  const explicit = process.env.CHROME_PATH || process.env.CHROMIUM_PATH;
+  if (explicit && fs.existsSync(explicit)) return explicit;
+  const unix = ["/usr/bin/google-chrome","/usr/bin/google-chrome-stable","/usr/bin/chromium","/usr/bin/chromium-browser"];
+  for (const candidate of unix) if (fs.existsSync(candidate)) return candidate;
   const roots = [process.env.PROGRAMFILES, process.env["PROGRAMFILES(X86)"], process.env.LOCALAPPDATA].filter(Boolean);
-  const rel = [["Google","Chrome","Application","chrome.exe"],["Microsoft","Edge","Application","msedge.exe"]];
+  const rel = [
+    ["Google", "Chrome", "Application", "chrome.exe"],
+    ["Microsoft", "Edge", "Application", "msedge.exe"]
+  ];
   for (const root of roots) for (const parts of rel) {
     const candidate = path.join(root, ...parts);
     if (fs.existsSync(candidate)) return candidate;
