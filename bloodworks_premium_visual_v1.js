@@ -1,12 +1,12 @@
 "use strict";
 
-(function installBloodworksPremiumVisualV3(){
+(function installBloodworksPremiumVisualV4(){
   if (typeof ROUTES === "undefined") return;
   const route = ROUTES.find(r => r && r.key === "rigbuild");
-  if (!route || route.__pnBloodworksPremiumV3) return;
+  if (!route || route.__pnBloodworksPremiumV4) return;
 
   const style = document.createElement("style");
-  style.id = "pn-bloodworks-premium-v3";
+  style.id = "pn-bloodworks-premium-v4";
   style.textContent = `
     .pn-rig-cmd-top{
       position:relative;isolation:isolate;min-height:104px;padding-top:18px!important;padding-bottom:18px!important;
@@ -25,7 +25,7 @@
     .pn-rig-cmd-top .topbar-actions .btn{min-height:40px!important;padding:9px 20px!important;border-color:rgba(255,77,107,.34)!important;background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,35,73,.045))!important;box-shadow:inset 0 1px rgba(255,255,255,.05)}
     .pn-rig-cmd-top .topbar-actions .btn-primary{border-color:#ff5874!important;background:linear-gradient(180deg,#ff3f60,#ca1038)!important;box-shadow:inset 0 1px rgba(255,255,255,.22),0 8px 22px rgba(184,8,42,.28)!important}
 
-    .pn-rig-cmd[data-bloodworks-premium="v3"]{
+    .pn-rig-cmd[data-bloodworks-premium="v4"]{
       --bw-red:#ff2349;--bw-red-hi:#ff5f79;--bw-line:rgba(255,69,101,.25);--bw-edge:rgba(255,255,255,.075);
       counter-reset:bw-bay;background:radial-gradient(circle at 70% 0,rgba(255,35,73,.045),transparent 28%),linear-gradient(180deg,rgba(10,8,14,.16),rgba(10,8,14,.4))}
     .pn-rig-cmd[data-rig-view=editor]{padding:16px clamp(14px,1.6vw,34px) 38px!important;max-width:none!important}
@@ -86,6 +86,37 @@
     .pn-rig-cmd .pn-rig-results-primary{gap:8px!important}
     .pn-rig-cmd .pn-rig-results-primary>.kpi{border-color:color-mix(in srgb,var(--k) 30%,transparent)!important;background:linear-gradient(150deg,color-mix(in srgb,var(--k) 9%,transparent),rgba(10,8,15,.72) 68%)!important;box-shadow:inset 0 1px rgba(255,255,255,.025),0 10px 24px rgba(0,0,0,.17)!important}
 
+    /* V4: the premium treatment stays dense. One aligned matrix beats scattered cards. */
+    @media(min-width:1181px){
+      .pn-rig-cmd-top{min-height:88px;padding:13px max(24px,calc((100% - 1780px)/2))!important}
+      .pn-rig-cmd-top:before{left:max(14px,calc((100% - 1780px)/2));top:14px;bottom:14px}
+      .pn-rig-cmd-top h1{font-size:33px!important}
+      .pn-rig-cmd[data-rig-view=editor]{padding:10px max(14px,calc((100% - 1780px)/2)) 28px!important}
+      .pn-rig-cmd[data-rig-view=editor]>.panel:first-of-type>.panel-body{display:block!important;padding:6px 10px 8px!important;background:linear-gradient(180deg,rgba(255,255,255,.012),transparent)!important}
+      .pn-rig-cmd[data-rig-view=editor] .rig-slot-row,
+      .pn-rig-cmd[data-rig-view=editor] .rig-slot-row:has(.ram-config-grid),
+      .pn-rig-cmd[data-rig-view=editor] .rig-slot-row:has(.pn-cap-details){
+        display:grid!important;grid-column:auto!important;
+        grid-template-columns:142px minmax(420px,1fr) 104px 104px auto!important;
+        grid-template-areas:"label control paid original actions"!important;
+        align-items:start;gap:8px!important;min-height:0;margin:0!important;padding:7px 9px 7px 12px!important;
+        border:0!important;border-bottom:1px solid color-mix(in srgb,var(--rc) 22%,rgba(255,255,255,.025))!important;border-left:3px solid color-mix(in srgb,var(--rc) 68%,transparent)!important;
+        clip-path:none!important;background:linear-gradient(90deg,color-mix(in srgb,var(--rc) 8%,transparent),transparent 25%)!important;box-shadow:none!important;transform:none!important}
+      .pn-rig-cmd[data-rig-view=editor] .rig-slot-row:last-of-type{border-bottom-color:transparent!important}
+      .pn-rig-cmd[data-rig-view=editor] .rig-slot-row:before{display:none}
+      .pn-rig-cmd[data-rig-view=editor] .rig-slot-row:has(.rig-empty-slot){min-height:0!important}
+      .pn-rig-cmd[data-rig-view=editor] .rig-slot-row:after{right:7px;top:auto;bottom:5px;font-size:7px;opacity:.72}
+      .pn-rig-cmd[data-rig-view=editor] .rig-slot-row:hover{transform:none!important;background:linear-gradient(90deg,color-mix(in srgb,var(--rc) 12%,transparent),rgba(255,255,255,.012) 38%,transparent)!important;box-shadow:inset 3px 0 12px -10px var(--rc)!important}
+      .pn-rig-cmd[data-rig-view=editor] .rig-slot-label{grid-area:label;padding:8px 8px 0 2px!important;font-size:13px!important;letter-spacing:.12em!important}
+      .pn-rig-cmd[data-rig-view=editor] .rig-slot-control{grid-area:control;grid-template-columns:185px minmax(0,1fr);gap:8px}
+      .pn-rig-cmd[data-rig-view=editor] .rig-slot-price{grid-area:paid;padding:0!important}
+      .pn-rig-cmd[data-rig-view=editor] .rig-slot-price.is-secondary{grid-area:original}
+      .pn-rig-cmd[data-rig-view=editor] .rig-slot-price:before{display:none}
+      .pn-rig-cmd[data-rig-view=editor] .rig-slot-actions{grid-area:actions;align-self:start;padding:4px 0 0}
+      .pn-rig-cmd[data-rig-view=editor] .rig-empty-slot{min-width:180px;width:max-content}
+      .pn-rig-cmd[data-rig-view=editor] .rig-add-storage{display:inline-flex;margin:7px 0 2px 145px!important}
+    }
+
     @media(max-width:1550px){
       .pn-rig-cmd[data-rig-view=editor]>.panel:first-of-type>.panel-body{grid-template-columns:minmax(0,1fr)}
       .pn-rig-cmd[data-rig-view=editor] .rig-slot-row:has(.ram-config-grid),.pn-rig-cmd[data-rig-view=editor] .rig-slot-row:has(.pn-cap-details){grid-column:auto}
@@ -105,7 +136,7 @@
     let html = String(prevRender.apply(this, arguments));
     const match = html.match(/<div data-rig-view="([^"]+)" class="pn-rig-cmd content([^"]*)">/);
     if (!match) return html;
-    html = html.replace(match[0], match[0].replace('>', ' data-bloodworks-premium="v3">'));
+    html = html.replace(match[0], match[0].replace('>', ' data-bloodworks-premium="v4">'));
     if (match[1] === "editor") {
       const total = (html.match(/class="rig-slot-row/g) || []).length;
       const empty = (html.match(/class="rig-empty-slot/g) || []).length;
@@ -114,5 +145,5 @@
     }
     return html;
   };
-  route.__pnBloodworksPremiumV3 = true;
+  route.__pnBloodworksPremiumV4 = true;
 })();

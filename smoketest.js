@@ -64,7 +64,7 @@ checks.push(['motherboard form factor has no model-name guessing path', !/functi
 checks.push(['mobile media query detaches content from the fixed-height shell',
   /@media \(max-width:760px\)\{[\s\S]*?\.main\{height:auto;min-height:100vh\}/.test(indexCss) && /\.content\{overflow-y:visible;flex:none\}/.test(indexCss)]);
 checks.push(['BLOODWORKS premium treatment stays visual-only and exposes stable UI markers',
-  bloodworksVisualJs.includes('data-bloodworks-premium="v3"') &&
+  bloodworksVisualJs.includes('data-bloodworks-premium="v4"') &&
   bloodworksVisualJs.includes('pn-bw-bay-count') &&
   !/Store\.(?:save|update|remove)|Actions\./.test(bloodworksVisualJs)]);
 
