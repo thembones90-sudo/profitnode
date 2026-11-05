@@ -61,6 +61,7 @@ window.__PN_SCRIPTS = [
   "rig_assembly_compact_extension.js?v=bloodworks-console-v7-20261105",
   "bloodworks_premium_visual_v1.js?v=bloodworks-console-v7-20261105",
   "bloodworks_list_premium_v1.js?v=bloodworks-list-premium-v1-20261105",
+  "bloodworks_original_price_mute_v1.js?v=bloodworks-original-price-mute-v1-20261105",
   "scroll_preserve_extension.js?v=scroll-preserve-v1-20261003",
   "audit_integrity_extension.js?v=audit-correctness-v1",
   "cloud_sync_extension.js?v=one-authoritative-database-20261104",
