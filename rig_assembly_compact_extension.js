@@ -191,7 +191,7 @@
     const corePresent = ["CPU","GPU","MOBO","RAM","PSU"].filter(k => rig.slots && rig.slots[k]).length;
     const ratingStatus = derived.hardware.complete ? derived.hardware.performance+" PERFORMANCE · "+derived.hardware.tier : "UNRATED · "+corePresent+"/5 CORE";
     const detailStatus = escHtml(rig.family || "UNTITLED RIG")+" · "+STATUS_LABEL(rig.status)+" · "+STATUS_LABEL(rig.purpose || "FLIP")+(rig.notes && rig.notes.trim() ? " · NOTES" : " · NO NOTES");
-    const checkStatus = escHtml(check.verdict)+" · "+(counts.PASS || 0)+" VERIFIED · "+(counts.UNVERIFIED || 0)+" UNVERIFIED";
+    const checkStatus = escHtml(check.verdict)+" · "+(counts.FAIL ? counts.FAIL+" FAIL · " : "")+(counts.WARN ? counts.WARN+" WARN · " : "")+(counts.PASS || 0)+" VERIFIED · "+(counts.UNVERIFIED || 0)+" UNVERIFIED";
     const severe = check.verdict === "FAIL" || check.verdict === "WARNING";
 
     const contentOpen = '<div data-rig-view="editor" class="pn-rig-cmd content rig-editor-content">';

@@ -120,6 +120,51 @@ async function main(){
     const shot = await cdp.send("Page.captureScreenshot", {format:"png", captureBeyondViewport:false});
     fs.writeFileSync(process.env.PN_RIG_SCREENSHOT || path.join(os.tmpdir(), "profitnode-rig-compact-1920.png"), Buffer.from(shot.data, "base64"));
     check("compact editor renders a valid 1920x1080 frame", !!shot.data && shot.data.length > 10000);
+
+    await evaluate(`(()=>{window.__pnKeepDraft=JSON.stringify(state.rigDraft);const part=(t,l,c,o)=>({kind:'PLANNED',catalogType:t,label:l,cost:c,originalPrice:o,currency:'RSD'}),r=newRigDraft('BLOODWORKS CONSOLE TEST');r.budget=90000;
+      r.slots.CPU=part('CPU','AMD Ryzen 5 5600',10500,14000);r.slots.GPU=part('GPU','NVIDIA RTX 3060 12GB',26000,32000);r.slots.MOBO=part('MOBO','ASRock B450M Pro4 R2.0',7200,9000);
+      r.slots.RAM=Object.assign(part('RAM','Corsair Vengeance LPX 16GB (2x8GB) DDR4 3200MHz',4200,5500),{ram:{technology:'DDR4',dimmType:'UDIMM',moduleCount:2,perModuleCapacity:8,totalCapacity:16,speed:3200,casLatency:16}});
+      r.slots.PSU=part('PSU','Montech CENTURY 550W',6000,7500);r.slots.CASE=part('CASE','Generic ATX Airflow Case',3500,4500);r.slots.COOLER=part('COOLER','Thermalright Assassin X 120 Refined SE',2100,2600);r.slots.STORAGE=part('STORAGE','Samsung 970 EVO Plus 1TB',5400,7000);
+      state.rigDraft=r;state.rigCompactPanels={};render();saveRigDraft();render();const g=document.getElementById('pn-cloud-gate');if(g)g.remove();document.querySelector('.content').scrollTop=0;return true})()`);
+    await delay(150);
+    const consoleUi = await evaluate(`(()=>{const rows=Array.from(document.querySelectorAll('.rig-slot-row')),label=r=>r.querySelector('.rig-slot-label').textContent.trim().toUpperCase(),box=e=>{const b=e.getBoundingClientRect();return{l:Math.round(b.left),r:Math.round(b.right),w:Math.round(b.width),h:Math.round(b.height)}};
+      const colors={};rows.forEach(r=>colors[label(r)]=getComputedStyle(r.querySelector('.rig-slot-label')).color);
+      const spacing=e=>{if(!e)return null;const s=getComputedStyle(e),f=parseFloat(s.fontSize),ws=parseFloat(s.wordSpacing)||0,ls=parseFloat(s.letterSpacing)||0;return{text:e.textContent.trim().slice(0,30),ratioWord:+(ws/f).toFixed(2),ratioLetter:+(ls/f).toFixed(2)}};
+      const pseudo=(e,p)=>{const s=getComputedStyle(e,p),f=parseFloat(s.fontSize);return{text:s.content,ratioWord:+((parseFloat(s.wordSpacing)||0)/f).toFixed(2),ratioLetter:+((parseFloat(s.letterSpacing)||0)/f).toFixed(2)}};
+      const kpi=k=>document.querySelector('[data-bw-kpi="'+k+'"]');
+      const labels=[pseudo(document.querySelector('.pn-rig-cmd-top h1'),'::before'),spacing(document.querySelector('.pn-rig-cmd[data-rig-view=editor]>.panel:first-of-type>.panel-head h2')),spacing(rows.map(r=>r.querySelector('.rig-slot-label')).find(x=>x.textContent.trim().toUpperCase()==='PRIMARY STORAGE'))]
+        .concat(Array.from(document.querySelectorAll('.pn-rig-fold>summary>b')).map(spacing)).concat([spacing(kpi('expected-sale-price').querySelector('.kpi-label')),spacing(kpi('target-margin').querySelector('.kpi-label'))]).concat(Array.from(document.querySelectorAll('.rig-slot-columns>span')).map(spacing));
+      const cols=rows.map(r=>({paid:box(r.querySelector('.rig-slot-price:not(.is-secondary) input')),orig:box(r.querySelector('.rig-slot-price.is-secondary input')),act:box(r.querySelector('.rig-slot-actions')),src:box(r.querySelector('.rig-slot-control>select')),part:box(r.querySelector('.rig-slot-detail'))}));
+      const same=k=>cols.every(c=>Math.abs(c[k].l-cols[0][k].l)<=1&&Math.abs(c[k].r-cols[0][k].r)<=1);
+      const single=rows.filter(r=>['CPU','GPU','MOTHERBOARD','PSU','PRIMARY STORAGE'].includes(label(r))).map(r=>Math.round(r.getBoundingClientRect().height));
+      const profit=kpi('expected-profit').querySelector('.kpi-value');
+      return{colors,unique:new Set(Object.values(colors)).size,labels,aligned:{paid:same('paid'),orig:same('orig'),act:same('act'),src:same('src'),part:same('part')},partWidest:cols.every(c=>c.part.w>c.src.w*2&&c.part.w>c.paid.w*3),header:Array.from(document.querySelectorAll('.rig-slot-columns>span')).map(x=>x.textContent).join('|'),headerVisible:getComputedStyle(document.querySelector('.rig-slot-columns')).display==='grid',single,
+        unsetProfitColor:getComputedStyle(profit).color,saleState:document.querySelector('.pn-rig-results-primary').dataset.bwSale,checkSummary:document.querySelector('[data-rig-fold=check]>summary').textContent}})()`);
+    const expectColors = {"CPU":"rgb(57, 198, 244)","GPU":"rgb(178, 92, 255)","RAM":"rgb(47, 224, 168)","MOTHERBOARD":"rgb(242, 201, 76)","PSU":"rgb(255, 138, 61)","CASE":"rgb(185, 195, 208)","COOLER":"rgb(255, 95, 176)","PRIMARY STORAGE":"rgb(79, 107, 255)"};
+    check("BLOODWORKS keeps one identity color per component category", consoleUi.unique === 8 && Object.keys(expectColors).every(k => consoleUi.colors[k] === expectColors[k]), JSON.stringify(consoleUi.colors));
+    check("multi-word BLOODWORKS labels have explicit word spacing without extreme tracking", consoleUi.labels.length >= 14 && consoleUi.labels.every(x => x && x.ratioWord >= 0.3 && x.ratioLetter <= 0.18), JSON.stringify(consoleUi.labels));
+    check("component matrix exposes the six-column header", consoleUi.headerVisible && consoleUi.header === "COMPONENT|SOURCE|SELECTED PART|TRUE COST|ORIGINAL PRICE|FAMILY", consoleUi.header);
+    check("source, part, prices and FAMILY align vertically across every bay", Object.values(consoleUi.aligned).every(Boolean) && consoleUi.partWidest, JSON.stringify(consoleUi.aligned));
+    check("single-line bays stay compact at 1920px", consoleUi.single.length === 5 && consoleUi.single.every(h => h <= 76), JSON.stringify(consoleUi.single));
+    check("unset sale price keeps profit subdued instead of red", consoleUi.saleState === "unset" && consoleUi.unsetProfitColor === "rgb(111, 104, 118)", JSON.stringify(consoleUi));
+    check("Build Check summary shows verdict and counts while collapsed", /^BUILD CHECK(PASS|WARNING|FAIL|UNVERIFIED) · .*\d+ VERIFIED · \d+ UNVERIFIED/.test(consoleUi.checkSummary.replace(/(COLLAPSE|EXPAND)$/, "")), consoleUi.checkSummary);
+    const hoverBefore = await evaluate(`(()=>{const r=document.querySelector('.rig-slot-row'),b=r.getBoundingClientRect(),l=r.querySelector('.rig-slot-label').getBoundingClientRect();return{x:Math.round(b.left+b.width*0.3),y:Math.round(b.top+8),pad:getComputedStyle(r).padding,label:[l.left,l.top].join(',')}})()`);
+    await cdp.send("Input.dispatchMouseEvent", {type:"mouseMoved", x:hoverBefore.x, y:hoverBefore.y});
+    await delay(250);
+    const hoverAfter = await evaluate(`(()=>{const r=document.querySelector('.rig-slot-row'),l=r.querySelector('.rig-slot-label').getBoundingClientRect();return{hover:r.matches(':hover'),pad:getComputedStyle(r).padding,label:[l.left,l.top].join(',')}})()`);
+    check("row hover never moves text or changes padding", hoverAfter.hover && hoverAfter.pad === hoverBefore.pad && hoverAfter.label === hoverBefore.label, JSON.stringify({hoverBefore, hoverAfter}));
+    const salePos = await evaluate(`(()=>{state.rigDraft.expectedSalePrice=90000;render();const v=document.querySelector('[data-bw-kpi="expected-profit"] .kpi-value');return{state:document.querySelector('.pn-rig-results-primary').dataset.bwSale,color:getComputedStyle(v).color}})()`);
+    check("positive expected profit uses restrained green", salePos.state === "set" && salePos.color === "rgb(95, 224, 144)", JSON.stringify(salePos));
+    for (const [width, height] of [[1440,900],[1024,768],[768,1024],[390,844]]) {
+      await cdp.send("Emulation.setDeviceMetricsOverride", {width,height,deviceScaleFactor:1,mobile:false});
+      await delay(150);
+      const full = await evaluate(`(()=>{const c=document.querySelector('.content'),rows=Array.from(document.querySelectorAll('.rig-slot-row'));return{docOverflow:document.documentElement.scrollWidth>document.documentElement.clientWidth,contentOverflow:c.scrollWidth>c.clientWidth,visible:rows.every(r=>{const p=r.querySelector('.rig-slot-price input'),l=r.querySelector('.rig-slot-label'),d=r.querySelector('.rig-slot-detail');return p.getBoundingClientRect().width>40&&l.getBoundingClientRect().width>20&&d.getBoundingClientRect().width>120})}})()`);
+      check(width + "px fully-populated BLOODWORKS has no horizontal overflow and keeps labels, parts and costs visible", !full.docOverflow && !full.contentOverflow && full.visible, JSON.stringify(full));
+    }
+    await cdp.send("Emulation.setDeviceMetricsOverride", {width:1920,height:1080,deviceScaleFactor:1,mobile:false});
+    await evaluate(`(()=>{state.rigDraft=JSON.parse(window.__pnKeepDraft);render();return true})()`);
+    await delay(120);
+
     for (const width of [1440, 1024, 768, 390]) {
       await cdp.send("Emulation.setDeviceMetricsOverride", {width,height:900,deviceScaleFactor:1,mobile:false});
       await delay(120);
