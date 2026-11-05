@@ -114,12 +114,19 @@ async function main(){
     check("rating and project details default collapsed", initial.folds.some(x=>x.key === "rating" && !x.open) && initial.folds.some(x=>x.key === "details" && !x.open), JSON.stringify(initial.folds));
     check("Build Check follows severity-controlled default", initial.folds.some(x=>x.key === "check"), JSON.stringify(initial.folds));
     check("1920x1080 stays free of horizontal overflow", !initial.docOverflow && !initial.contentOverflow, JSON.stringify(initial));
-    check("financial summary compacts to one eight-tile row", initial.columns === 8, JSON.stringify(initial));
-    check("default workflow fits close to one desktop viewport", initial.scrollHeight <= 1300, JSON.stringify(initial));
+    check("financial summary uses a readable four-column command matrix", initial.columns === 4, JSON.stringify(initial));
+    check("premium command deck stays vertically disciplined", initial.scrollHeight <= 1520, JSON.stringify(initial));
     await evaluate(`(()=>{const gate=document.getElementById('pn-cloud-gate');if(gate)gate.remove();return true})()`);
     const shot = await cdp.send("Page.captureScreenshot", {format:"png", captureBeyondViewport:false});
     fs.writeFileSync(process.env.PN_RIG_SCREENSHOT || path.join(os.tmpdir(), "profitnode-rig-compact-1920.png"), Buffer.from(shot.data, "base64"));
     check("compact editor renders a valid 1920x1080 frame", !!shot.data && shot.data.length > 10000);
+    await cdp.send("Emulation.setDeviceMetricsOverride", {width:3840,height:2160,deviceScaleFactor:1,mobile:false});
+    await delay(120);
+    const ultraWide = await evaluate(`(()=>{const content=document.querySelector('.content'),deck=document.querySelector('.pn-bw-loadout'),results=document.querySelector('.pn-rig-results-primary');return{deckWidth:Math.round(deck.getBoundingClientRect().width),resultColumns:getComputedStyle(results).gridTemplateColumns.split(' ').length,centerDelta:Math.round(Math.abs((deck.getBoundingClientRect().left+deck.getBoundingClientRect().right)/2-(content.getBoundingClientRect().left+content.getBoundingClientRect().right)/2)),docOverflow:document.documentElement.scrollWidth>document.documentElement.clientWidth,contentOverflow:content.scrollWidth>content.clientWidth}})()`);
+    check("3840px BLOODWORKS remains a centered command deck instead of a stretched spreadsheet",ultraWide.deckWidth<=1680&&ultraWide.resultColumns===4&&ultraWide.centerDelta<=2&&!ultraWide.docOverflow&&!ultraWide.contentOverflow,JSON.stringify(ultraWide));
+    const ultraShot = await cdp.send("Page.captureScreenshot", {format:"png", captureBeyondViewport:false});
+    fs.writeFileSync(path.join(os.tmpdir(), "profitnode-bloodworks-3840.png"), Buffer.from(ultraShot.data, "base64"));
+    await cdp.send("Emulation.setDeviceMetricsOverride", {width:1920,height:1080,deviceScaleFactor:1,mobile:false});
     for (const width of [1440, 1024, 768, 390]) {
       await cdp.send("Emulation.setDeviceMetricsOverride", {width,height:900,deviceScaleFactor:1,mobile:false});
       await delay(120);
