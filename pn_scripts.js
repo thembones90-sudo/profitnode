@@ -26,6 +26,7 @@ window.__PN_SCRIPTS = [
   "treasury_extension.js?v=wc-source-mark-legibility-v1",
   "road_to_extension.js?v=roadto-eur-funds-v1",
   "road_to_premium_extension.js?v=roadto-premium-campaign-v1-20261021",
+  "road_to_milestone_collision_v1.js?v=roadto-milestone-collision-v1",
   "my_rig_extension.js?v=bloodworks-electric-red-v1-20261104",
   "my_rig_cleanup_v1.js?v=my-rig-cleanup-v1",
   "sidebar_cleanup_extension.js?v=product-refinement-v3",
