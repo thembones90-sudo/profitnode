@@ -1,12 +1,12 @@
 "use strict";
 
-(function installBloodworksPremiumVisualV2(){
+(function installBloodworksPremiumVisualV1(){
   if (typeof ROUTES === "undefined") return;
   const route = ROUTES.find(r => r && r.key === "rigbuild");
-  if (!route || route.__pnBloodworksPremiumV2) return;
+  if (!route || route.__pnBloodworksPremiumV1) return;
 
   const style = document.createElement("style");
-  style.id = "pn-bloodworks-premium-v2";
+  style.id = "pn-bloodworks-premium-v1";
   style.textContent = `
     .pn-rig-cmd-top{position:relative;isolation:isolate;border-bottom-color:rgba(255,35,73,.58)!important;background:
       linear-gradient(90deg,rgba(255,35,73,.13),transparent 24%,transparent 76%,rgba(255,35,73,.06)),
@@ -48,55 +48,7 @@
       radial-gradient(circle at 92% 10%,rgba(255,35,73,.08),transparent 25%),
       linear-gradient(135deg,rgba(255,255,255,.018),transparent 28%),linear-gradient(180deg,rgba(25,20,33,.96),rgba(15,12,21,.96))!important}
     .pn-rig-cmd .pn-shop-read{border-color:rgba(255,35,73,.24)!important;background:linear-gradient(90deg,rgba(255,35,73,.065),rgba(15,12,21,.9) 38%)!important}
-    .pn-rig-cmd[data-rig-view="editor"]>*{width:min(1680px,100%);margin-left:auto!important;margin-right:auto!important;box-sizing:border-box}
-    .pn-rig-cmd[data-rig-view="editor"]{padding-left:max(18px,calc((100% - 1740px)/2))!important;padding-right:max(18px,calc((100% - 1740px)/2))!important}
-    .pn-rig-cmd .pn-bw-loadout{overflow:hidden;border-color:rgba(255,35,73,.38)!important;background:linear-gradient(180deg,rgba(27,21,35,.98),rgba(10,8,15,.98))!important;box-shadow:0 18px 50px rgba(0,0,0,.36),inset 0 1px rgba(255,255,255,.035)}
-    .pn-rig-cmd .pn-bw-loadout-head{min-height:62px!important;padding:11px 17px!important;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(90deg,rgba(255,35,73,.12),rgba(255,35,73,.025) 42%,transparent)!important}
-    .pn-rig-cmd .pn-bw-loadout-head h2{margin:2px 0 0!important;font-size:18px!important;letter-spacing:.18em!important;color:#fff!important;text-shadow:0 0 20px rgba(255,35,73,.18)}
-    .pn-rig-cmd .pn-bw-kicker{display:block;font:700 8px/1 var(--font-mono);letter-spacing:.24em;color:var(--bw-red-soft)}
-    .pn-rig-cmd .pn-bw-baycount{padding:6px 10px;border:1px solid rgba(255,35,73,.3);background:rgba(255,35,73,.055);font:700 9px/1 var(--font-mono);letter-spacing:.18em;color:#cabfcf}
-    .pn-rig-cmd .pn-bw-loadout>.panel-body{padding:10px 14px 14px!important}
-    .pn-rig-cmd .pn-bw-column-head{grid-template-columns:138px minmax(0,1fr) 118px 118px 88px!important;margin:0 0 5px;padding:0 12px 7px!important;border-bottom:1px solid rgba(255,35,73,.24)!important;color:#766d7e!important}
-    .pn-rig-cmd .pn-bw-column-head span{font-size:8px!important;letter-spacing:.18em!important}
-    .pn-rig-cmd .rig-slot-row{grid-template-columns:138px minmax(0,1fr) 118px 118px 88px!important;gap:12px!important;min-height:67px;margin:5px 0!important;padding:10px 12px 10px 17px!important;align-items:center!important;border:1px solid color-mix(in srgb,var(--rc) 25%,rgba(255,255,255,.035))!important;border-left:3px solid var(--rc)!important;background:linear-gradient(90deg,color-mix(in srgb,var(--rc) 12%,#11101a) 0,rgba(17,14,24,.97) 24%,rgba(10,8,15,.97) 72%)!important;clip-path:polygon(0 0,calc(100% - 11px) 0,100% 11px,100% 100%,0 100%);box-shadow:inset 0 1px rgba(255,255,255,.025),inset 11px 0 30px -26px var(--rc)!important}
-    .pn-rig-cmd .rig-slot-row:before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:2px;background:var(--rc);box-shadow:0 0 12px var(--rc);opacity:.72}
-    .pn-rig-cmd .rig-slot-row:after{top:8px;right:12px;color:color-mix(in srgb,var(--rc) 24%,#665f6d);font-size:7px}
-    .pn-rig-cmd .rig-slot-row:hover{transform:translateY(-1px);border-color:color-mix(in srgb,var(--rc) 52%,transparent)!important;background:linear-gradient(90deg,color-mix(in srgb,var(--rc) 17%,#11101a),rgba(17,14,24,.99) 28%,rgba(10,8,15,.99) 72%)!important;box-shadow:inset 0 1px rgba(255,255,255,.04),0 10px 25px rgba(0,0,0,.3),0 0 18px color-mix(in srgb,var(--rc) 10%,transparent)!important}
-    .pn-rig-cmd .rig-slot-label{position:relative;padding:0 0 0 9px!important;font-size:16px!important;line-height:1.15!important}
-    .pn-rig-cmd .rig-slot-label:after{content:"COMPONENT";display:block;margin-top:6px;font:700 7px/1 var(--font-mono);letter-spacing:.2em;color:rgba(218,209,223,.28);text-shadow:none}
-    .pn-rig-cmd .rig-slot-row:has([data-rig-slot-mode="CPU"]) .rig-slot-label:after{content:"PROCESSOR CORE"}
-    .pn-rig-cmd .rig-slot-row:has([data-rig-slot-mode="GPU"]) .rig-slot-label:after{content:"GRAPHICS CORE"}
-    .pn-rig-cmd .rig-slot-row:has([data-rig-slot-mode="RAM"]) .rig-slot-label:after{content:"MEMORY ARRAY"}
-    .pn-rig-cmd .rig-slot-row:has([data-rig-slot-mode="MOBO"]) .rig-slot-label:after{content:"SYSTEM BOARD"}
-    .pn-rig-cmd .rig-slot-row:has([data-rig-slot-mode="PSU"]) .rig-slot-label:after{content:"POWER CORE"}
-    .pn-rig-cmd .rig-slot-row:has([data-rig-slot-mode="CASE"]) .rig-slot-label:after{content:"CHASSIS"}
-    .pn-rig-cmd .rig-slot-row:has([data-rig-slot-mode="COOLER"]) .rig-slot-label:after{content:"THERMAL SYSTEM"}
-    .pn-rig-cmd .rig-slot-row:has([data-rig-slot-mode^="STORAGE"]) .rig-slot-label:after{content:"DATA VAULT"}
-    .pn-rig-cmd .rig-slot-control{min-width:0;display:grid;grid-template-columns:190px minmax(0,1fr);gap:10px;align-items:start}
-    .pn-rig-cmd .rig-slot-control>.rig-slot-detail{min-width:0;margin:0!important}
-    .pn-rig-cmd .rig-slot-control>select{width:100%;min-width:0}
-    .pn-rig-cmd .rig-slot-detail>input,.pn-rig-cmd .rig-slot-detail>select{width:100%;min-width:0}
-    .pn-rig-cmd .rig-slot-row input,.pn-rig-cmd .rig-slot-row select{min-height:38px!important;border-color:rgba(255,35,73,.22)!important;background:linear-gradient(180deg,rgba(18,14,25,.96),rgba(8,7,13,.96))!important;font-size:13px!important}
-    .pn-rig-cmd .rig-slot-price{align-self:stretch;display:flex;align-items:center}
-    .pn-rig-cmd .rig-slot-price input{text-align:right;font:700 14px/1 var(--font-mono)!important}
-    .pn-rig-cmd .rig-slot-actions{align-self:center}
-    .pn-rig-cmd .rig-slot-actions .btn{min-width:76px;color:#d8cedc!important;border-color:color-mix(in srgb,var(--rc) 40%,transparent)!important;background:color-mix(in srgb,var(--rc) 8%,#0d0b12)!important}
-    .pn-rig-cmd .rig-catalog-meta,.pn-rig-cmd .rig-catalog-help{grid-column:1/-1;margin:5px 0 0!important;color:#8e8495!important}
-    .pn-rig-cmd .pn-rig-results-primary{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:9px!important;margin-top:10px!important}
-    .pn-rig-cmd[data-rig-view="editor"][data-bloodworks-premium="v2"] .pn-rig-results-primary{grid-template-columns:repeat(4,minmax(0,1fr))!important}
-    .pn-rig-cmd .pn-rig-results-primary>.kpi{min-height:96px!important;padding:13px 15px 12px 18px!important;background:linear-gradient(145deg,color-mix(in srgb,var(--k) 8%,#17121e),#0b0910 68%)!important;border-color:color-mix(in srgb,var(--k) 28%,transparent)!important;clip-path:polygon(0 0,calc(100% - 13px) 0,100% 13px,100% 100%,0 100%)}
-    .pn-rig-cmd .pn-rig-results-primary>.kpi:after{content:"";position:absolute;right:9px;top:9px;width:16px;height:1px;background:var(--k);opacity:.5}
-    .pn-rig-cmd .pn-rig-results-primary .kpi-label{font-size:10px!important;letter-spacing:.17em!important}
-    .pn-rig-cmd .pn-rig-results-primary .kpi-value,.pn-rig-cmd .pn-rig-results-primary .planner-kpi-input{font-size:25px!important}
-    .pn-rig-cmd .pn-rig-results-primary .kpi-sub{font-size:10px!important;margin-top:5px!important}
-    .pn-rig-cmd .pn-rig-fold{min-height:48px!important;margin-top:9px!important;border-left:3px solid rgba(255,35,73,.55)!important;clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,0 100%)}
-    .pn-rig-cmd .pn-rig-fold>summary{min-height:48px!important;padding:9px 14px!important}
-    .pn-rig-cmd .pn-shop-read{min-height:48px;display:grid!important;grid-template-columns:auto auto 1fr;gap:13px!important;align-items:center;padding:10px 15px!important;border-left:3px solid var(--bw-red)!important}
-    .pn-rig-cmd .pn-shop-read>span:last-child{color:#b8aebd!important}
-    @media (max-width:1350px){.pn-rig-cmd .rig-slot-control{grid-template-columns:160px minmax(0,1fr)}.pn-rig-cmd .rig-slot-row,.pn-rig-cmd .pn-bw-column-head{grid-template-columns:120px minmax(0,1fr) 105px 105px 80px!important}}
-    @media (max-width:1180px){.pn-rig-cmd .rig-slot-row{grid-template-columns:1fr 1fr!important}.pn-rig-cmd .pn-bw-column-head{display:none!important}.pn-rig-cmd .rig-slot-control{grid-column:1/-1;grid-template-columns:180px minmax(0,1fr)}.pn-rig-cmd .rig-slot-label{grid-column:1/-1}.pn-rig-cmd .rig-slot-price{display:block}.pn-rig-cmd .rig-slot-actions{position:absolute;right:12px;top:29px}}
-    @media (max-width:900px){.pn-bloodworks-bus{gap:10px;overflow:hidden}.pn-bloodworks-bus span:not(.is-live),.pn-bloodworks-bus .pn-bw-rule{display:none}.pn-rig-cmd[data-rig-view="editor"][data-bloodworks-premium="v2"] .pn-rig-results-primary{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
-    @media (max-width:620px){.pn-rig-cmd[data-rig-view="editor"]{padding-left:10px!important;padding-right:10px!important}.pn-rig-cmd .rig-slot-control{grid-template-columns:1fr}.pn-rig-cmd .rig-slot-row{grid-template-columns:1fr!important}.pn-rig-cmd .rig-slot-price,.pn-rig-cmd .rig-slot-actions{position:static;display:block}.pn-rig-cmd[data-rig-view="editor"][data-bloodworks-premium="v2"] .pn-rig-results-primary{grid-template-columns:1fr!important}.pn-rig-cmd .pn-shop-read{grid-template-columns:1fr!important}}
+    @media (max-width:900px){.pn-bloodworks-bus{gap:10px;overflow:hidden}.pn-bloodworks-bus span:not(.is-live),.pn-bloodworks-bus .pn-bw-rule{display:none}}
     @media (prefers-reduced-motion:reduce){.pn-rig-cmd *{transition:none!important}.pn-bloodworks-bus .is-live i{box-shadow:none}}
   `;
   document.head.appendChild(style);
@@ -107,14 +59,9 @@
     const match = html.match(/<div data-rig-view="([^"]+)" class="pn-rig-cmd content([^"]*)">/);
     if (!match) return html;
     const view = match[1] === "editor" ? "CONFIGURATION BAY" : match[1] === "family" ? "BUILD LINE" : "FORGE CONTROL";
-    const bus = '<div class="pn-bloodworks-bus" data-bloodworks-bus aria-label="BLOODWORKS systems status"><span class="is-live"><i></i>FORGE LINK · ACTIVE</span><span class="pn-bw-rule"></span><b>'+view+'</b><span>LIVE COST BASIS</span><span>COMPATIBILITY CORE</span></div>';
-    html = html.replace(match[0], match[0].replace('>', ' data-bloodworks-premium="v2">') + bus);
-    if (match[1] === "editor") {
-      const bayCount = (html.match(/class="rig-slot-row/g) || []).length;
-      html = html.replace('<div class="panel"><div class="panel-head"><h2>Slots</h2>', '<div class="panel pn-bw-loadout"><div class="panel-head pn-bw-loadout-head"><div><span class="pn-bw-kicker">HARDWARE MATRIX</span><h2>COMPONENT LOADOUT</h2></div><span class="pn-bw-baycount">'+bayCount+' BAYS ONLINE</span>');
-      html = html.replace('<div class="rig-slot-columns">', '<div class="rig-slot-columns pn-bw-column-head">');
-    }
+    const bus = '<div class="pn-bloodworks-bus" data-bloodworks-bus aria-label="BLOODWORKS systems status"><span class="is-live"><i></i>FORGE LINK</span><span class="pn-bw-rule"></span><b>'+view+'</b><span>LIVE COST BASIS</span><span>COMPATIBILITY CORE</span></div>';
+    html = html.replace(match[0], match[0].replace('>', ' data-bloodworks-premium="v1">') + bus);
     return html;
   };
-  route.__pnBloodworksPremiumV2 = true;
+  route.__pnBloodworksPremiumV1 = true;
 })();
