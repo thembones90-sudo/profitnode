@@ -174,6 +174,7 @@
       ${E} .rig-slot-price.is-secondary:before{content:"ORIGINAL"}
     }
     @media(max-width:1000px){
+      ${E} .pn-bw-dot{top:15px}
       ${E} .rig-slot-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto!important;grid-template-areas:"label source source" "part part part" "paid orig actions"!important;gap:6px 8px!important;padding:8px 9px 8px 11px!important}
       ${E} .rig-slot-row:after{display:none}
       ${E} .rig-slot-label:after{content:"BAY " counter(bw-bay,decimal-leading-zero);color:#6f6876;font:600 8px/1 var(--font-mono,var(--mono));letter-spacing:.08em;word-spacing:.2em}
@@ -217,6 +218,52 @@
     ${E} .pn-bw-ram-adv>summary span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:500 10.5px var(--mono);letter-spacing:0;word-spacing:normal;color:#6f6876}
     ${E} .pn-bw-ram-adv>summary:focus-visible{outline:2px solid var(--rc);outline-offset:-2px}
     ${E} .pn-bw-ram-adv>.ram-config-grid{margin:0;padding:2px 8px 8px}
+
+    .pn-rig-cmd-top .sub .pn-bw-sim{display:inline-flex;align-items:center;gap:6px;margin-left:10px;padding:2px 8px 2px 7px;border:1px solid rgba(116,199,255,.28);background:rgba(116,199,255,.06);color:#9fd4ff;font:600 9.5px/1.3 var(--stamp);letter-spacing:.1em;vertical-align:1px;cursor:help}
+    .pn-rig-cmd-top .sub .pn-bw-sim:before{content:"";width:5px;height:5px;border-radius:50%;background:#74c7ff;box-shadow:0 0 6px rgba(116,199,255,.7)}
+    .pn-rig-cmd-top .pn-bw-more{position:relative}
+    .pn-rig-cmd-top .pn-bw-more>summary{display:flex;align-items:center;justify-content:center;width:40px;min-height:38px;border:1px solid rgba(255,255,255,.12);background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.01));color:#cfc6d4;cursor:pointer;list-style:none;font:700 14px/1 var(--mono);letter-spacing:.1em}
+    .pn-rig-cmd-top .pn-bw-more>summary::-webkit-details-marker{display:none}
+    .pn-rig-cmd-top .pn-bw-more>summary:hover,.pn-rig-cmd-top .pn-bw-more[open]>summary,.pn-rig-cmd-top .pn-bw-more>summary:focus-visible{border-color:rgba(255,255,255,.28);color:#fff;outline:0}
+    .pn-rig-cmd-top .pn-bw-more-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:60;min-width:190px;padding:6px;border:1px solid rgba(255,255,255,.12);background:linear-gradient(180deg,#1a1422,#110d17);box-shadow:0 18px 40px rgba(0,0,0,.55),inset 0 1px rgba(255,255,255,.06)}
+    .pn-rig-cmd-top .pn-bw-more-menu .btn{display:flex;width:100%;justify-content:flex-start;min-height:34px!important;padding:7px 12px!important;border-color:transparent!important;background:transparent!important;box-shadow:none!important;color:#ff6b80!important}
+    .pn-rig-cmd-top .pn-bw-more-menu .btn:hover,.pn-rig-cmd-top .pn-bw-more-menu .btn:focus-visible{background:rgba(255,35,73,.1)!important;border-color:rgba(255,35,73,.35)!important}
+    .pn-rig-cmd-top .pn-bw-more-menu small{display:block;padding:6px 12px 2px;color:#6f6876;font:500 10px/1.35 var(--mono)}
+
+    ${E} .rig-slot-control>select{padding-left:22px!important;font:600 11px/1 var(--stamp)!important;letter-spacing:.09em!important;text-transform:uppercase;background-image:radial-gradient(circle at 11px 50%,var(--src,#6f6876) 0 3px,transparent 3.5px)!important;background-repeat:no-repeat!important}
+    ${E} .rig-slot-control>select:has(option[value=PLANNED]:checked){--src:#74c7ff}
+    ${E} .rig-slot-control>select:has(option[value=INVENTORY]:checked){--src:#c39bff;color:#d9c6ff!important}
+    ${E} .rig-slot-control>select:has(option[value=EMPTY]:checked){--src:#4a4452;color:#8d8494!important}
+
+    ${E} .pn-bw-dot{position:absolute;left:-6px;top:19px;z-index:2;width:9px;height:9px;transform:rotate(45deg);outline:2px solid #120e18;border:1px solid #6f6876;background:transparent;cursor:help}
+    ${E} .pn-bw-dot.is-pass{border-color:#3ee07a;background:#3ee07a;box-shadow:0 0 7px rgba(62,224,122,.55)}
+    ${E} .pn-bw-dot.is-warn{border-color:#f2c94c;background:#f2c94c;box-shadow:0 0 8px rgba(242,201,76,.6)}
+    ${E} .pn-bw-dot.is-fail{border-color:#ff4a4a;background:#ff4a4a;box-shadow:0 0 9px rgba(255,74,74,.75)}
+    ${E} .pn-bw-dot.is-unverified{border-color:#8d8494;background:rgba(141,132,148,.15)}
+
+    ${E} .pn-bw-unmatched{display:inline-flex;align-items:center;padding:1px 7px;border:1px solid rgba(242,201,76,.35);background:rgba(242,201,76,.06);color:#e7c45a;font:600 9.5px/1.4 var(--stamp);letter-spacing:.1em;cursor:help}
+
+    ${E}[data-bw-family=solo]{--bw-cols:var(--bw-c1) clamp(122px,8.2vw,156px) minmax(0,1fr) clamp(98px,6.2vw,112px) clamp(98px,6.2vw,112px) 34px}
+    ${E}[data-bw-family=solo] .rig-slot-columns>.is-act{visibility:hidden}
+
+    .pn-bw-dock{position:sticky;top:-10px;z-index:30;height:0;margin:0!important;pointer-events:none}
+    .pn-bw-dock em{font-style:normal}
+    .pn-bw-dock>div{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;gap:18px;min-height:44px;padding:6px 8px 6px 16px;border:1px solid rgba(255,255,255,.1);border-left:3px solid var(--bw-dock-tone,#ff2349);
+      background:linear-gradient(180deg,rgba(28,22,36,.94),rgba(16,12,22,.94));backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 14px 30px rgba(0,0,0,.5),inset 0 1px rgba(255,255,255,.07);
+      clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,0 100%);opacity:0;transform:translateY(-8px);transition:opacity .18s ease,transform .18s ease;visibility:hidden}
+    .pn-bw-dock.is-stuck>div{opacity:1;transform:none;visibility:visible;pointer-events:auto}
+    .pn-bw-dock .pn-bw-dock-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff;font:600 14px/1.1 var(--stamp);letter-spacing:.06em;word-spacing:.2em}
+    .pn-bw-dock .pn-bw-dock-stat{display:flex;flex-direction:column;gap:2px;white-space:nowrap}
+    .pn-bw-dock .pn-bw-dock-stat>span{color:#8d8494;font:600 8.5px/1 var(--stamp);letter-spacing:.1em;word-spacing:.35em}
+    .pn-bw-dock .pn-bw-dock-stat>b{color:#f2edf4;font:700 14px/1.1 var(--stamp);letter-spacing:.03em}
+    .pn-bw-dock .pn-bw-dock-stat.is-avail>b{color:var(--bw-dock-tone,#3ee07a)}
+    .pn-bw-dock .pn-bw-dock-sep{width:1px;align-self:stretch;margin:4px 0;background:rgba(255,255,255,.08)}
+    .pn-bw-dock .pn-bw-dock-actions{display:flex;gap:6px;margin-left:auto}
+    .pn-bw-dock .pn-bw-dock-actions .btn{min-height:32px!important;padding:6px 16px!important}
+    .pn-bw-dock .pn-bw-dock-actions .btn-primary{border-color:#ff5874!important;background:linear-gradient(180deg,#ff3f60,#ca1038)!important;color:#fff!important;box-shadow:inset 0 1px rgba(255,255,255,.22),0 6px 16px rgba(184,8,42,.25)!important}
+    @media(max-width:1180px){.pn-bw-dock .is-optional{display:none}}
+    @media(max-width:760px){.pn-bw-dock>div{gap:12px;padding-left:12px}.pn-bw-dock .pn-bw-dock-name{display:none}.pn-bw-dock.is-stuck>div{position:fixed;left:6px;right:6px;top:0}}
+    @media(prefers-reduced-motion:reduce){.pn-bw-dock>div{transition:none}}
   `;
   document.head.appendChild(style);
 
@@ -296,8 +343,111 @@
     return html.slice(0, start) + folded + html.slice(end + 6);
   }
 
+  const FINDING_SLOTS = {
+    CPU_PLATFORM:["CPU","MOBO"], RAM_PLATFORM:["RAM","MOBO"], RAM_XMP:["RAM"], GPU_PLATFORM:["GPU","MOBO"], STORAGE_INTERFACE:["STORAGE","MOBO"],
+    MOBO_FORM_FACTOR:["MOBO","CASE"], GPU_CLEARANCE:["GPU","CASE"], COOLER_HEIGHT:["COOLER","CASE"], PSU_FORM_FACTOR:["PSU","CASE"],
+    CPU_SOCKET:["COOLER","CPU"], COOLER_SUFFICIENCY:["COOLER"], AIRFLOW:["CASE"], GPU_PSU_BASELINE:["GPU","PSU"], GPU_CONNECTOR_REQUIREMENT:["GPU","PSU"]
+  };
+  const SLOT_WORDS = [["CPU",/CPU|SOCKET/],["GPU",/GPU/],["RAM",/RAM|DDR|XMP|EXPO|DIMM|MEMORY/],["MOBO",/MOBO|BOARD|CHIPSET|BIOS/],["PSU",/PSU|WATT|CONNECTOR/],["CASE",/CASE|AIRFLOW|CLEARANCE/],["COOLER",/COOLER|TDP/],["STORAGE",/STORAGE|NVME|M2|SATA/]];
+  const LEVEL_RANK = {FAIL:4, WARN:3, UNVERIFIED:2, PASS:1};
+  const LEVEL_CLASS = {FAIL:"is-fail", WARN:"is-warn", UNVERIFIED:"is-unverified", PASS:"is-pass"};
+  const LEVEL_WORD = {FAIL:"FAIL", WARN:"WARNING", UNVERIFIED:"UNVERIFIED", PASS:"VERIFIED"};
+
+  function slotsForFinding(id){
+    if (FINDING_SLOTS[id]) return FINDING_SLOTS[id];
+    if (/^PSU_/.test(id)) return ["PSU"];
+    return SLOT_WORDS.filter(([, re]) => re.test(id)).map(([slot]) => slot);
+  }
+
+  function bayStatusDots(html){
+    const status = {};
+    html.replace(/data-bc-finding="([^"]+)" data-bc-level="([A-Z]+)"><b>([^<]*)<\/b>/g, (m, id, level, label) => {
+      if (!LEVEL_RANK[level]) return m;
+      slotsForFinding(id).forEach(slot => {
+        const s = status[slot] || (status[slot] = {level:"PASS", notes:[]});
+        if (LEVEL_RANK[level] > LEVEL_RANK[s.level]) s.level = level;
+        s.notes.push(label + " — " + LEVEL_WORD[level]);
+      });
+      return m;
+    });
+    return html.replace(/(<div class="rig-slot-row[^"]*"><div class="rig-slot-label[^"]*">)([^<]*)(<\/div><div class="rig-slot-control"><select data-rig-slot-mode="([A-Z0-9_]+)")/g, (m, open, label, rest, slot) => {
+      const s = status[slot];
+      if (!s) return m;
+      const title = escAttr(LEVEL_WORD[s.level] + " · " + s.notes.join(" · "));
+      return open + label + '<i class="pn-bw-dot ' + LEVEL_CLASS[s.level] + '" data-bw-bay-status="' + s.level + '" title="' + title + '" aria-label="Build Check ' + title + '"></i>' + rest;
+    });
+  }
+
+  function familySolo(html, rig){
+    if (!rig || !rig.id || typeof Store === "undefined") return html;
+    const siblings = Store.all("rigs").filter(r => r && r.id !== rig.id && r.family === rig.family).length;
+    if (siblings) return html;
+    return html.replace(/<button type="button" class="btn btn-sm btn-ghost" data-rig-copy-slot-to-family="[^"]+"[^>]*>[^<]*<\/button>/g, "")
+      .replace('<div data-rig-view="editor" class="pn-rig-cmd content', '<div data-bw-family="solo" data-rig-view="editor" class="pn-rig-cmd content');
+  }
+
+  function sourceTags(html){
+    return html.replace(/(<select data-rig-slot-mode="[^"]+">[\s\S]*?<\/select>)/g, sel => sel.replace(">From Inventory</option>", ">Vault</option>").replace(">Planned Part</option>", ">Planned</option>"));
+  }
+
+  function unmatchedChips(html){
+    return html.replace(/<div class="rig-catalog-meta rig-catalog-help">No catalog match — set capabilities manually or use a generic profile\.<\/div>/g,
+      '<div class="rig-catalog-meta"><span class="pn-bw-unmatched" title="No catalog match — set capabilities manually or use a generic profile.">UNMATCHED</span><span class="pn-meta-detail">generic profile or manual capabilities</span></div>');
+  }
+
+  function headerPolish(html){
+    html = html.replace(" · Simulation only — nothing touches inventory until assembly", '<span class="pn-bw-sim" title="Simulation only — nothing touches inventory until assembly">SIMULATION</span>');
+    return html.replace(/<button[^>]*data-confirm-delete="rig:[^"]+"[^>]*>[^<]*<\/button>/, btn => '<details class="pn-bw-more"><summary aria-label="More rig actions" title="More rig actions">···</summary><div class="pn-bw-more-menu">' + btn + '<small>Removes this variant. Parts stay in the Vault.</small></div></details>');
+  }
+
+  function commandDock(html, rig){
+    const railEnd = html.indexOf("</section>", html.indexOf("data-rig-budget-rail"));
+    if (railEnd < 0) return html;
+    const pick = (re, i) => { const m = html.match(re); return m ? m[i || 1] : ""; };
+    const availLabel = pick(/<div class="pn-rig-budget-stat is-result"[^>]*><span>([^<]*)<\/span>/);
+    const availValue = pick(/<div class="pn-rig-budget-stat is-result"[^>]*><span>[^<]*<\/span><b>([^<]*)<\/b>/);
+    const tone = pick(/data-budget-tone="([a-z]+)"/);
+    const paid = pick(/data-bw-kpi="total-paid"><div class="kpi-label">[^<]*<\/div><div class="kpi-value">([^<]*)/);
+    const score = pick(/<em class="pn-bw-score">([^<]*)<\/em>/);
+    const tier = pick(/<em class="pn-tier-text (pn-tier-[a-z]+)">([^<]*)<\/em>/, 2);
+    const tierCls = pick(/<em class="pn-tier-text (pn-tier-[a-z]+)">/);
+    const verdict = pick(/<em class="pn-bw-verdict (is-[a-z]+)">([A-Z]+)<\/em>/, 2);
+    const verdictCls = pick(/<em class="pn-bw-verdict (is-[a-z]+)">/);
+    const save = pick(/(<button[^>]*data-rig-save[^>]*>[^<]*<\/button>)/);
+    const toneColor = {ok:"#3ee07a", warn:"#f2c94c", over:"#ff4a4a"}[tone] || "#ff2349";
+    const name = escHtml((rig.family || "UNTITLED RIG") + (rig.variantName ? " · " + rig.variantName : ""));
+    const stat = (label, value, cls) => '<div class="pn-bw-dock-stat' + (cls ? " " + cls : "") + '"><span>' + label + '</span><b>' + value + '</b></div>';
+    const dock = '<aside class="pn-bw-dock" data-bw-dock aria-label="Build summary" aria-hidden="true"><div style="--bw-dock-tone:' + toneColor + '">'
+      + '<span class="pn-bw-dock-name">' + name + '</span><span class="pn-bw-dock-sep is-optional"></span>'
+      + (availValue ? stat(availLabel || "AVAILABLE", availValue, "is-avail") : "")
+      + (paid ? stat("TOTAL PAID", paid, "is-optional") : "")
+      + (score ? stat("RATING", '<span class="pn-bw-score">' + score + '</span> <span class="pn-tier-text ' + tierCls + '">' + tier + '</span>', "is-optional") : "")
+      + (verdict ? stat("BUILD CHECK", '<em class="pn-bw-verdict ' + verdictCls + '">' + verdict + '</em>') : "")
+      + (save ? '<span class="pn-bw-dock-actions">' + save.replace(/^<button/, '<button tabindex="-1"') + '</span>' : "")
+      + '</div></aside>';
+    return html.slice(0, railEnd + 10) + dock + html.slice(railEnd + 10);
+  }
+
+  let dockFrame = 0;
+  function syncDock(){
+    dockFrame = 0;
+    const dock = document.querySelector("[data-bw-dock]");
+    const rail = document.querySelector("[data-rig-budget-rail]");
+    if (!dock || !rail) return;
+    const stuck = rail.getBoundingClientRect().bottom < 0 || rail.getBoundingClientRect().bottom < (document.querySelector(".content") || document.body).getBoundingClientRect().top;
+    dock.classList.toggle("is-stuck", stuck);
+    dock.setAttribute("aria-hidden", stuck ? "false" : "true");
+    dock.querySelectorAll("button").forEach(b => { b.tabIndex = stuck ? 0 : -1; });
+  }
+  document.addEventListener("scroll", () => { if (!dockFrame) dockFrame = requestAnimationFrame(syncDock); }, true);
+  if (typeof MutationObserver === "function") {
+    const watch = () => { const root = document.getElementById("root"); if (root) new MutationObserver(() => { if (!dockFrame) dockFrame = requestAnimationFrame(syncDock); }).observe(root, {childList:true}); };
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", watch); else watch();
+  }
+
   document.addEventListener("click", e => {
     const t = e.target && e.target.closest ? e.target : null;
+    if (t && !t.closest(".pn-bw-more")) document.querySelectorAll(".pn-bw-more[open]").forEach(d => { d.open = false; });
     if (!t || !state.rigDraft) return;
     if (t.closest("[data-bw-show-verified]")) {
       const map = state.rigCompactPanels || (state.rigCompactPanels = {});
@@ -329,6 +479,8 @@
       html = html.replace('<div class="panel-head"><h2>Slots</h2></div>', '<div class="panel-head"><h2>Component Bays</h2><span class="pn-bw-bay-count"><b>' + configured + '</b> / ' + total + ' CONFIGURED</span></div>');
       html = html.replace(/<div class="rig-slot-columns">[\s\S]*?<\/div>/, COLUMN_HEADER);
       html = tagResults(slimBuildCheck(foldRam(tagFolds(html))));
+      html = unmatchedChips(sourceTags(bayStatusDots(html)));
+      html = commandDock(familySolo(headerPolish(html), state.rigDraft), state.rigDraft);
     }
     return html;
   };
