@@ -195,6 +195,28 @@
       ${E} .pn-rig-results-primary .kpi-value,${E} .pn-rig-results-primary .planner-kpi-input{font-size:18px!important}
     }
     @media(prefers-reduced-motion:reduce){.pn-rig-cmd *{transition:none!important}}
+
+    ${E} .pn-rig-fold-check .pn-bc-chips{display:none!important}
+    ${E} [data-bw-verified=hidden] [data-bc-level=PASS]{display:none!important}
+    ${E} .pn-bw-verified-toggle{display:block;width:100%;margin:0;padding:7px 12px;border:0;border-top:1px dashed rgba(255,255,255,.08);background:transparent;color:#8d8494;font:600 10px/1.2 var(--stamp);letter-spacing:.08em;word-spacing:.35em;text-align:left;cursor:pointer}
+    ${E} .pn-bw-verified-toggle:hover,${E} .pn-bw-verified-toggle:focus-visible{color:#3ee07a;outline:0;background:rgba(62,224,122,.04)}
+
+    ${E} .pn-rig-results-primary[data-bw-sale=unset]>.kpi:is([data-bw-kpi=expected-profit],[data-bw-kpi=roi],[data-bw-kpi=margin]){display:none!important}
+    ${E} .pn-rig-results-primary>.pn-bw-sale-prompt{--k:#8d8494;grid-column:span 3;display:flex;flex-direction:column;justify-content:center;gap:4px;margin:0;text-align:left;cursor:pointer;border-style:dashed!important;color:inherit;font:inherit}
+    ${E} .pn-bw-sale-prompt .kpi-label{color:#cfc6d4!important}
+    ${E} .pn-bw-sale-prompt .kpi-value{font:600 14px/1.25 var(--mono)!important;letter-spacing:0!important;color:#8d8494!important}
+    ${E} .pn-bw-sale-prompt .kpi-value b{color:#f2edf4;font-weight:700}
+    ${E} .pn-bw-sale-prompt:hover,${E} .pn-bw-sale-prompt:focus-visible{--k:#ff5f79;outline:0;border-color:rgba(255,95,121,.45)!important}
+    @media(max-width:1000px){${E} .pn-rig-results-primary>.pn-bw-sale-prompt{grid-column:span 2}}
+
+    ${E} .pn-bw-ram-adv{max-width:760px;margin-top:6px;border:1px solid rgba(255,255,255,.07);background:rgba(5,4,8,.3)}
+    ${E} .pn-bw-ram-adv>summary{display:flex;align-items:center;gap:10px;min-height:26px;padding:4px 9px;cursor:pointer;list-style:none;color:#8d8494;font:600 9.5px/1.2 var(--stamp);letter-spacing:.08em;word-spacing:.35em}
+    ${E} .pn-bw-ram-adv>summary::-webkit-details-marker{display:none}
+    ${E} .pn-bw-ram-adv>summary:before{content:"+";width:10px;color:var(--rc)}
+    ${E} .pn-bw-ram-adv[open]>summary:before{content:"\\2212"}
+    ${E} .pn-bw-ram-adv>summary span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:500 10.5px var(--mono);letter-spacing:0;word-spacing:normal;color:#6f6876}
+    ${E} .pn-bw-ram-adv>summary:focus-visible{outline:2px solid var(--rc);outline-offset:-2px}
+    ${E} .pn-bw-ram-adv>.ram-config-grid{margin:0;padding:2px 8px 8px}
   `;
   document.head.appendChild(style);
 
@@ -202,12 +224,92 @@
   const slug = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   const VERDICTS = {PASS:"is-pass", UNVERIFIED:"is-unverified", WARNING:"is-warning", FAIL:"is-fail"};
 
+  const RAM_ADVANCED = ["voltage","partNumber","matchedKit","rgb","xmp","expo","notes"];
+
+  function budgetModel(rig){
+    try { return globalThis.PN_BUDGET && rig ? PN_BUDGET.rigModel(rig) : null; } catch (_err) { return null; }
+  }
+  function rigMoney(value, currency){
+    const shown = currency === "EUR" && typeof rsdToEur === "function" ? rsdToEur(value) : value;
+    return (value < 0 ? "−" : "") + money(Math.abs(shown), currency);
+  }
+
   function tagResults(html){
     const rig = state.rigDraft;
     const saleSet = !!rig && (Number(rig.expectedSalePrice) > 0 || Number(rig.salePrice) > 0);
     html = html.replace('<div class="kpi-grid pn-rig-results-primary">', '<div class="kpi-grid pn-rig-results-primary" data-bw-sale="' + (saleSet ? "set" : "unset") + '">');
-    return html.replace(/<div class="kpi is-primary([^"]*)"><div class="kpi-label">([^<]+)<\/div>/g, (m, cls, label) => '<div class="kpi is-primary' + cls + '" data-bw-kpi="' + slug(label) + '"><div class="kpi-label">' + label + '</div>');
+    html = html.replace(/<div class="kpi is-primary([^"]*)"><div class="kpi-label">([^<]+)<\/div>/g, (m, cls, label) => '<div class="kpi is-primary' + cls + '" data-bw-kpi="' + slug(label) + '"><div class="kpi-label">' + label + '</div>');
+    const m = budgetModel(rig);
+    if (!saleSet) {
+      const hint = m && m.suggested != null
+        ? 'At ' + (Math.round(m.suggestedMarginPct * 10) / 10) + '% target margin, list at <b>' + rigMoney(m.suggested, m.currency) + '</b>'
+        : 'Unlocks profit · ROI · margin';
+      html = html.replace(/(data-bw-kpi="expected-sale-price">[\s\S]*?<\/div><\/div>)/, '$1<button type="button" class="kpi pn-bw-sale-prompt" data-bw-focus-sale><span class="kpi-label">Set expected sale price</span><span class="kpi-value" data-bw-sale-hint>' + hint + '</span></button>');
+    } else if (m && m.resale) {
+      html = html.replace(/(data-bw-kpi="expected-profit"><div class="kpi-label">[^<]*<\/div><div class="kpi-value[^"]*">[^<]*<\/div>)/, '$1<div class="kpi-sub" data-bw-cash-back>cash back ' + rigMoney(m.resale.cashRecovery, m.currency) + ' after new spend</div>');
+    }
+    return html;
   }
+
+  function slimBuildCheck(html){
+    const start = html.indexOf('<div class="pn-integrity-list pn-bc-details-list">');
+    if (start < 0) return html;
+    const end = html.indexOf("</details>", start);
+    if (end < 0) return html;
+    const verified = (html.slice(start, end).match(/data-bc-level="PASS"/g) || []).length;
+    if (!verified) return html;
+    const panels = state.rigCompactPanels || {};
+    const shown = !!panels["check-verified"];
+    const list = html.slice(start, end).replace('<div class="pn-integrity-list pn-bc-details-list">', '<div class="pn-integrity-list pn-bc-details-list" data-bw-verified="' + (shown ? "shown" : "hidden") + '">');
+    const toggle = '<button type="button" class="pn-bw-verified-toggle" data-bw-show-verified aria-expanded="' + shown + '">' + (shown ? "HIDE " : "SHOW ") + verified + ' VERIFIED CHECK' + (verified === 1 ? "" : "S") + '</button>';
+    return html.slice(0, start) + list + toggle + html.slice(end);
+  }
+
+  function foldRam(html){
+    const OPEN = '<div class="ram-config-grid">';
+    const start = html.indexOf(OPEN);
+    if (start < 0) return html;
+    const tags = /<div\b|<\/div>/g;
+    tags.lastIndex = start + OPEN.length;
+    let depth = 1, end = -1, tag;
+    while ((tag = tags.exec(html))) {
+      depth += tag[0] === "</div>" ? -1 : 1;
+      if (!depth) { end = tag.index; break; }
+    }
+    if (end < 0) return html;
+    const core = [], advanced = [], extras = [];
+    let vol = "";
+    html.slice(start + OPEN.length, end).split(/(?=<label\b)/).forEach(chunk => {
+      if (!chunk.startsWith("<label")) { if (chunk.trim()) extras.push(chunk); return; }
+      const cut = chunk.lastIndexOf("</label>");
+      const field = cut < 0 ? chunk : chunk.slice(0, cut + 8);
+      const rest = cut < 0 ? "" : chunk.slice(cut + 8);
+      if (rest.trim()) extras.push(rest);
+      const key = (field.match(/data-rig-ram-field="([^"]+)"/) || [])[1];
+      if (key === "voltage") vol = (field.match(/<option value="([^"]+)" selected/) || [])[1] || "";
+      (RAM_ADVANCED.includes(key) ? advanced : core).push(field);
+    });
+    if (!advanced.length || !core.length) return html;
+    const open = !!(state.rigCompactPanels || {})["ram-advanced"];
+    const summary = (vol ? vol + " · " : "") + "part no. · kit · RGB · XMP · EXPO · notes";
+    const folded = OPEN + core.join("") + extras.join("") + '</div><details class="pn-bw-ram-adv" data-rig-fold="ram-advanced"' + (open ? " open" : "") + '><summary>RAM DETAILS / ADVANCED<span>' + summary + '</span></summary>' + OPEN + advanced.join("") + '</div></details>';
+    return html.slice(0, start) + folded + html.slice(end + 6);
+  }
+
+  document.addEventListener("click", e => {
+    const t = e.target && e.target.closest ? e.target : null;
+    if (!t || !state.rigDraft) return;
+    if (t.closest("[data-bw-show-verified]")) {
+      const map = state.rigCompactPanels || (state.rigCompactPanels = {});
+      map["check-verified"] = !map["check-verified"];
+      render();
+      return;
+    }
+    if (t.closest("[data-bw-focus-sale]")) {
+      const input = document.querySelector('[data-rig-field="expectedSalePrice"]');
+      if (input) { input.focus(); if (input.select) input.select(); }
+    }
+  });
 
   function tagFolds(html){
     html = html.replace(/(<details class="pn-rig-fold pn-rig-fold-check"[^>]*><summary><b>[^<]*<\/b><span>)([A-Z]+)( · )/, (m, head, verdict, sep) => head + '<em class="pn-bw-verdict ' + (VERDICTS[verdict] || "is-unverified") + '">' + verdict + '</em>' + sep);
@@ -226,7 +328,7 @@
       const configured = Math.max(0, total - empty);
       html = html.replace('<div class="panel-head"><h2>Slots</h2></div>', '<div class="panel-head"><h2>Component Bays</h2><span class="pn-bw-bay-count"><b>' + configured + '</b> / ' + total + ' CONFIGURED</span></div>');
       html = html.replace(/<div class="rig-slot-columns">[\s\S]*?<\/div>/, COLUMN_HEADER);
-      html = tagResults(tagFolds(html));
+      html = tagResults(slimBuildCheck(foldRam(tagFolds(html))));
     }
     return html;
   };

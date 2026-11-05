@@ -141,7 +141,7 @@ const results = vm.runInContext(`(function(){
   t("cash back is measured against new cash only", near(m.resale.cashRecovery, 40000));
   state.rigDraft = sale;
   html = ROUTES.find(r => r.key === "rigbuild").render();
-  t("rail renders the sale outlook with basis profit", html.includes("data-rig-sale-outlook") && html.includes('data-rig-profit-basis="28250"'));
+  t("sale outlook lives only in the financial strip, not duplicated in the budget rail", !html.includes("data-rig-sale-outlook") && html.includes("data-bw-cash-back") && html.includes('data-bw-sale="set"'));
   sale.expectedSalePrice = 0; sale.targetMarginPct = 20;
   m = pnRigBudgetModel(sale);
   t("without a sale price only a labelled margin suggestion is offered", m.resale === null && near(m.suggested, 21750 / 0.8));

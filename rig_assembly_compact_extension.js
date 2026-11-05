@@ -72,24 +72,6 @@
   }
 
   const pctText = v => (Math.round(v * 10) / 10).toLocaleString("en-US") + "%";
-  const signedMoney = (v, c) => (v < 0 ? "−" : "") + budgetMoney(Math.abs(v), c);
-
-  function saleOutlookHtml(m){
-    const c = m.currency;
-    if (m.resale){
-      const r = m.resale;
-      return '<div class="pn-rig-budget-outlook" data-rig-sale-outlook>'
-        + '<div><span>TARGET SALE</span><b>' + budgetMoney(r.target, c) + '</b></div>'
-        + '<div><span>BREAK-EVEN · TRUE BASIS</span><b data-rig-break-even="' + r.breakEven + '">' + budgetMoney(r.breakEven, c) + '</b></div>'
-        + '<div class="' + (r.profitBasis < 0 ? "is-neg" : "is-pos") + '"><span>PROJECTED PROFIT</span><b data-rig-profit-basis="' + r.profitBasis + '">' + signedMoney(r.profitBasis, c) + '</b></div>'
-        + '<div class="' + (r.marginPct < 0 ? "is-neg" : "") + '"><span>MARGIN</span><b>' + pctText(r.marginPct) + '</b></div>'
-        + '<div><span>CASH BACK AFTER NEW SPEND</span><b data-rig-cash-recovery="' + r.cashRecovery + '">' + signedMoney(r.cashRecovery, c) + '</b></div>'
-        + '</div>';
-    }
-    if (m.suggested != null) return '<p class="pn-rig-budget-hint">No expected sale price yet. At your ' + pctText(m.suggestedMarginPct) + ' target margin, a true basis of ' + budgetMoney(m.totalBasis, c) + ' suggests listing at ' + budgetMoney(m.suggested, c) + '.</p>';
-    return '<p class="pn-rig-budget-hint">Set an Expected Sale Price to see break-even, profit and margin.</p>';
-  }
-
   function rigBudgetRail(rig){
     const m = B.rigModel(rig);
     const currency = m.currency, mode = m.mode, budget = m.limit;
@@ -109,7 +91,7 @@
     if (!m.valid) foot = m.required ? "Every new build needs a limit. Enter a budget above zero to unlock SAVE and ASSEMBLE." : "Legacy rig without a limit. Set a budget to track this build.";
     else if (remaining < 0) foot = "Over budget by " + budgetMoney(-remaining, currency) + " (" + used + "% committed). Saving still works — trim parts or raise the limit.";
     else if (m.tone === "warn") foot = used + "% committed · near the limit, " + budgetMoney(remaining, currency) + " left.";
-    else foot = used + "% committed · " + (mode === "NEW_CASH" ? "planned purchases only" : "owned basis + planned purchases");
+    else foot = used + "% committed";
     if (m.valid && m.unpricedCount) foot += " · " + m.unpricedCount + " planned part" + (m.unpricedCount === 1 ? "" : "s") + " unpriced";
 
     const stat = (label, value, sub, cls, attr) => '<div class="pn-rig-budget-stat' + (cls ? " " + cls : "") + '"' + (attr || "") + '><span>' + label + '</span><b>' + value + '</b>' + (sub ? '<small>' + sub + '</small>' : "") + '</div>';
@@ -132,8 +114,8 @@
         + (m.valid ? '<b class="tick-warn" style="left:' + (limitAt * B.WARN_PCT / 100).toFixed(2) + '%" title="' + B.WARN_PCT + '% warning line"></b>' + (m.committed > budget ? '<b class="tick-limit" style="left:' + limitAt.toFixed(2) + '%" title="Budget limit"></b>' : "") : "")
       + '</div>'
       + '<div class="pn-rig-budget-foot" id="pn-rig-budget-foot" role="status" aria-live="polite">' + escHtml(foot) + '</div>'
-      + '<details class="pn-rig-budget-more" data-rig-fold="budget-ledger"' + (foldState("budget-ledger", false) ? " open" : "") + '><summary><b>COST LEDGER · SALE OUTLOOK</b><span>' + m.parts.length + ' part' + (m.parts.length === 1 ? "" : "s") + ' · true basis ' + budgetMoney(m.totalBasis, currency) + (m.resale ? " · target " + budgetMoney(m.resale.target, currency) : "") + '</span></summary>'
-        + saleOutlookHtml(m) + '<div class="pn-rig-budget-rows">' + partRows + '</div></details>'
+      + '<details class="pn-rig-budget-more" data-rig-fold="budget-ledger"' + (foldState("budget-ledger", false) ? " open" : "") + '><summary><b>COST LEDGER</b><span>' + m.parts.length + ' part' + (m.parts.length === 1 ? "" : "s") + '</span></summary>'
+        + '<div class="pn-rig-budget-rows">' + partRows + '</div></details>'
       + '</section>';
   }
 
@@ -287,14 +269,12 @@
     + C+" .pn-rig-budget-foot{grid-column:1/-1;margin-top:-2px;font:500 10.5px var(--mono);color:var(--text-muted);text-align:right}"+C+" .pn-rig-budget.is-over .pn-rig-budget-foot,"+C+" .pn-rig-budget.is-warn .pn-rig-budget-foot,"+C+" .pn-rig-budget.is-required .pn-rig-budget-foot{color:color-mix(in srgb,var(--budget-tone) 80%,#fff)}"
     + C+" .pn-rig-budget-more{grid-column:1/-1;min-width:0;border-top:1px dashed color-mix(in srgb,var(--budget-tone) 30%,transparent)}"+C+" .pn-rig-budget-more>summary{display:flex;align-items:center;gap:12px;padding:6px 0 0;cursor:pointer;list-style:none}"+C+" .pn-rig-budget-more>summary::-webkit-details-marker{display:none}"
     + C+" .pn-rig-budget-more>summary::before{content:'+';width:14px;font:700 13px var(--stamp);color:var(--budget-tone)}"+C+" .pn-rig-budget-more[open]>summary::before{content:'\\2212'}"+C+" .pn-rig-budget-more>summary b{font:600 10px var(--stamp);letter-spacing:.18em;color:#fff;white-space:nowrap}"+C+" .pn-rig-budget-more>summary span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:500 10.5px var(--mono);color:var(--text-muted)}"
-    + C+" .pn-rig-budget-outlook{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:8px 0}"+C+" .pn-rig-budget-outlook>div{min-width:0;padding:6px 9px;border:1px solid rgba(255,255,255,.07);background:rgba(8,8,18,.5)}"+C+" .pn-rig-budget-outlook span{display:block;font:600 9px var(--stamp);letter-spacing:.14em;color:var(--text-muted)}"+C+" .pn-rig-budget-outlook b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:700 15px var(--stamp);color:#fff}"+C+" .pn-rig-budget-outlook .is-pos b{color:#3ee07a}"+C+" .pn-rig-budget-outlook .is-neg b{color:#ff6b6b}"
     + C+" .pn-rig-budget-hint{margin:8px 0;font:500 11px var(--sans);color:var(--text-muted)}"
     + C+" .pn-rig-budget-rows{display:flex;flex-direction:column;gap:3px;margin-bottom:4px}"+C+" .pn-rig-budget-row{display:grid;grid-template-columns:86px minmax(0,1fr) 128px 112px 56px;gap:10px;align-items:center;padding:4px 8px;border-left:2px solid #74c7ff;background:rgba(255,255,255,.025);font:500 11px var(--mono)}"
     + C+" .pn-rig-budget-row .k{font:600 10px var(--stamp);letter-spacing:.14em;color:#fff}"+C+" .pn-rig-budget-row .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}"+C+" .pn-rig-budget-row .t{font:600 9px var(--stamp);letter-spacing:.12em;color:#74c7ff}"+C+" .pn-rig-budget-row .a,"+C+" .pn-rig-budget-row .p{text-align:right;color:var(--text)}"+C+" .pn-rig-budget-row .p{color:var(--text-muted)}"
     + C+" .pn-rig-budget-row.is-owned{border-left-color:#c39bff}"+C+" .pn-rig-budget-row.is-owned .t{color:#c39bff}"+C+" .pn-rig-budget-row.is-unpriced{border-left-color:#f2c94c}"+C+" .pn-rig-budget-row.is-unpriced .t{color:#f2c94c}"+C+" .pn-rig-budget-row.is-excluded{opacity:.62}"
     + "@media(prefers-reduced-motion:reduce){"+C+" .pn-rig-budget,"+C+" .pn-rig-budget-meter>i{transition:none}}"
-    + "@media(max-width:1000px){"+C+" .pn-rig-budget-outlook{grid-template-columns:repeat(3,minmax(0,1fr))}}"
-    + "@media(max-width:620px){"+C+" .pn-rig-budget{padding:10px 12px}"+C+" .pn-rig-budget-outlook{grid-template-columns:repeat(2,minmax(0,1fr))}"+C+" .pn-rig-budget-row{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:'k a' 'n p' 't t';row-gap:1px}"+C+" .pn-rig-budget-row .k{grid-area:k}"+C+" .pn-rig-budget-row .n{grid-area:n}"+C+" .pn-rig-budget-row .t{grid-area:t}"+C+" .pn-rig-budget-row .a{grid-area:a}"+C+" .pn-rig-budget-row .p{grid-area:p}"+C+" .pn-rig-budget-foot{text-align:left}}"
+    + "@media(max-width:620px){"+C+" .pn-rig-budget{padding:10px 12px}"+C+" .pn-rig-budget-row{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:'k a' 'n p' 't t';row-gap:1px}"+C+" .pn-rig-budget-row .k{grid-area:k}"+C+" .pn-rig-budget-row .n{grid-area:n}"+C+" .pn-rig-budget-row .t{grid-area:t}"+C+" .pn-rig-budget-row .a{grid-area:a}"+C+" .pn-rig-budget-row .p{grid-area:p}"+C+" .pn-rig-budget-foot{text-align:left}}"
     + C+" .pn-rig-fold{margin-top:8px;border:1px solid rgba(231,188,78,.3);background:rgba(8,8,18,.5);clip-path:polygon(0 0,calc(100% - 12px) 0,100% 12px,100% 100%,0 100%)}"
     + C+" .pn-rig-fold>summary{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:14px;min-height:42px;padding:7px 12px;cursor:pointer;list-style:none;background:linear-gradient(90deg,rgba(231,188,78,.09),transparent 65%)}"+C+" .pn-rig-fold>summary::-webkit-details-marker{display:none}"
     + C+" .pn-rig-fold>summary b{font:600 13px var(--stamp);letter-spacing:.2em;color:#fff}"+C+" .pn-rig-fold>summary span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 11px var(--mono);color:var(--text-muted)}"+C+" .pn-rig-fold>summary i{font:600 9px var(--stamp);letter-spacing:.16em;color:#e7bc4e;font-style:normal}"
