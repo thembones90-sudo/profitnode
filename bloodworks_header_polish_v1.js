@@ -61,17 +61,38 @@
 
   const VIEW_LABEL = { editor: "CONFIGURATION BAY", family: "VARIANT ARCHIVE", list: "ALL RIGS" };
 
+  // The rail-cap's horizontal position and the text's left padding used to
+  // be two independently-written formulas that were each individually
+  // verified correct, but that structure meant any mismatch between them
+  // - a future edit to one and not the other, a browser's sub-pixel
+  // rounding on the 45deg-rotated diamond, a real font's glyph metrics
+  // differing from a fallback font - could silently reopen a gap between
+  // "designed clearance" and "actual rendered clearance". A live report
+  // after shipping the diamond caps showed exactly that: real overlap
+  // between the rail cap and the text that this file's own local testing
+  // (9 widths, 390-1920, fallback fonts, no sidebar auth) never
+  // reproduced. Rather than keep chasing the exact mechanism, this
+  // rebuilds the relationship so it can't drift: both values are now
+  // driven by the SAME custom property (--bw-cap-left, one definition per
+  // breakpoint, identical to before) and the text's padding is always
+  // literally "cap position + fixed generous clearance" via calc() - one
+  // source of truth instead of two numbers that happened to agree.
+  // The clearance constant (20px) is deliberately far larger than the
+  // ~10px actually needed (8px diamond rotated to a ~9.7px reach, plus a
+  // visible gap) specifically to absorb whatever margin of error real
+  // fonts/zoom/rounding introduce beyond what a local headless check can
+  // see.
   const style = document.createElement("style");
   style.id = "pn-bloodworks-header-polish-v1";
   style.textContent = `
-    .pn-rig-cmd-top{padding-left:28px!important}
+    .pn-rig-cmd-top{--bw-cap-left:15.5px;padding-left:calc(var(--bw-cap-left) + 20px)!important}
 
     .pn-rig-cmd-top::after{content:"";position:absolute;top:0;left:0;right:0;height:2px;pointer-events:none;
       background:linear-gradient(90deg,transparent,rgba(255,53,85,.5) 12%,rgba(255,53,85,.5) 88%,transparent),
                  repeating-linear-gradient(90deg,rgba(255,255,255,.4) 0 1px,transparent 1px 34px);
       background-blend-mode:screen;opacity:.5}
 
-    .pn-rig-cmd-top .pn-bw-rail-cap{position:absolute;left:15.5px;width:8px;height:8px;background:#ff2349;
+    .pn-rig-cmd-top .pn-bw-rail-cap{position:absolute;left:var(--bw-cap-left);width:8px;height:8px;background:#ff2349;
       transform:rotate(45deg);box-shadow:0 0 10px rgba(255,35,73,.65),0 0 2px #fff;pointer-events:none}
     .pn-rig-cmd-top .pn-bw-rail-cap-top{top:12px}
     .pn-rig-cmd-top .pn-bw-rail-cap-bottom{bottom:12px}
@@ -85,10 +106,9 @@
     .pn-rig-cmd-top .pn-bw-crumb-view{color:#ff4968;text-shadow:0 0 14px rgba(255,35,73,.35)}
 
     @media(min-width:1181px){
-      .pn-rig-cmd-top{padding-left:max(24px,calc((100% - 1780px)/2))!important}
-      .pn-rig-cmd-top .pn-bw-rail-cap{left:calc(max(14px,calc((100% - 1780px)/2)) - 2.5px)}
+      .pn-rig-cmd-top{--bw-cap-left:calc(max(14px,calc((100% - 1780px)/2)) - 2.5px)}
     }
-    @media(max-width:760px){.pn-rig-cmd-top .pn-bw-rail-cap{left:5.5px}}
+    @media(max-width:760px){.pn-rig-cmd-top{--bw-cap-left:5.5px}}
   `;
   document.head.appendChild(style);
 
