@@ -1,53 +1,44 @@
 "use strict";
 
 /*
-  PROFITNODE — BLOODWORKS header polish v2.
+  PROFITNODE — BLOODWORKS header polish v4 ("stripped back").
 
-  Three fixes to the topbar, all confirmed by measuring/screenshotting
-  the live layout rather than guessing:
+  History, because this took a few swings to land:
 
-  1. Spacing bug: .pn-rig-cmd-top:before (the glowing red accent rail,
-     from rig_assembly_command_extension.js) sits at a fixed left:18px.
-     bloodworks_premium_visual_v1.js only widens the topbar's own
-     left padding at >=1181px (where it and the rail's left offset
-     share the same max(Npx, centered) formula, by design keeping a
-     steady 7px gap between rail and text). Below that breakpoint the
-     topbar falls back to the app's generic .topbar padding, which
-     was never raised to account for the rail - measured at 1100px
-     wide, the rail's right edge sits just 1px from the title text,
-     with its 12px-blur glow bleeding straight across it. Fixed by
-     giving the topbar the same deliberate 7px clearance at every
-     width, not just >=1181px.
+  v1 fixed two real bugs: the topbar text crowding against the old
+  glowing accent rail below 1181px wide (the rail's left offset and
+  the topbar's own padding used different, unsynced formulas), and
+  replaced the generic "BLOODWORKS // FORGE"-style double-slash
+  eyebrow text with real markup.
 
-  2. "BLOODWORKS // FORGE" / "// CONFIGURATION BAY" / "// VARIANT
-     ARCHIVE": a bare double-slash divider baked into h1::before
-     content in rig_assembly_command_extension.js - the generic
-     sci-fi-HUD "MODULE // SUBMODULE" trope. Replaced with real
-     markup, now sized and weighted to actually read as a header
-     element rather than a caption: the brand name muted, the actual
-     view name in the accent color, joined by a glowing diamond (not
-     a dot - the same 45deg rotated-square marker this design already
-     uses everywhere else: panel-head h2::before, COMPONENT BAYS,
-     every bay row label) instead of a punctuation crutch. The list
-     view's <h1> is already renamed to literally "BLOODWORKS"
-     (terminal_naming_extension.js), so it keeps the old eyebrow
-     suppressed but gets no crumb of its own - a crumb there would
-     just repeat the heading back at itself (caught by screenshot).
+  v2 tried to make that markup visually read as upgraded (not just
+  technically fixed) by adding diamond caps to the rail and a bigger
+  crumb. v3 fixed a real overlap in that version (diamond sitting on
+  top of the text at certain widths) by deriving both positions from
+  one shared value instead of two hand-tuned numbers.
 
-  3. The rail itself was a single flat line with no start/end and the
-     topbar's top edge was a plain gradient with no texture - v1 of
-     this file fixed the spacing and swapped the words but left the
-     bar looking exactly like it did before at normal desktop widths,
-     which is not what "upgrade the eyebrow" was asking for. Adds:
-     diamond caps top and bottom of the rail (same marker as the new
-     crumb, so the rail visually terminates in the same shape the
-     text crumb starts with - ties the two together as one piece
-     instead of "a line" and "some text" sitting next to each other),
-     and a faint tick-mark rule along the top edge of the topbar
-     (instrument-panel texture, matching the forge/command-console
-     language already used in the panels below). None of this adds
-     height - the goal is denser/sharper, not bigger, per "needs to
-     be compact".
+  None of that was the actual problem. Shown side by side against two
+  other directions, the verdict was that a glowing vertical bar with
+  rotated-square "diamond" caps reads as RGB-gaming-peripheral, not a
+  premium command terminal - no amount of pixel-perfect alignment
+  fixes a shape that's wrong. This version removes the bar and the
+  diamonds entirely: the old rail (.pn-rig-cmd-top:before, from
+  bloodworks_premium_visual_v1.js) is hidden outright, nothing from
+  this file replaces it. The eyebrow is now pure typography - a muted
+  "BLOODWORKS / <VIEW>" label with a hairline underline beneath only
+  the active (accent-colored) word - closer to how Linear/Stripe/
+  Vercel dashboards handle a breadcrumb than a sci-fi HUD divider.
+  Because there's no rail left to crowd against, the topbar's padding
+  no longer needs a special override either - it now falls through to
+  whatever rig_assembly_command_extension.js / bloodworks_premium_
+  visual_v1.js already set (22px base / centered-in-1780px at
+  >=1181px), which also means the original "text jammed against the
+  line" complaint from v1 is now moot by construction, not by careful
+  spacing: there's nothing left for the text to be jammed against.
+
+  The faint tick-mark rule along the topbar's top edge (texture, not
+  a "shape" - no fill, no glow, barely-there opacity) is kept; it
+  wasn't part of what got flagged.
 
   All display-only: this only edits the topbar HTML the rigbuild
   route already produces (chains onto whatever .render the earlier
@@ -61,62 +52,29 @@
 
   const VIEW_LABEL = { editor: "CONFIGURATION BAY", family: "VARIANT ARCHIVE", list: "ALL RIGS" };
 
-  // The rail-cap's horizontal position and the text's left padding used to
-  // be two independently-written formulas that were each individually
-  // verified correct, but that structure meant any mismatch between them
-  // - a future edit to one and not the other, a browser's sub-pixel
-  // rounding on the 45deg-rotated diamond, a real font's glyph metrics
-  // differing from a fallback font - could silently reopen a gap between
-  // "designed clearance" and "actual rendered clearance". A live report
-  // after shipping the diamond caps showed exactly that: real overlap
-  // between the rail cap and the text that this file's own local testing
-  // (9 widths, 390-1920, fallback fonts, no sidebar auth) never
-  // reproduced. Rather than keep chasing the exact mechanism, this
-  // rebuilds the relationship so it can't drift: both values are now
-  // driven by the SAME custom property (--bw-cap-left, one definition per
-  // breakpoint, identical to before) and the text's padding is always
-  // literally "cap position + fixed generous clearance" via calc() - one
-  // source of truth instead of two numbers that happened to agree.
-  // The clearance constant (20px) is deliberately far larger than the
-  // ~10px actually needed (8px diamond rotated to a ~9.7px reach, plus a
-  // visible gap) specifically to absorb whatever margin of error real
-  // fonts/zoom/rounding introduce beyond what a local headless check can
-  // see.
   const style = document.createElement("style");
   style.id = "pn-bloodworks-header-polish-v1";
   style.textContent = `
-    .pn-rig-cmd-top{--bw-cap-left:15.5px;padding-left:calc(var(--bw-cap-left) + 20px)!important}
+    .pn-rig-cmd-top:before{display:none!important}
 
     .pn-rig-cmd-top::after{content:"";position:absolute;top:0;left:0;right:0;height:2px;pointer-events:none;
       background:linear-gradient(90deg,transparent,rgba(255,53,85,.5) 12%,rgba(255,53,85,.5) 88%,transparent),
                  repeating-linear-gradient(90deg,rgba(255,255,255,.4) 0 1px,transparent 1px 34px);
       background-blend-mode:screen;opacity:.5}
 
-    .pn-rig-cmd-top .pn-bw-rail-cap{position:absolute;left:var(--bw-cap-left);width:8px;height:8px;background:#ff2349;
-      transform:rotate(45deg);box-shadow:0 0 10px rgba(255,35,73,.65),0 0 2px #fff;pointer-events:none}
-    .pn-rig-cmd-top .pn-bw-rail-cap-top{top:12px}
-    .pn-rig-cmd-top .pn-bw-rail-cap-bottom{bottom:12px}
-
     .pn-rig-cmd-top[data-bw-eyebrow] h1:before{content:none!important}
-    .pn-rig-cmd-top .pn-bw-crumb{display:flex!important;align-items:center;gap:10px;margin-bottom:7px;
-      font:700 13px/1 var(--stamp);letter-spacing:.2em;word-spacing:.1em}
-    .pn-rig-cmd-top .pn-bw-crumb-dot{flex:0 0 auto;width:7px;height:7px;background:#ff2349;transform:rotate(45deg);
-      box-shadow:0 0 10px rgba(255,35,73,.65),0 0 2px #fff}
-    .pn-rig-cmd-top .pn-bw-crumb-brand{color:#9a90a3}
-    .pn-rig-cmd-top .pn-bw-crumb-view{color:#ff4968;text-shadow:0 0 14px rgba(255,35,73,.35)}
-
-    @media(min-width:1181px){
-      .pn-rig-cmd-top{--bw-cap-left:calc(max(14px,calc((100% - 1780px)/2)) - 2.5px)}
-    }
-    @media(max-width:760px){.pn-rig-cmd-top{--bw-cap-left:5.5px}}
+    .pn-rig-cmd-top .pn-bw-crumb{display:flex!important;align-items:baseline;gap:8px;margin-bottom:7px;
+      font:600 11px/1 var(--mono);letter-spacing:.14em}
+    .pn-rig-cmd-top .pn-bw-crumb-brand{color:#6f6876}
+    .pn-rig-cmd-top .pn-bw-crumb-sep{color:#423c49}
+    .pn-rig-cmd-top .pn-bw-crumb-view{position:relative;padding-bottom:4px;color:#ff4968}
+    .pn-rig-cmd-top .pn-bw-crumb-view::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:#ff4968}
   `;
   document.head.appendChild(style);
 
-  const RAIL_CAPS = '<span class="pn-bw-rail-cap pn-bw-rail-cap-top" aria-hidden="true"></span><span class="pn-bw-rail-cap pn-bw-rail-cap-bottom" aria-hidden="true"></span>';
-
   function crumbHtml(view){
     const label = VIEW_LABEL[view] || view;
-    return '<div class="pn-bw-crumb"><span class="pn-bw-crumb-brand">BLOODWORKS</span><span class="pn-bw-crumb-dot" aria-hidden="true"></span><span class="pn-bw-crumb-view">' + label + '</span></div>';
+    return '<div class="pn-bw-crumb"><span class="pn-bw-crumb-brand">BLOODWORKS</span><span class="pn-bw-crumb-sep" aria-hidden="true">/</span><span class="pn-bw-crumb-view">' + label + '</span></div>';
   }
 
   function polishHeader(html, view){
@@ -125,12 +83,10 @@
     if (idx < 0) return html;
     // Always mark the topbar so the old "BLOODWORKS // X" ::before
     // content (rig_assembly_command_extension.js) is suppressed - that
-    // generic double-slash is exactly what's being replaced here -
-    // and always give the rail its diamond caps, on every view.
-    const newOpen = '<div class="topbar pn-rig-cmd-top" data-rig-view="' + view + '" data-bw-eyebrow="1">' + RAIL_CAPS;
-    const withAttr = html.replace(openTag, newOpen);
+    // generic double-slash is exactly what's being replaced here.
+    const withAttr = html.replace(openTag, '<div class="topbar pn-rig-cmd-top" data-rig-view="' + view + '" data-bw-eyebrow="1">');
     // The list view's own <h1> is already renamed to "BLOODWORKS"
-    // (terminal_naming_extension.js), so a "BLOODWORKS · ..." crumb
+    // (terminal_naming_extension.js), so a "BLOODWORKS / ..." crumb
     // above it would just repeat the brand name back at itself - leave
     // it with no eyebrow at all there. Editor/family carry a real
     // part/family name as their <h1>, where the crumb adds information
