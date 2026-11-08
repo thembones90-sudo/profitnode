@@ -930,7 +930,7 @@ const rigProbe = `
 
   const dup = Actions.duplicateRig(id2, 'Variant B copy');
   out.push(['duplicate created', !!dup && dup.family === 'TESTRIG']);
-  out.push(['rigFamilies groups correctly', rigFamilies().find(f=>f.family==='TESTRIG').variants.length === 3]);
+  out.push(['rigFamilies excludes SOLD rigs from the active workshop', rigFamilies().find(f=>f.family==='TESTRIG').variants.length === 2 && rigFamilies().find(f=>f.family==='TESTRIG').variants.every(r=>r.status!=='SOLD') && Store.get('rigs', savedId).status === 'SOLD']);
 
   Actions.removeRig(id2);
   out.push(['removeRig removed record', !Store.get('rigs', id2)]);
