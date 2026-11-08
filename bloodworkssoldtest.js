@@ -1,0 +1,38 @@
+"use strict";
+const assert=require("node:assert/strict");
+const env=require("./pn_test_env.js");
+const vm=require("node:vm");
+const sb=env.createSandbox();
+env.loadAll(sb,__dirname);
+const results=vm.runInContext(`(function(){
+  Store.load();
+  const out=[];
+  const active=Store.insert("rigs",{family:"WRAITH I",variantName:"MAIN",status:"PLANNED",purpose:"FLIP",currency:"EUR",budget:560*117.5,slots:emptyRigSlots(),expectedSalePrice:0});
+  const ghoul=Store.insert("rigs",{family:"GHOUL I",variantName:"MAIN",status:"SOLD",purpose:"FLIP",currency:"EUR",slots:emptyRigSlots(),expectedSalePrice:560,salePrice:560,saleDate:"2026-11-08"});
+  const other=Store.insert("rigs",{family:"WRAITH I",variantName:"HISTORIC",status:"SOLD",purpose:"FLIP",currency:"EUR",slots:emptyRigSlots(),salePrice:300});
+  state.route="rigbuild";
+  state.rigDraft=null;state.rigFamilyView=null;
+  const route=ROUTES.find(r=>r.key==="rigbuild");
+  let html=route.render();
+  out.push(["active list shows WRAITH",html.includes("WRAITH I")]);
+  out.push(["GHOUL omitted from active table",!html.includes('data-open-rig-family="GHOUL I"')]);
+  out.push(["sold archive status visible",html.includes("2 SOLD RIGS")&&html.includes('data-route="sales"')]);
+  out.push(["only unsold variants appear in rigFamilies",rigFamilies().length===1&&rigFamilies()[0].variants.length===1]);
+  state.rigDraft=JSON.parse(JSON.stringify(Store.get("rigs",ghoul.id)));
+  state.rigFamilyView="GHOUL I";
+  html=route.render();
+  out.push(["historical SOLD editor automatically closed",state.rigDraft===null&&state.rigFamilyView===null]);
+  out.push(["sale notice explains move to ledger",html.includes("GHOUL I is SOLD")&&html.includes("Sales")]);
+  out.push(["no phantom negative sold profit displayed",!html.includes("EXPECTED PROFIT")&&!html.includes("data-rig-slot-item")]);
+  out.push(["GHOUL remains permanently preserved",Store.get("rigs",ghoul.id).status==="SOLD"&&Store.get("rigs",ghoul.id).salePrice===560]);
+  state.rigFamilyView="WRAITH I";
+  html=route.render();
+  out.push(["active WRAITH family view still accessible",html.includes("WRAITH I")&&html.includes("MAIN")]);
+  out.push(["SOLD variants hidden from family view",!html.includes("HISTORIC")]);
+  out.push(["sold WRAITH variant remains stored",Store.get("rigs",other.id).status==="SOLD"]);
+  out.push(["new rig editor remains accessible",(()=>{state.rigFamilyView=null;state.rigDraft=newRigDraft("NEXT FLIP");state.rigDraft.budget=10000;return route.render().includes("data-rig-budget-rail")})()]);
+  return out;
+})()`,sb);
+let fail=0;for(const [name,pass] of results){console.log((pass?"PASS":"FAIL")+" "+name);if(!pass)fail++}
+console.log(results.length+" Bloodworks SOLD archive assertions; failures="+fail);
+if(fail)process.exitCode=1;

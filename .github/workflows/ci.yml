@@ -18,6 +18,7 @@ jobs:
       - run: node cloudsingleauthoritytest.js
       - run: node cloudsyncregressiontest.js
       - run: node rigassemblycompacttest.js
+      - run: node bloodworkssoldtest.js
       - run: node smoketest.js
       - run: node rendertest.js
       - run: node hardwaretest.js

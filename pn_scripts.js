@@ -1,6 +1,6 @@
 "use strict";
 window.__PN_SCRIPTS = [
-  "app_core.js?v=xfx-rx580-8gb-identity-v1",
+  "app_core.js?v=bloodworks-sold-archive-v1-20261108",
   "cpu_revaluation_extension.js?v=cpu-passmark-v5-hardening-20261004",
   "gpu_revaluation_extension.js?v=gpu-master-v4-hardening-20261005",
   "motherboard_revaluation_extension.js?v=v3-stack-20260912b",
@@ -64,6 +64,7 @@ window.__PN_SCRIPTS = [
   "bloodworks_list_premium_v1.js?v=bloodworks-list-premium-v1-20261105",
   "bloodworks_original_price_mute_v1.js?v=bloodworks-original-price-mute-v1-20261105",
   "bloodworks_header_polish_v1.js?v=bloodworks-header-polish-v4-20261105",
+  "bloodworks_sold_archive_v1.js?v=bloodworks-sold-archive-v1-20261108",
   "scroll_preserve_extension.js?v=scroll-preserve-v1-20261003",
   "audit_integrity_extension.js?v=audit-correctness-v1",
   "cloud_sync_extension.js?v=one-authoritative-database-20261104",
